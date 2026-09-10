@@ -35,69 +35,44 @@ const Login = () => {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
+    <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold">
+          <h1 className="text-3xl font-semibold tracking-tight text-brand">
             Fico
           </h1>
-
-          <p className="mt-2 text-gray-500">
-            Your Daily Financial Companion
-          </p>
+          <p className="mt-2 text-muted">Your Daily Financial Companion</p>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-5"
-        >
-          <div>
-            <label
-              htmlFor="identifier"
-              className="mb-2 block text-sm font-medium"
-            >
-              Username or email
-            </label>
-
+        <form onSubmit={handleSubmit} className="card space-y-4">
+          <label className="block">
+            <span className="field-label">Username or email</span>
             <input
               id="identifier"
               type="text"
               value={identifier}
-              onChange={(event) =>
-                setIdentifier(event.target.value)
-              }
+              onChange={(event) => setIdentifier(event.target.value)}
               autoComplete="username"
               required
-              className="w-full border px-4 py-3 outline-none focus:ring-2"
+              className="input"
             />
-          </div>
+          </label>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="mb-2 block text-sm font-medium"
-            >
-              Password
-            </label>
-
+          <label className="block">
+            <span className="field-label">Password</span>
             <input
               id="password"
               type="password"
               value={password}
-              onChange={(event) =>
-                setPassword(event.target.value)
-              }
+              onChange={(event) => setPassword(event.target.value)}
               autoComplete="current-password"
               required
-              className="w-full border px-4 py-3 outline-none focus:ring-2"
+              className="input"
             />
-          </div>
+          </label>
 
           {error && (
-            <p
-              role="alert"
-              className="text-sm"
-            >
+            <p role="alert" className="text-sm text-danger">
               {error}
             </p>
           )}
@@ -105,18 +80,15 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full border px-4 py-3 font-medium disabled:opacity-50"
+            className="btn btn-primary w-full py-2.5"
           >
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
 
-        <p className="mt-6 text-sm text-gray-500">
+        <p className="mt-6 text-sm text-muted">
           Don't have an account?{' '}
-          <Link
-            to="/register"
-            className="font-medium underline"
-          >
+          <Link to="/register" className="font-medium text-brand underline">
             Create one
           </Link>
         </p>

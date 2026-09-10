@@ -1,12 +1,21 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
 
 import { ensureDeviceId } from '../features/auth/localAuth'
+import { onDataChanged } from '../features/sync/events'
 import { suggestForName } from '../features/items'
+import {
+  createCategory as createCategoryFeature,
+  deleteCategory as deleteCategoryFeature,
+  ensureDefaultCategories,
+  listCategories,
+  updateCategory as updateCategoryFeature,
+} from '../features/categories'
 import {
   computeSpaceBalances,
   createAccount,
@@ -17,12 +26,17 @@ import {
   resolveDefaultAccount,
   setAccountStatus,
   setDefaultAccount,
+  setTransactionVisibility,
   type AccountWithBalance,
   type MoneyContext as MoneyCtx,
   type NewAccountInput,
   type RecordTransactionInput,
 } from '../features/money'
-import type { Transaction } from '../types/models'
+import type {
+  Category,
+  CategoryKind,
+  Transaction,
+} from '../types/models'
 import { useAuth } from '../hooks/useAuth'
 import { useSpace } from '../hooks/useSpace'
 import { MoneyContext } from './money-context'
@@ -37,6 +51,7 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
   const [accounts, setAccounts] = useState<AccountWithBalance[]>([])
   const [totalsByCurrency, setTotals] = useState<Record<string, number>>({})
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -59,6 +74,7 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
       setAccounts([])
       setTotals({})
       setTransactions([])
+      setCategories([])
       setLoading(false)
       return
     }
@@ -66,23 +82,49 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true)
     setError(null)
     try {
-      const [balances, recent] = await Promise.all([
+      if (ctx && canEdit) {
+        await ensureDefaultCategories(ctx)
+      }
+      const [balances, recent, cats] = await Promise.all([
         computeSpaceBalances(activeSpaceId),
         listTransactions(activeSpaceId, { limit: RECENT_LIMIT }),
+        listCategories(activeSpaceId),
       ])
       setAccounts(balances.accounts)
       setTotals(balances.totalsByCurrency)
-      setTransactions(recent)
+      // A private record is only shown to its creator (Product Spec §22).
+      setTransactions(
+        recent.filter(
+          (t) => t.visibility !== 'PRIVATE' || t.createdBy === user?.id,
+        ),
+      )
+      setCategories(cats)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load money data')
     } finally {
       setLoading(false)
     }
+    // ctx/canEdit intentionally not deps — only used opportunistically for the seed
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSpaceId])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
+  }, [load])
+
+  // Coalesce bursts of mutations (e.g. completing a shopping list emits many
+  // `fico:data-changed` events) into a single reload (Roadmap Phase 26).
+  const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    const unsubscribe = onDataChanged(() => {
+      if (reloadTimer.current) clearTimeout(reloadTimer.current)
+      reloadTimer.current = setTimeout(() => void load(), 120)
+    })
+    return () => {
+      unsubscribe()
+      if (reloadTimer.current) clearTimeout(reloadTimer.current)
+    }
   }, [load])
 
   const requireCtx = (): MoneyCtx => {
@@ -131,13 +173,47 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
   const addTransaction = useCallback(
     async (input: RecordTransactionInput) => {
       const c = requireCtx()
-      // Auto-category from a known item with the same name (§10, §38).
+      let categoryId = input.categoryId ?? null
       let categoryName = input.categoryName ?? null
-      if (!categoryName && input.type === 'EXPENSE') {
+
+      if (categoryId && !categoryName) {
         categoryName =
-          (await suggestForName(c.spaceId, input.title))?.category ?? null
+          categories.find((cat) => cat.id === categoryId)?.name ?? null
       }
-      await recordTransaction(c, { ...input, categoryName })
+      // Auto-category from a known item with the same name (§10, §38).
+      if (!categoryId && !categoryName && input.type === 'EXPENSE') {
+        const s = await suggestForName(c.spaceId, input.title)
+        categoryId = s?.categoryId ?? null
+        categoryName = s?.category ?? null
+      }
+      await recordTransaction(c, { ...input, categoryId, categoryName })
+      await load()
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ctx, canEdit, load, categories],
+  )
+
+  const addCategory = useCallback(
+    async (input: { name: string; kind: CategoryKind }) => {
+      await createCategoryFeature(requireCtx(), input)
+      await load()
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ctx, canEdit, load],
+  )
+
+  const editCategory = useCallback(
+    async (id: string, patch: { name?: string; archived?: boolean }) => {
+      await updateCategoryFeature(requireCtx(), id, patch)
+      await load()
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ctx, canEdit, load],
+  )
+
+  const removeCategory = useCallback(
+    async (id: string) => {
+      await deleteCategoryFeature(requireCtx(), id)
       await load()
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -153,6 +229,15 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
     [ctx, canEdit, load],
   )
 
+  const setVisibility = useCallback(
+    async (id: string, visibility: 'SPACE' | 'PRIVATE') => {
+      await setTransactionVisibility(requireCtx(), id, visibility)
+      await load()
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ctx, canEdit, load],
+  )
+
   const defaultAccount = resolveDefaultAccount(accounts) ?? null
 
   return (
@@ -161,6 +246,7 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
         accounts,
         totalsByCurrency,
         transactions,
+        categories,
         defaultAccount,
         loading,
         error,
@@ -172,6 +258,10 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
         makeDefaultAccount,
         addTransaction,
         removeTransaction,
+        setTransactionVisibility: setVisibility,
+        addCategory,
+        editCategory,
+        removeCategory,
       }}
     >
       {children}

@@ -1,4 +1,7 @@
-import { shoppingItemRepository } from '../../repositories'
+import {
+  categoryRepository,
+  shoppingItemRepository,
+} from '../../repositories'
 import { recordTransaction } from '../money'
 import {
   recordPurchasePrice,
@@ -42,13 +45,17 @@ export const completeListWithExpenses = async (
 
     const purchasedAt = new Date().toISOString()
     const profile = await resolveItemProfile(ctx, item.name)
+    const categoryName = profile.categoryId
+      ? ((await categoryRepository.get(profile.categoryId))?.name ?? null)
+      : null
 
     const txn = await recordTransaction(ctx, {
       type: 'EXPENSE',
       amountMinor: item.actualPriceMinor,
       title: item.name,
       accountId,
-      categoryName: profile.category ?? null,
+      categoryId: profile.categoryId ?? null,
+      categoryName,
       occurredAt: purchasedAt,
       sourceType: 'SHOPPING_ITEM',
       sourceId: item.id,

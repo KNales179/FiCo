@@ -35,6 +35,14 @@ export function initDB(): Promise<void> {
   return initPromise
 }
 
+/**
+ * Test-only: drop the cached init promise so the next `initDB()` re-runs
+ * against a fresh `IDBFactory`. Never called in the app.
+ */
+export function __resetInitDBForTests(): void {
+  initPromise = null
+}
+
 /** The stable id for this browser profile. Call after `initDB()`. */
 export async function getDeviceId(): Promise<string> {
   const deviceId = await metadataRepository.get<string>(

@@ -4,6 +4,7 @@ import type {
   TransactionSourceType,
 } from '../types/models'
 import { createRepository } from './createRepository'
+import { getDB } from '../db/database'
 
 const accounts = createRepository('accounts')
 const transactions = createRepository('transactions')
@@ -34,6 +35,53 @@ export const transactionRepository = {
       [spaceId, toIso],
     )
     return transactions.getAllByIndex('by-space-occurredAt', range)
+  },
+
+  /**
+   * The most recent transactions in a space, newest first, walked with a
+   * reverse cursor over `by-space-occurredAt` so a large history costs only
+   * `limit` deserializations plus whatever soft-deleted / filtered rows are
+   * skipped along the way (Roadmap Phase 26).
+   */
+  async listRecent(
+    spaceId: string,
+    options: {
+      limit: number
+      before?: string
+      type?: Transaction['type']
+      accountId?: string
+    },
+  ): Promise<Transaction[]> {
+    const db = await getDB()
+    const upper = options.before ?? '￿'
+    const range = IDBKeyRange.bound(
+      [spaceId, ''],
+      [spaceId, upper],
+      false,
+      options.before !== undefined,
+    )
+
+    const out: Transaction[] = []
+    let cursor = await db
+      .transaction('transactions')
+      .store.index('by-space-occurredAt')
+      .openCursor(range, 'prev')
+
+    while (cursor && out.length < options.limit) {
+      const txn = cursor.value as Transaction
+      if (
+        !txn.deletedAt &&
+        (!options.type || txn.type === options.type) &&
+        (!options.accountId ||
+          txn.accountId === options.accountId ||
+          txn.destinationAccountId === options.accountId)
+      ) {
+        out.push(txn)
+      }
+      cursor = await cursor.continue()
+    }
+
+    return out
   },
 
   async listByAccount(accountId: string): Promise<Transaction[]> {

@@ -80,7 +80,7 @@ const CashCheck = () => {
   }
 
   return (
-    <section className="rounded border p-4">
+    <section className="card">
       <h2 className="text-lg font-semibold">Cash check</h2>
 
       {cashAccounts.length > 1 && (
@@ -99,12 +99,12 @@ const CashCheck = () => {
 
       <dl className="mt-3 space-y-1 text-sm">
         <div className="flex justify-between">
-          <dt className="text-gray-500">Expected (from records)</dt>
+          <dt className="text-muted">Expected (from records)</dt>
           <dd>{formatMoney(expectedMinor, account?.currency)}</dd>
         </div>
         {canEdit && (
           <div className="flex items-center justify-between gap-2">
-            <dt className="text-gray-500">Actual (counted)</dt>
+            <dt className="text-muted">Actual (counted)</dt>
             <dd>
               <input
                 value={actual}
@@ -119,7 +119,7 @@ const CashCheck = () => {
         {liveDiff != null && (
           <div className="flex justify-between font-medium">
             <dt>Difference</dt>
-            <dd className={liveDiff < 0 ? 'text-red-600' : liveDiff > 0 ? 'text-amber-600' : ''}>
+            <dd className={liveDiff < 0 ? 'text-danger' : liveDiff > 0 ? 'text-amber-600' : ''}>
               {liveDiff > 0 ? '+' : ''}
               {formatMoney(liveDiff, account?.currency)}
             </dd>
@@ -148,7 +148,7 @@ const CashCheck = () => {
       )}
 
       {error && (
-        <p role="alert" className="mt-2 text-xs text-red-600">
+        <p role="alert" className="mt-2 text-xs text-danger">
           {error}
         </p>
       )}
@@ -162,7 +162,7 @@ const CashCheck = () => {
         </p>
       )}
       {saved && saved.differenceMinor === 0 && (
-        <p className="mt-2 text-xs text-green-700">
+        <p className="mt-2 text-xs text-success">
           Saved — your cash matches your records.
         </p>
       )}

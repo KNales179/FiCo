@@ -49,107 +49,69 @@ const Register = () => {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
+    <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold">
+          <h1 className="text-3xl font-semibold tracking-tight text-ink">
             Create your Fico account
           </h1>
-
-          <p className="mt-2 text-gray-500">
-            Your Daily Financial Companion
-          </p>
+          <p className="mt-2 text-muted">Your Daily Financial Companion</p>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-5"
-        >
-          <div>
-            <label
-              htmlFor="username"
-              className="mb-2 block text-sm font-medium"
-            >
-              Username
-            </label>
-
+        <form onSubmit={handleSubmit} className="card space-y-4">
+          <label className="block">
+            <span className="field-label">Username</span>
             <input
               id="username"
               value={username}
-              onChange={(event) =>
-                setUsername(event.target.value)
-              }
+              onChange={(event) => setUsername(event.target.value)}
               autoComplete="username"
               required
-              className="w-full border px-4 py-3 outline-none focus:ring-2"
+              className="input"
             />
-          </div>
+          </label>
 
-          <div>
-            <label
-              htmlFor="email"
-              className="mb-2 block text-sm font-medium"
-            >
-              Email
-            </label>
-
+          <label className="block">
+            <span className="field-label">Email</span>
             <input
               id="email"
               type="email"
               value={email}
-              onChange={(event) =>
-                setEmail(event.target.value)
-              }
+              onChange={(event) => setEmail(event.target.value)}
               autoComplete="email"
               required
-              className="w-full border px-4 py-3 outline-none focus:ring-2"
+              className="input"
             />
-          </div>
+          </label>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="mb-2 block text-sm font-medium"
-            >
-              Password
-            </label>
-
+          <label className="block">
+            <span className="field-label">Password</span>
             <input
               id="password"
               type="password"
               value={password}
-              onChange={(event) =>
-                setPassword(event.target.value)
-              }
+              onChange={(event) => setPassword(event.target.value)}
               autoComplete="new-password"
               required
-              className="w-full border px-4 py-3 outline-none focus:ring-2"
+              className="input"
             />
-          </div>
+          </label>
 
-          <div>
-            <label
-              htmlFor="confirmPassword"
-              className="mb-2 block text-sm font-medium"
-            >
-              Confirm password
-            </label>
-
+          <label className="block">
+            <span className="field-label">Confirm password</span>
             <input
               id="confirmPassword"
               type="password"
               value={confirmPassword}
-              onChange={(event) =>
-                setConfirmPassword(event.target.value)
-              }
+              onChange={(event) => setConfirmPassword(event.target.value)}
               autoComplete="new-password"
               required
-              className="w-full border px-4 py-3 outline-none focus:ring-2"
+              className="input"
             />
-          </div>
+          </label>
 
           {error && (
-            <p role="alert" className="text-sm">
+            <p role="alert" className="text-sm text-danger">
               {error}
             </p>
           )}
@@ -157,20 +119,15 @@ const Register = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full border px-4 py-3 font-medium disabled:opacity-50"
+            className="btn btn-primary w-full py-2.5"
           >
-            {loading
-              ? 'Creating account...'
-              : 'Create account'}
+            {loading ? 'Creating account…' : 'Create account'}
           </button>
         </form>
 
-        <p className="mt-6 text-sm text-gray-500">
+        <p className="mt-6 text-sm text-muted">
           Already have an account?{' '}
-          <Link
-            to="/login"
-            className="font-medium underline"
-          >
+          <Link to="/login" className="font-medium text-brand underline">
             Sign in
           </Link>
         </p>

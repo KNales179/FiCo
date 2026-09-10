@@ -8,6 +8,7 @@ import type {
   ItemProfile,
   LocalSession,
   LocalUser,
+  Category,
   Membership,
   MetadataEntry,
   PriceHistory,
@@ -28,8 +29,9 @@ export const DB_NAME = 'fico'
  *
  * v1 — initial 16 stores
  * v2 — + `reconciliations` (Phase 14)
+ * v3 — + `categories` (managed category list)
  */
-export const DB_VERSION = 2
+export const DB_VERSION = 3
 
 /**
  * Typed description of every object store and its indexes, consumed by `idb`.
@@ -173,6 +175,14 @@ export interface FicoDB extends DBSchema {
       'by-spaceId': string
       'by-accountId': string
       'by-status': string
+    }
+  }
+  categories: {
+    key: string
+    value: Category
+    indexes: {
+      'by-spaceId': string
+      'by-space-kind': [string, string]
     }
   }
   metadata: {

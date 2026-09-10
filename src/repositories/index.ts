@@ -32,6 +32,7 @@ export {
 } from './bills'
 export { attachmentRepository } from './attachments'
 export { reconciliationRepository } from './reconciliations'
+export { categoryRepository } from './categories'
 export { sessionRepository } from './sessionRepository'
 export { syncEventRepository } from './syncEventRepository'
 export type { NewSyncEvent } from './syncEventRepository'
@@ -56,6 +57,7 @@ import {
 } from './bills'
 import { attachmentRepository } from './attachments'
 import { reconciliationRepository } from './reconciliations'
+import { categoryRepository } from './categories'
 import { sessionRepository } from './sessionRepository'
 import { syncEventRepository } from './syncEventRepository'
 import { metadataRepository } from './metadataRepository'
@@ -76,6 +78,7 @@ export const repositories = {
   electricityRecords: electricityRecordRepository,
   attachments: attachmentRepository,
   reconciliations: reconciliationRepository,
+  categories: categoryRepository,
   sessions: sessionRepository,
   syncEvents: syncEventRepository,
   metadata: metadataRepository,

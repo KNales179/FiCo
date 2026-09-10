@@ -35,7 +35,7 @@ const SpaceSwitcher = () => {
   }
 
   if (loading && spaces.length === 0) {
-    return <span className="text-sm text-gray-500">Loading spaces…</span>
+    return <span className="text-sm text-muted">Loading spaces…</span>
   }
 
   return (
@@ -49,7 +49,7 @@ const SpaceSwitcher = () => {
           id="space"
           value={activeSpaceId ?? ''}
           onChange={(event) => void switchSpace(event.target.value)}
-          className="border px-2 py-1 text-sm"
+          className="select w-auto py-1 text-sm"
         >
           {spaces.length === 0 && <option value="">No spaces</option>}
           {spaces.map((space) => (
@@ -64,7 +64,7 @@ const SpaceSwitcher = () => {
         <button
           type="button"
           onClick={() => setCreating((value) => !value)}
-          className="border px-2 py-1 text-sm"
+          className="btn btn-sm"
         >
           {creating ? 'Cancel' : '+ New'}
         </button>
@@ -84,12 +84,12 @@ const SpaceSwitcher = () => {
             onChange={(event) => setName(event.target.value)}
             placeholder="Family space name"
             maxLength={60}
-            className="border px-2 py-1 text-sm"
+            className="input w-auto py-1 text-sm"
           />
           <button
             type="submit"
             disabled={busy}
-            className="border px-2 py-1 text-sm disabled:opacity-50"
+            className="btn btn-sm"
           >
             {busy ? 'Creating…' : 'Create'}
           </button>
@@ -97,7 +97,7 @@ const SpaceSwitcher = () => {
       )}
 
       {error && (
-        <span role="alert" className="text-xs text-red-600">
+        <span role="alert" className="text-xs text-danger">
           {error}
         </span>
       )}

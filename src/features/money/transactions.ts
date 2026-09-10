@@ -14,8 +14,11 @@ import { enqueueMutation } from './enqueue'
 export interface RecordTransactionInput extends TransactionInput {
   details?: string
   occurredAt?: string
+  categoryId?: string | null
   /** Category name snapshot — stored as-is, never rewritten later (§10). */
   categoryName?: string | null
+  /** SPACE (shared) or PRIVATE (creator only). Defaults to SPACE. */
+  visibility?: 'SPACE' | 'PRIVATE'
   /** Where this transaction came from — defaults to MANUAL. */
   sourceType?: TransactionSourceType
   sourceId?: string | null
@@ -33,6 +36,17 @@ export const listTransactions = async (
   spaceId: string,
   options: ListTransactionsOptions = {},
 ): Promise<Transaction[]> => {
+  // Hot path (the dashboard "recent" list): a bounded reverse cursor over
+  // `by-space-occurredAt` instead of reading the whole history (Phase 26).
+  if (options.limit) {
+    return transactionRepository.listRecent(spaceId, {
+      limit: options.limit,
+      before: options.before,
+      type: options.type,
+      accountId: options.accountId,
+    })
+  }
+
   let rows = await transactionRepository.getAllByIndex(
     'by-spaceId',
     spaceId,
@@ -86,7 +100,7 @@ export const recordTransaction = async (
     currency: source.currency,
     title: input.title.trim(),
     details: input.details?.trim() || undefined,
-    categoryId: null,
+    categoryId: input.categoryId ?? null,
     categoryName: input.categoryName ?? null,
     accountId: input.accountId,
     destinationAccountId:
@@ -94,6 +108,7 @@ export const recordTransaction = async (
     occurredAt: input.occurredAt ?? new Date().toISOString(),
     sourceType: input.sourceType ?? 'MANUAL',
     sourceId: input.sourceId ?? null,
+    visibility: input.visibility ?? 'SPACE',
     createdBy: ctx.userId,
     syncStatus: 'PENDING',
     version: 1,
@@ -109,4 +124,16 @@ export const deleteTransaction = async (
 ): Promise<void> => {
   await transactionRepository.softDelete(id)
   await enqueueMutation(ctx, 'transaction', id, 'DELETE', { id })
+}
+
+export const setTransactionVisibility = async (
+  ctx: MoneyContext,
+  id: string,
+  visibility: 'SPACE' | 'PRIVATE',
+): Promise<void> => {
+  const txn = await transactionRepository.update(id, {
+    visibility,
+    syncStatus: 'PENDING',
+  })
+  await enqueueMutation(ctx, 'transaction', id, 'UPDATE', txn)
 }

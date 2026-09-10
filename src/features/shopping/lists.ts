@@ -10,6 +10,7 @@ export interface NewListInput {
   title: string
   plannedBudgetMinor?: number | null
   plannedAt?: string | null
+  visibility?: 'SPACE' | 'PRIVATE'
 }
 
 export const listShoppingLists = (
@@ -31,6 +32,7 @@ export const createShoppingList = async (
     plannedBudgetMinor: input.plannedBudgetMinor ?? null,
     plannedAt: input.plannedAt ?? null,
     completedAt: null,
+    visibility: input.visibility ?? 'SPACE',
     createdBy: ctx.userId,
     syncStatus: 'PENDING',
     version: 1,
@@ -43,7 +45,10 @@ export const updateShoppingList = async (
   ctx: MutationContext,
   id: string,
   patch: Partial<
-    Pick<ShoppingList, 'title' | 'plannedBudgetMinor' | 'status'>
+    Pick<
+      ShoppingList,
+      'title' | 'plannedBudgetMinor' | 'status' | 'visibility'
+    >
   >,
 ): Promise<ShoppingList> => {
   const list = await shoppingListRepository.update(id, {

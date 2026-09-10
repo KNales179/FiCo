@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useMoney } from '../../hooks/useMoney'
 import { parseAmountToMinor } from '../../domain/money'
+import CategoryPicker from './CategoryPicker'
 import type { TransactionType } from '../../types/models'
 
 const TYPES: { value: TransactionType; label: string }[] = [
@@ -22,6 +23,7 @@ const AddTransactionForm = () => {
   const [title, setTitle] = useState('')
   const [accountId, setAccountId] = useState('')
   const [destinationAccountId, setDestinationAccountId] = useState('')
+  const [categoryId, setCategoryId] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -29,7 +31,7 @@ const AddTransactionForm = () => {
 
   if (activeAccounts.length === 0) {
     return (
-      <section className="rounded border p-4 text-sm text-gray-500">
+      <section className="card text-sm text-muted">
         Add an account before recording transactions.
       </section>
     )
@@ -54,6 +56,7 @@ const AddTransactionForm = () => {
         amountMinor,
         title,
         accountId: source,
+        categoryId: type === 'TRANSFER' ? null : categoryId || null,
         destinationAccountId:
           type === 'TRANSFER'
             ? destinationAccountId ||
@@ -63,6 +66,7 @@ const AddTransactionForm = () => {
       setAmount('')
       setTitle('')
       setDestinationAccountId('')
+      setCategoryId('')
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Could not record transaction',
@@ -73,7 +77,7 @@ const AddTransactionForm = () => {
   }
 
   return (
-    <section className="rounded border p-4">
+    <section className="card">
       <h2 className="text-lg font-semibold">Record something</h2>
 
       <div className="mt-3 flex gap-2">
@@ -83,7 +87,7 @@ const AddTransactionForm = () => {
             type="button"
             onClick={() => setType(option.value)}
             className={`border px-3 py-1 text-sm ${
-              type === option.value ? 'bg-gray-900 text-white' : ''
+              type === option.value ? 'bg-brand text-brand-ink' : ''
             }`}
           >
             {option.label}
@@ -112,7 +116,7 @@ const AddTransactionForm = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <label className="text-gray-500">
+          <label className="text-muted">
             {type === 'INCOME' ? 'Into' : 'From'}
           </label>
           <select
@@ -129,7 +133,7 @@ const AddTransactionForm = () => {
 
           {type === 'TRANSFER' && (
             <>
-              <label className="text-gray-500">to</label>
+              <label className="text-muted">to</label>
               <select
                 value={destinationAccountId}
                 onChange={(e) =>
@@ -145,10 +149,18 @@ const AddTransactionForm = () => {
               </select>
             </>
           )}
+
+          {type !== 'TRANSFER' && (
+            <CategoryPicker
+              kind={type === 'INCOME' ? 'INCOME' : 'EXPENSE'}
+              value={categoryId}
+              onChange={setCategoryId}
+            />
+          )}
         </div>
 
         {error && (
-          <p role="alert" className="text-xs text-red-600">
+          <p role="alert" className="text-xs text-danger">
             {error}
           </p>
         )}

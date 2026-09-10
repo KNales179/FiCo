@@ -1,4 +1,6 @@
 import { transactionRepository } from '../../repositories'
+import { isNetworkError } from '../../lib/api'
+import { fetchAnalytics } from '../../services/analyticsService'
 import { listShoppingLists, computeListTotals } from '../shopping'
 import { listItems } from '../shopping/items'
 import {
@@ -18,13 +20,35 @@ export interface ShoppingPlannedVsActual {
 export interface Analytics extends AnalyticsSummary {
   range: DateRange
   shopping: ShoppingPlannedVsActual
+  /** True when the numbers came from the local cache (server unreachable). */
+  fromCache?: boolean
 }
 
 /**
- * Everything the Analytics page needs, computed from local data so it's
- * instant and works offline (Roadmap Phase 15).
+ * Space analytics. Prefers the server so every member of a shared space sees
+ * the same numbers (Roadmap Phase 15); falls back to a local computation over
+ * IndexedDB when offline.
  */
 export const computeAnalytics = async (
+  spaceId: string,
+  period: AnalyticsPeriod,
+  custom?: Partial<DateRange>,
+  currency = 'PHP',
+): Promise<Analytics> => {
+  if (period !== 'CUSTOM') {
+    try {
+      const server = await fetchAnalytics(spaceId, period, currency)
+      return { ...server, fromCache: false }
+    } catch (err) {
+      if (!isNetworkError(err)) throw err
+      // offline — fall through to the local computation
+    }
+  }
+
+  return computeAnalyticsLocally(spaceId, period, custom, currency)
+}
+
+const computeAnalyticsLocally = async (
   spaceId: string,
   period: AnalyticsPeriod,
   custom?: Partial<DateRange>,
@@ -65,5 +89,6 @@ export const computeAnalytics = async (
     ...summary,
     range,
     shopping: { plannedMinor, actualMinor, listCount },
+    fromCache: true,
   }
 }

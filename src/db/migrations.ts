@@ -166,6 +166,14 @@ export const STORE_DEFINITIONS: StoreDefinition[] = [
     ],
   },
   {
+    name: 'categories',
+    keyPath: 'id',
+    indexes: [
+      { name: 'by-spaceId', keyPath: 'spaceId' },
+      { name: 'by-space-kind', keyPath: ['spaceId', 'kind'] },
+    ],
+  },
+  {
     name: 'metadata',
     keyPath: 'key',
   },
@@ -212,6 +220,10 @@ export const migrations: Array<
   },
   // v2 — add `reconciliations` (Phase 14). createMissingStores only adds what
   // is absent, so this is safe for both fresh and existing databases.
+  (db, tx) => {
+    createMissingStores(db, tx)
+  },
+  // v3 — add `categories` (managed category list).
   (db, tx) => {
     createMissingStores(db, tx)
   },

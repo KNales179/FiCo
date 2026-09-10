@@ -117,6 +117,9 @@ export type TransactionSourceType =
   | 'SHOPPING_LIST'
   | 'BILL_PAYMENT'
 
+/** SPACE = every member sees it; PRIVATE = only the creator (Product Spec §22). */
+export type RecordVisibility = 'SPACE' | 'PRIVATE'
+
 export interface Transaction extends SyncableEntity {
   spaceId: string
   type: TransactionType
@@ -134,15 +137,19 @@ export interface Transaction extends SyncableEntity {
   categoryName?: string | null
   sourceType: TransactionSourceType
   sourceId?: string | null
+  visibility: RecordVisibility
   createdBy: string
 }
 
-export type CategoryType = 'INCOME' | 'EXPENSE'
+export type CategoryKind = 'EXPENSE' | 'INCOME'
 
 export interface Category extends SyncableEntity {
   spaceId: string
   name: string
-  type: CategoryType
+  normalizedName: string
+  kind: CategoryKind
+  archived: boolean
+  createdBy: string
 }
 
 // ---------------------------------------------------------------------------
@@ -159,6 +166,7 @@ export interface ShoppingList extends SyncableEntity {
   plannedBudgetMinor?: number | null
   plannedAt?: string | null
   completedAt?: string | null
+  visibility: RecordVisibility
   createdBy: string
 }
 
@@ -183,9 +191,8 @@ export interface ItemProfile extends SyncableEntity {
   spaceId: string
   normalizedName: string
   displayName: string
+  /** Chosen category, applied to future purchases only (§10). */
   categoryId?: string | null
-  /** Free-text category, applied to future purchases only (§10). */
-  category?: string | null
 }
 
 export interface PriceHistory extends BaseEntity {
@@ -213,6 +220,8 @@ export interface Bill extends SyncableEntity {
   categoryName?: string | null
   paymentAccountId?: string | null
   active: boolean
+  visibility: RecordVisibility
+  createdBy?: string
   /** Show optional kWh / charge-breakdown fields when paying (§16). */
   tracksElectricity: boolean
 }

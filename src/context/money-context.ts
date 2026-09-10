@@ -1,5 +1,9 @@
 import { createContext } from 'react'
-import type { Transaction } from '../types/models'
+import type {
+  Category,
+  CategoryKind,
+  Transaction,
+} from '../types/models'
 import type {
   AccountWithBalance,
   NewAccountInput,
@@ -10,6 +14,7 @@ export interface MoneyContextValue {
   accounts: AccountWithBalance[]
   totalsByCurrency: Record<string, number>
   transactions: Transaction[]
+  categories: Category[]
   /** The account Quick Add defaults to, or null when there are no accounts. */
   defaultAccount: AccountWithBalance | null
   loading: boolean
@@ -25,6 +30,19 @@ export interface MoneyContextValue {
   makeDefaultAccount: (id: string) => Promise<void>
   addTransaction: (input: RecordTransactionInput) => Promise<void>
   removeTransaction: (id: string) => Promise<void>
+  setTransactionVisibility: (
+    id: string,
+    visibility: 'SPACE' | 'PRIVATE',
+  ) => Promise<void>
+  addCategory: (input: {
+    name: string
+    kind: CategoryKind
+  }) => Promise<void>
+  editCategory: (
+    id: string,
+    patch: { name?: string; archived?: boolean },
+  ) => Promise<void>
+  removeCategory: (id: string) => Promise<void>
 }
 
 export const MoneyContext = createContext<MoneyContextValue | undefined>(

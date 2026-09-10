@@ -111,7 +111,7 @@ const Attachments = ({
               <button
                 type="button"
                 onClick={() => void onRemove(att.id)}
-                className="text-[10px] text-gray-500 underline"
+                className="text-[10px] text-muted underline"
               >
                 remove
               </button>
@@ -133,12 +133,12 @@ const Attachments = ({
             type="button"
             disabled={busy}
             onClick={() => inputRef.current?.click()}
-            className="text-xs text-gray-500 underline disabled:opacity-50"
+            className="text-xs text-muted underline disabled:opacity-50"
           >
             {busy ? 'attaching…' : '+ receipt'}
           </button>
           {error && (
-            <span className="ml-2 text-xs text-red-600">{error}</span>
+            <span className="ml-2 text-xs text-danger">{error}</span>
           )}
         </div>
       )}

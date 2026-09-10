@@ -17,6 +17,7 @@ import {
   type NewBillInput,
   type PayBillInput,
 } from '../features/bills'
+import { onDataChanged } from '../features/sync/events'
 import type { MutationContext } from '../features/sync/context'
 import type { Bill, ElectricityRecord } from '../types/models'
 import { useAuth } from '../hooks/useAuth'
@@ -67,19 +68,27 @@ export const BillsProvider = ({ children }: { children: ReactNode }) => {
         listBills(activeSpaceId),
         listElectricity(activeSpaceId),
       ])
-      setBills(b)
+      setBills(
+        b.filter(
+          (bill) =>
+            bill.visibility !== 'PRIVATE' ||
+            bill.createdBy === user?.id,
+        ),
+      )
       setElectricity(e)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load bills')
     } finally {
       setLoading(false)
     }
-  }, [activeSpaceId])
+  }, [activeSpaceId, user?.id])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
   }, [load])
+
+  useEffect(() => onDataChanged(() => void load()), [load])
 
   const value = {
     bills,

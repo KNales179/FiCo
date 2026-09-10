@@ -62,3 +62,40 @@ export const removeMember = (spaceId: string, userId: string) =>
     `/spaces/${spaceId}/members/${userId}`,
     { method: 'DELETE' },
   )
+
+export interface PendingInvitation {
+  id: string
+  email: string
+  role: 'EDITOR' | 'VIEWER'
+  status: string
+  expiresAt: string
+  createdAt: string
+}
+
+export const listInvitations = (spaceId: string) =>
+  api<{ success: boolean; invitations: PendingInvitation[] }>(
+    `/spaces/${spaceId}/invitations`,
+  )
+
+export const inviteToSpace = (
+  spaceId: string,
+  email: string,
+  role: 'EDITOR' | 'VIEWER',
+) =>
+  api<{
+    success: boolean
+    message: string
+    addedExistingUser: boolean
+  }>(`/spaces/${spaceId}/invitations`, {
+    method: 'POST',
+    body: { email, role },
+  })
+
+export const revokeInvitation = (
+  spaceId: string,
+  invitationId: string,
+) =>
+  api<{ success: boolean; message: string }>(
+    `/spaces/${spaceId}/invitations/${invitationId}`,
+    { method: 'DELETE' },
+  )

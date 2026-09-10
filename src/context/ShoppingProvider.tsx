@@ -21,6 +21,8 @@ import {
   type NewItemInput,
   type NewListInput,
 } from '../features/shopping'
+import { setItemNameCategory } from '../features/items'
+import { onDataChanged } from '../features/sync/events'
 import type { MutationContext } from '../features/sync/context'
 import type { ShoppingItem, ShoppingList } from '../types/models'
 import { useAuth } from '../hooks/useAuth'
@@ -79,7 +81,10 @@ export const ShoppingProvider = ({
     setLoading(true)
     setError(null)
     try {
-      const next = await listShoppingLists(activeSpaceId)
+      const all = await listShoppingLists(activeSpaceId)
+      const next = all.filter(
+        (l) => l.visibility !== 'PRIVATE' || l.createdBy === user?.id,
+      )
       setLists(next)
       setSelectedListId((current) => {
         if (current && next.some((l) => l.id === current)) return current
@@ -93,12 +98,21 @@ export const ShoppingProvider = ({
     } finally {
       setLoading(false)
     }
-  }, [activeSpaceId])
+  }, [activeSpaceId, user?.id])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
   }, [load])
+
+  useEffect(
+    () =>
+      onDataChanged(() => {
+        void load()
+        void loadItemsFor(selectedListId)
+      }),
+    [load, loadItemsFor, selectedListId],
+  )
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -166,6 +180,13 @@ export const ShoppingProvider = ({
       wrap(updateItem)(id, { actualPriceMinor: minor }),
     toggleItem: wrap(setItemChecked),
     removeItem: wrap(removeItem),
+    setItemCategory: async (
+      itemName: string,
+      categoryId: string | null,
+    ) => {
+      await setItemNameCategory(requireCtx(), itemName, categoryId)
+      await reload()
+    },
   }
 
   return (

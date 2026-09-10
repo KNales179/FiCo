@@ -15,7 +15,10 @@ export interface ShoppingContextValue {
   updateList: (
     id: string,
     patch: Partial<
-      Pick<ShoppingList, 'title' | 'plannedBudgetMinor' | 'status'>
+      Pick<
+        ShoppingList,
+        'title' | 'plannedBudgetMinor' | 'status' | 'visibility'
+      >
     >,
   ) => Promise<void>
   cancelList: (id: string) => Promise<void>
@@ -30,6 +33,10 @@ export interface ShoppingContextValue {
   setActualPrice: (id: string, minor: number | null) => Promise<void>
   toggleItem: (id: string, checked: boolean) => Promise<void>
   removeItem: (id: string) => Promise<void>
+  setItemCategory: (
+    itemName: string,
+    categoryId: string | null,
+  ) => Promise<void>
 }
 
 export const ShoppingContext = createContext<

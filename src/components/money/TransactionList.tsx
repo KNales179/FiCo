@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useMoney } from '../../hooks/useMoney'
+import { useAuth } from '../../hooks/useAuth'
 import { formatMoney } from '../../domain/money'
 import Attachments from '../Attachments'
 import type { Transaction } from '../../types/models'
@@ -17,15 +18,17 @@ const Row = ({
   txn: Transaction
   accountName: (id: string | null | undefined) => string
 }) => {
-  const { canEdit, removeTransaction } = useMoney()
+  const { canEdit, removeTransaction, setTransactionVisibility } = useMoney()
+  const { user } = useAuth()
   const [open, setOpen] = useState(false)
+  const isMine = txn.createdBy === user?.id
 
   return (
     <li className="py-2 text-sm">
       <div className="flex items-center justify-between">
         <span>
           <span className="font-medium">{txn.title}</span>
-          <span className="ml-2 text-xs text-gray-500">
+          <span className="ml-2 text-xs text-muted">
             {new Date(txn.occurredAt).toLocaleDateString()} ·{' '}
             {txn.type === 'TRANSFER'
               ? `${accountName(txn.accountId)} → ${accountName(
@@ -33,6 +36,9 @@ const Row = ({
                 )}`
               : accountName(txn.accountId)}
             {txn.categoryName && ` · ${txn.categoryName}`}
+            {txn.visibility === 'PRIVATE' && (
+              <span className="ml-1 text-amber-600">· private</span>
+            )}
           </span>
         </span>
 
@@ -40,10 +46,10 @@ const Row = ({
           <span
             className={
               txn.type === 'INCOME'
-                ? 'text-green-700'
+                ? 'text-success'
                 : txn.type === 'EXPENSE'
-                  ? 'text-red-600'
-                  : 'text-gray-600'
+                  ? 'text-danger'
+                  : 'text-muted'
             }
           >
             {SIGN[txn.type]} {formatMoney(txn.amountMinor, txn.currency)}
@@ -51,7 +57,7 @@ const Row = ({
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="text-xs text-gray-500 underline"
+            className="text-xs text-muted underline"
           >
             {open ? 'close' : 'receipt'}
           </button>
@@ -59,7 +65,7 @@ const Row = ({
             <button
               type="button"
               onClick={() => void removeTransaction(txn.id)}
-              className="text-xs text-gray-500 underline"
+              className="text-xs text-muted underline"
             >
               delete
             </button>
@@ -67,7 +73,27 @@ const Row = ({
         </span>
       </div>
 
-      {open && <Attachments entityType="TRANSACTION" entityId={txn.id} />}
+      {open && (
+        <>
+          {isMine && (
+            <button
+              type="button"
+              onClick={() =>
+                void setTransactionVisibility(
+                  txn.id,
+                  txn.visibility === 'PRIVATE' ? 'SPACE' : 'PRIVATE',
+                )
+              }
+              className="mt-2 text-xs text-muted underline"
+            >
+              {txn.visibility === 'PRIVATE'
+                ? 'share with the space'
+                : 'make private'}
+            </button>
+          )}
+          <Attachments entityType="TRANSACTION" entityId={txn.id} />
+        </>
+      )}
     </li>
   )
 }
@@ -84,14 +110,14 @@ const TransactionList = () => {
 
   if (transactions.length === 0) {
     return (
-      <section className="rounded border p-4 text-sm text-gray-500">
+      <section className="card text-sm text-muted">
         No transactions yet.
       </section>
     )
   }
 
   return (
-    <section className="rounded border p-4">
+    <section className="card">
       <h2 className="text-lg font-semibold">Recent</h2>
       <ul className="mt-3 divide-y">
         {transactions.map((txn) => (

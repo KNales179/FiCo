@@ -5,6 +5,7 @@ import { useSpace } from '../hooks/useSpace'
 import { computeListTotals } from '../features/shopping'
 import { suggestForName, type ItemSuggestion } from '../features/items'
 import { formatMoney, parseAmountToMinor } from '../domain/money'
+import CategoryPicker from '../components/money/CategoryPicker'
 import type { ShoppingItem } from '../types/models'
 
 const PriceField = ({
@@ -37,8 +38,14 @@ const PriceField = ({
 }
 
 const ItemRow = ({ item }: { item: ShoppingItem }) => {
-  const { canEdit, toggleItem, setPlannedPrice, setActualPrice, removeItem } =
-    useShopping()
+  const {
+    canEdit,
+    toggleItem,
+    setPlannedPrice,
+    setActualPrice,
+    removeItem,
+    setItemCategory,
+  } = useShopping()
 
   return (
     <li className="flex flex-wrap items-center gap-2 py-1.5 text-sm">
@@ -71,10 +78,18 @@ const ItemRow = ({ item }: { item: ShoppingItem }) => {
             placeholder="actual"
             onCommit={(m) => void setActualPrice(item.id, m)}
           />
+          <CategoryPicker
+            kind="EXPENSE"
+            value=""
+            onChange={(id) =>
+              void setItemCategory(item.name, id || null)
+            }
+            className="border px-1 py-0.5 text-xs"
+          />
           <button
             type="button"
             onClick={() => void removeItem(item.id)}
-            className="text-xs text-gray-500 underline"
+            className="text-xs text-muted underline"
           >
             remove
           </button>
@@ -104,6 +119,7 @@ const Shopping = () => {
     completeList,
     cancelList,
     deleteList,
+    updateList,
   } = useShopping()
 
   const { accounts, defaultAccount } = useMoney()
@@ -115,6 +131,7 @@ const Shopping = () => {
 
   const [newTitle, setNewTitle] = useState('')
   const [newBudget, setNewBudget] = useState('')
+  const [newPrivate, setNewPrivate] = useState(false)
   const [itemName, setItemName] = useState('')
   const [itemPrice, setItemPrice] = useState('')
   const [suggestion, setSuggestion] = useState<ItemSuggestion | null>(null)
@@ -152,9 +169,11 @@ const Shopping = () => {
       await createList({
         title: newTitle,
         plannedBudgetMinor: budget,
+        visibility: newPrivate ? 'PRIVATE' : 'SPACE',
       })
       setNewTitle('')
       setNewBudget('')
+      setNewPrivate(false)
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Could not create list')
     }
@@ -181,15 +200,15 @@ const Shopping = () => {
   }
 
   if (loading) {
-    return <p className="text-sm text-gray-500">Loading…</p>
+    return <p className="text-sm text-muted">Loading…</p>
   }
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <h1 className="text-2xl font-semibold">Shopping</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Shopping</h1>
 
       {error && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       )}
@@ -197,7 +216,7 @@ const Shopping = () => {
       {canEdit && (
         <form
           onSubmit={submitNewList}
-          className="flex flex-wrap items-center gap-2 rounded border p-3"
+          className="flex flex-wrap items-center gap-2 card"
         >
           <input
             value={newTitle}
@@ -214,6 +233,14 @@ const Shopping = () => {
             placeholder="Budget (optional)"
             className="w-32 border px-2 py-1 text-sm"
           />
+          <label className="flex items-center gap-1 text-sm">
+            <input
+              type="checkbox"
+              checked={newPrivate}
+              onChange={(e) => setNewPrivate(e.target.checked)}
+            />
+            private
+          </label>
           <button type="submit" className="border px-3 py-1 text-sm">
             Create
           </button>
@@ -228,7 +255,7 @@ const Shopping = () => {
               type="button"
               onClick={() => selectList(list.id)}
               className={`border px-2 py-1 text-sm ${
-                list.id === selectedList?.id ? 'bg-gray-900 text-white' : ''
+                list.id === selectedList?.id ? 'bg-brand text-brand-ink' : ''
               }`}
             >
               {list.title}
@@ -240,11 +267,34 @@ const Shopping = () => {
       )}
 
       {selectedList && totals && (
-        <section className="rounded border p-4">
+        <section className="card">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">{selectedList.title}</h2>
-            <span className="text-xs text-gray-500">
+            <h2 className="text-lg font-semibold">
+              {selectedList.title}
+              {selectedList.visibility === 'PRIVATE' && (
+                <span className="ml-2 text-xs text-amber-600">private</span>
+              )}
+            </h2>
+            <span className="flex items-center gap-2 text-xs text-muted">
               {totals.checkedCount}/{totals.itemCount} checked
+              {canEdit && listIsActive && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    void updateList(selectedList.id, {
+                      visibility:
+                        selectedList.visibility === 'PRIVATE'
+                          ? 'SPACE'
+                          : 'PRIVATE',
+                    })
+                  }
+                  className="underline"
+                >
+                  {selectedList.visibility === 'PRIVATE'
+                    ? 'share'
+                    : 'make private'}
+                </button>
+              )}
             </span>
           </div>
 
@@ -284,7 +334,7 @@ const Shopping = () => {
                 </button>
               </div>
               {suggestion && (
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-muted">
                   {suggestion.lastPriceMinor != null &&
                     `Last time: ${formatMoney(suggestion.lastPriceMinor)}`}
                   {suggestion.category && ` · ${suggestion.category}`}
@@ -295,11 +345,11 @@ const Shopping = () => {
 
           <dl className="mt-4 space-y-1 border-t pt-3 text-sm">
             <div className="flex justify-between">
-              <dt className="text-gray-500">Projected total</dt>
+              <dt className="text-muted">Projected total</dt>
               <dd>{formatMoney(totals.projectedTotalMinor)}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-500">Spent so far</dt>
+              <dt className="text-muted">Spent so far</dt>
               <dd>{formatMoney(totals.spentMinor)}</dd>
             </div>
             {totals.remainingBudgetMinor != null && (
@@ -307,7 +357,7 @@ const Shopping = () => {
                 <dt>Remaining of budget</dt>
                 <dd
                   className={
-                    totals.remainingBudgetMinor < 0 ? 'text-red-600' : ''
+                    totals.remainingBudgetMinor < 0 ? 'text-danger' : ''
                   }
                 >
                   {formatMoney(totals.remainingBudgetMinor)}
@@ -317,19 +367,19 @@ const Shopping = () => {
           </dl>
 
           {formError && (
-            <p role="alert" className="mt-2 text-xs text-red-600">
+            <p role="alert" className="mt-2 text-xs text-danger">
               {formError}
             </p>
           )}
 
           {completion && (
-            <p className="mt-3 text-sm text-green-700">{completion}</p>
+            <p className="mt-3 text-sm text-success">{completion}</p>
           )}
 
           {canEdit && listIsActive && (
             <div className="mt-4 space-y-2">
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-gray-500">Pay from</span>
+                <span className="text-muted">Pay from</span>
                 <select
                   value={payAccountId || defaultAccount?.id || ''}
                   onChange={(e) => setPayAccountId(e.target.value)}
@@ -379,14 +429,14 @@ const Shopping = () => {
                 <button
                   type="button"
                   onClick={() => void cancelList(selectedList.id)}
-                  className="border px-3 py-1 text-sm text-gray-500"
+                  className="border px-3 py-1 text-sm text-muted"
                 >
                   Cancel list
                 </button>
                 <button
                   type="button"
                   onClick={() => void deleteList(selectedList.id)}
-                  className="border px-3 py-1 text-sm text-gray-500"
+                  className="border px-3 py-1 text-sm text-muted"
                 >
                   Delete
                 </button>
@@ -397,7 +447,7 @@ const Shopping = () => {
       )}
 
       {lists.length === 0 && (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted">
           No shopping lists yet.
         </p>
       )}

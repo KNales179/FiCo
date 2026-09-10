@@ -73,7 +73,7 @@ const Analytics = () => {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Analytics</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
         <select
           value={period}
           onChange={(e) => setPeriod(e.target.value as AnalyticsPeriod)}
@@ -87,28 +87,28 @@ const Analytics = () => {
         </select>
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Loading…</p>}
+      {loading && <p className="text-sm text-muted">Loading…</p>}
 
       {data && !loading && (
         <>
           <section className="grid grid-cols-3 gap-3">
-            <div className="rounded border p-3">
-              <div className="text-xs text-gray-500">Income</div>
-              <div className="text-lg font-semibold text-green-700">
+            <div className="card">
+              <div className="text-xs text-muted">Income</div>
+              <div className="text-lg font-semibold text-success">
                 {formatMoney(data.incomeMinor, data.currency)}
               </div>
             </div>
-            <div className="rounded border p-3">
-              <div className="text-xs text-gray-500">Expenses</div>
-              <div className="text-lg font-semibold text-red-600">
+            <div className="card">
+              <div className="text-xs text-muted">Expenses</div>
+              <div className="text-lg font-semibold text-danger">
                 {formatMoney(data.expenseMinor, data.currency)}
               </div>
             </div>
-            <div className="rounded border p-3">
-              <div className="text-xs text-gray-500">Net</div>
+            <div className="card">
+              <div className="text-xs text-muted">Net</div>
               <div
                 className={`text-lg font-semibold ${
-                  data.netMinor < 0 ? 'text-red-600' : ''
+                  data.netMinor < 0 ? 'text-danger' : ''
                 }`}
               >
                 {formatMoney(data.netMinor, data.currency)}
@@ -117,7 +117,7 @@ const Analytics = () => {
           </section>
 
           {data.incomeMinor > 0 && (
-            <section className="rounded border p-4">
+            <section className="card">
               <h2 className="text-sm font-semibold">
                 Spent {Math.round(data.expensePctOfIncome)}% of income
               </h2>
@@ -131,7 +131,7 @@ const Analytics = () => {
                   }
                 />
               </div>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-muted">
                 {data.netMinor >= 0
                   ? `${formatMoney(data.netMinor, data.currency)} left over`
                   : `${formatMoney(-data.netMinor, data.currency)} over`}
@@ -139,17 +139,17 @@ const Analytics = () => {
             </section>
           )}
 
-          <section className="rounded border p-4">
+          <section className="card">
             <h2 className="text-sm font-semibold">Spending by category</h2>
             {data.byCategory.length === 0 ? (
-              <p className="mt-2 text-xs text-gray-500">No expenses.</p>
+              <p className="mt-2 text-xs text-muted">No expenses.</p>
             ) : (
               <ul className="mt-3 space-y-2">
                 {data.byCategory.map((c) => (
                   <li key={c.name} className="text-sm">
                     <div className="flex justify-between">
                       <span>{c.name}</span>
-                      <span className="text-gray-500">
+                      <span className="text-muted">
                         {formatMoney(c.amountMinor, data.currency)} ·{' '}
                         {Math.round(c.pct)}%
                       </span>
@@ -162,21 +162,21 @@ const Analytics = () => {
           </section>
 
           {data.byMonth.length > 1 && (
-            <section className="rounded border p-4">
+            <section className="card">
               <h2 className="text-sm font-semibold">Income vs expenses</h2>
               <ul className="mt-3 space-y-2 text-xs">
                 {data.byMonth.map((m) => (
                   <li key={m.month}>
-                    <div className="text-gray-500">{m.month}</div>
+                    <div className="text-muted">{m.month}</div>
                     <div className="flex items-center gap-2">
-                      <span className="w-10 text-right text-green-700">in</span>
+                      <span className="w-10 text-right text-success">in</span>
                       <Bar
                         pct={(m.incomeMinor / maxMonth) * 100}
                         className="bg-green-600"
                       />
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="w-10 text-right text-red-600">out</span>
+                      <span className="w-10 text-right text-danger">out</span>
                       <Bar
                         pct={(m.expenseMinor / maxMonth) * 100}
                         className="bg-red-500"
@@ -189,21 +189,21 @@ const Analytics = () => {
           )}
 
           <section className="grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded border p-3">
-              <div className="text-xs text-gray-500">Bills paid</div>
+            <div className="card">
+              <div className="text-xs text-muted">Bills paid</div>
               <div className="font-semibold">
                 {formatMoney(data.billSpendMinor, data.currency)}
               </div>
             </div>
-            <div className="rounded border p-3">
-              <div className="text-xs text-gray-500">
+            <div className="card">
+              <div className="text-xs text-muted">
                 Shopping ({data.shopping.listCount} lists)
               </div>
               <div className="font-semibold">
                 {formatMoney(data.shopping.actualMinor, data.currency)}
               </div>
               {data.shopping.plannedMinor > 0 && (
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-muted">
                   planned{' '}
                   {formatMoney(data.shopping.plannedMinor, data.currency)}
                 </div>
@@ -215,6 +215,7 @@ const Analytics = () => {
             {data.transactionCount} transactions ·{' '}
             {new Date(data.range.fromIso).toLocaleDateString()} –{' '}
             {new Date(data.range.toIso).toLocaleDateString()}
+            {data.fromCache && ' · offline (local estimate)'}
           </p>
         </>
       )}

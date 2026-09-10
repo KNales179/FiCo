@@ -49,7 +49,7 @@ const PayRow = ({ bill }: { bill: Bill }) => {
     <div className="flex flex-wrap items-center gap-2 py-1.5 text-sm">
       <span className="min-w-[7rem] flex-1">
         {bill.name}
-        <span className="ml-2 text-xs text-gray-500">
+        <span className="ml-2 text-xs text-muted">
           due {new Date(bill.nextDueDate).toLocaleDateString()} ·{' '}
           {bill.recurrence.toLowerCase()} · {bill.billType.toLowerCase()}
         </span>
@@ -90,7 +90,7 @@ const PayRow = ({ bill }: { bill: Bill }) => {
       >
         Pay
       </button>
-      {error && <span className="text-xs text-red-600">{error}</span>}
+      {error && <span className="text-xs text-danger">{error}</span>}
     </div>
   )
 }
@@ -111,12 +111,12 @@ const History = ({ billId }: { billId: string }) => {
       <button
         type="button"
         onClick={() => void toggle()}
-        className="text-xs text-gray-500 underline"
+        className="text-xs text-muted underline"
       >
         {open ? 'hide history' : 'payment history'}
       </button>
       {open && rows && (
-        <ul className="mt-1 text-xs text-gray-600">
+        <ul className="mt-1 text-xs text-muted">
           {rows.length === 0 && <li>No payments yet.</li>}
           {rows.map((p) => (
             <li key={p.id}>
@@ -187,21 +187,21 @@ const Bills = () => {
     }
   }
 
-  if (loading) return <p className="text-sm text-gray-500">Loading…</p>
+  if (loading) return <p className="text-sm text-muted">Loading…</p>
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <h1 className="text-2xl font-semibold">Bills</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Bills</h1>
       {error && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       )}
 
-      <section className="rounded border p-4">
+      <section className="card">
         <h2 className="text-lg font-semibold">Upcoming</h2>
         {upcoming.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-muted">
             Nothing due in the next 45 days.
           </p>
         ) : (
@@ -213,7 +213,7 @@ const Bills = () => {
         )}
       </section>
 
-      <section className="rounded border p-4">
+      <section className="card">
         <h2 className="text-lg font-semibold">All bills</h2>
         <ul className="mt-2 divide-y">
           {active.map((bill) => (
@@ -221,7 +221,7 @@ const Bills = () => {
               <div className="flex items-center justify-between">
                 <span>
                   {bill.name}
-                  <span className="ml-2 text-xs text-gray-500">
+                  <span className="ml-2 text-xs text-muted">
                     next {new Date(bill.nextDueDate).toLocaleDateString()}
                     {bill.expectedAmountMinor != null &&
                       ` · ~${formatMoney(bill.expectedAmountMinor)}`}
@@ -231,7 +231,7 @@ const Bills = () => {
                   <button
                     type="button"
                     onClick={() => void deleteBill(bill.id)}
-                    className="text-xs text-gray-500 underline"
+                    className="text-xs text-muted underline"
                   >
                     delete
                   </button>
@@ -241,16 +241,16 @@ const Bills = () => {
             </li>
           ))}
           {active.length === 0 && (
-            <li className="py-2 text-sm text-gray-500">No bills yet.</li>
+            <li className="py-2 text-sm text-muted">No bills yet.</li>
           )}
         </ul>
       </section>
 
       {electricity.length > 0 && (
-        <section className="rounded border p-4">
+        <section className="card">
           <h2 className="text-lg font-semibold">Electricity</h2>
           <table className="mt-2 w-full text-sm">
-            <thead className="text-left text-xs text-gray-500">
+            <thead className="text-left text-xs text-muted">
               <tr>
                 <th className="py-1">Period</th>
                 <th className="py-1 text-right">Amount</th>
@@ -285,7 +285,7 @@ const Bills = () => {
       )}
 
       {canEdit && (
-        <form onSubmit={submit} className="rounded border p-4">
+        <form onSubmit={submit} className="card">
           <h2 className="text-lg font-semibold">Add a bill</h2>
           <div className="mt-3 flex flex-wrap gap-2 text-sm">
             <input
@@ -340,7 +340,7 @@ const Bills = () => {
             </button>
           </div>
           {formError && (
-            <p role="alert" className="mt-2 text-xs text-red-600">
+            <p role="alert" className="mt-2 text-xs text-danger">
               {formError}
             </p>
           )}

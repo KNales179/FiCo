@@ -79,6 +79,8 @@ export const createBill = async (
     categoryName: input.categoryName ?? null,
     paymentAccountId: input.paymentAccountId ?? null,
     active: true,
+    visibility: 'SPACE',
+    createdBy: ctx.userId,
     tracksElectricity: input.tracksElectricity ?? false,
     syncStatus: 'PENDING',
     version: 1,

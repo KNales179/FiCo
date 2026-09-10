@@ -45,8 +45,15 @@ export const parseAmountToMinor = (
 
   const factor = minorPerMajor(currency)
   const [whole, fraction = ''] = cleaned.split('.')
-  const fractionDigits = String(factor - 1).length
 
+  // A zero-minor currency (e.g. JPY) has no fractional part at all.
+  if (factor === 1) {
+    return fraction === '' && /^\d+$/.test(whole || '0')
+      ? Number(whole || '0')
+      : null
+  }
+
+  const fractionDigits = String(factor - 1).length
   if (fraction.length > fractionDigits) return null
 
   const paddedFraction = fraction.padEnd(fractionDigits, '0')

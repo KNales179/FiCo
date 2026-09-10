@@ -1,69 +1,59 @@
-import { useOnlineStatus } from '../hooks/useOnlineStatus'
+import { useSync } from '../hooks/useSync'
 
-export type SyncState =
-  | 'ONLINE'
-  | 'OFFLINE'
-  | 'SYNCING'
-  | 'SYNC_PENDING'
-  | 'SYNC_ERROR'
-
-interface SyncStatusProps {
-  /** Number of local changes not yet confirmed by the server. */
-  pendingCount?: number
-  /** Explicit state override; otherwise derived from connectivity + pendingCount. */
-  state?: SyncState
-}
-
-const LABELS: Record<SyncState, string> = {
-  ONLINE: 'All changes synced',
-  OFFLINE: 'Offline — saved locally',
+const LABELS: Record<string, string> = {
+  IDLE: 'All changes synced',
   SYNCING: 'Syncing…',
-  SYNC_PENDING: 'Changes pending',
-  SYNC_ERROR: 'Sync failed — will retry',
+  OFFLINE: 'Offline — saved on this device',
+  ERROR: 'Sync failed — will retry',
 }
 
-const DOT_COLORS: Record<SyncState, string> = {
-  ONLINE: 'bg-emerald-500',
-  OFFLINE: 'bg-gray-400',
+const DOT: Record<string, string> = {
+  IDLE: 'bg-emerald-500',
   SYNCING: 'bg-sky-500',
-  SYNC_PENDING: 'bg-amber-500',
-  SYNC_ERROR: 'bg-red-500',
+  OFFLINE: 'bg-gray-400',
+  ERROR: 'bg-red-500',
 }
 
-/**
- * Persistent, unobtrusive synchronization indicator.
- *
- * Until the sync engine lands (Phase 18) this only reflects connectivity and a
- * caller-supplied pending count; the `state` prop lets later work drive it
- * directly.
- */
-const SyncStatus = ({ pendingCount = 0, state }: SyncStatusProps) => {
-  const online = useOnlineStatus()
+/** Persistent, unobtrusive synchronization indicator (Architecture §54). */
+const SyncStatus = () => {
+  const { phase, pendingCount, failedCount, syncNow, retryFailed } =
+    useSync()
 
-  const resolved: SyncState =
-    state ??
-    (!online
-      ? 'OFFLINE'
-      : pendingCount > 0
-        ? 'SYNC_PENDING'
-        : 'ONLINE')
+  if (failedCount > 0) {
+    return (
+      <button
+        type="button"
+        onClick={() => void retryFailed()}
+        title="Retry failed changes"
+        className="inline-flex items-center gap-2 text-xs text-danger"
+      >
+        <span
+          aria-hidden="true"
+          className="h-2 w-2 rounded-full bg-red-500"
+        />
+        {failedCount} change{failedCount === 1 ? '' : 's'} failed — retry
+      </button>
+    )
+  }
 
   const label =
-    resolved === 'SYNC_PENDING' && pendingCount > 0
+    pendingCount > 0 && phase !== 'SYNCING'
       ? `${pendingCount} change${pendingCount === 1 ? '' : 's'} pending`
-      : LABELS[resolved]
+      : LABELS[phase]
 
   return (
-    <span
-      role="status"
-      className="inline-flex items-center gap-2 text-xs text-gray-500"
+    <button
+      type="button"
+      onClick={() => void syncNow()}
+      title="Sync now"
+      className="inline-flex items-center gap-2 text-xs text-muted"
     >
       <span
         aria-hidden="true"
-        className={`h-2 w-2 rounded-full ${DOT_COLORS[resolved]}`}
+        className={`h-2 w-2 rounded-full ${DOT[phase]}`}
       />
       {label}
-    </span>
+    </button>
   )
 }
 

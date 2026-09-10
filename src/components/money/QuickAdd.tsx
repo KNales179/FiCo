@@ -1,6 +1,8 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useMoney } from '../../hooks/useMoney'
 import { parseAmountToMinor } from '../../domain/money'
+import { Button } from '../ui'
+import CategoryPicker from './CategoryPicker'
 
 /**
  * The fast path for everyday entry (Product Spec §38). Amount + what + pay
@@ -15,11 +17,10 @@ const QuickAdd = () => {
     [accounts],
   )
 
-  const [direction, setDirection] = useState<'EXPENSE' | 'INCOME'>(
-    'EXPENSE',
-  )
+  const [direction, setDirection] = useState<'EXPENSE' | 'INCOME'>('EXPENSE')
   const [amount, setAmount] = useState('')
   const [title, setTitle] = useState('')
+  const [categoryId, setCategoryId] = useState('')
   const [chosenAccountId, setChosenAccountId] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -49,42 +50,38 @@ const QuickAdd = () => {
         amountMinor,
         title,
         accountId,
+        categoryId: categoryId || null,
       })
       setAmount('')
       setTitle('')
+      setCategoryId('')
       setSaved(true)
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Could not save',
-      )
+      setError(err instanceof Error ? err.message : 'Could not save')
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <section className="rounded border p-4">
+    <section className="card">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Quick add</h2>
-        <div className="flex gap-1 text-sm">
-          <button
-            type="button"
-            onClick={() => setDirection('EXPENSE')}
-            className={`border px-2 py-0.5 ${
-              direction === 'EXPENSE' ? 'bg-gray-900 text-white' : ''
-            }`}
-          >
-            Spent
-          </button>
-          <button
-            type="button"
-            onClick={() => setDirection('INCOME')}
-            className={`border px-2 py-0.5 ${
-              direction === 'INCOME' ? 'bg-gray-900 text-white' : ''
-            }`}
-          >
-            Received
-          </button>
+        <h2 className="section-title">Quick add</h2>
+        <div className="inline-flex overflow-hidden rounded-lg border border-line text-xs font-medium">
+          {(['EXPENSE', 'INCOME'] as const).map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setDirection(d)}
+              className={`px-3 py-1 transition-colors ${
+                direction === d
+                  ? 'bg-brand text-brand-ink'
+                  : 'bg-panel text-muted hover:bg-panel-2'
+              }`}
+            >
+              {d === 'EXPENSE' ? 'Spent' : 'Received'}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -99,7 +96,7 @@ const QuickAdd = () => {
           placeholder="Amount"
           required
           autoFocus
-          className="w-28 border px-2 py-1"
+          className="input w-28"
         />
         <input
           value={title}
@@ -110,12 +107,12 @@ const QuickAdd = () => {
           placeholder={direction === 'EXPENSE' ? 'What for?' : 'From?'}
           required
           maxLength={120}
-          className="min-w-[8rem] flex-1 border px-2 py-1"
+          className="input min-w-[8rem] flex-1"
         />
         <select
           value={accountId}
           onChange={(e) => setChosenAccountId(e.target.value)}
-          className="border px-2 py-1 text-sm"
+          className="select w-auto"
         >
           {activeAccounts.map((a) => (
             <option key={a.id} value={a.id}>
@@ -124,22 +121,23 @@ const QuickAdd = () => {
             </option>
           ))}
         </select>
-        <button
-          type="submit"
-          disabled={busy}
-          className="border px-3 py-1 disabled:opacity-50"
-        >
+        <CategoryPicker
+          kind={direction === 'INCOME' ? 'INCOME' : 'EXPENSE'}
+          value={categoryId}
+          onChange={setCategoryId}
+        />
+        <Button type="submit" variant="primary" disabled={busy}>
           {busy ? 'Saving…' : 'Add'}
-        </button>
+        </Button>
       </form>
 
       {error && (
-        <p role="alert" className="mt-2 text-xs text-red-600">
+        <p role="alert" className="mt-2 text-xs text-danger">
           {error}
         </p>
       )}
       {saved && !error && (
-        <p className="mt-2 text-xs text-green-700">Saved.</p>
+        <p className="mt-2 text-xs text-success">Saved.</p>
       )}
     </section>
   )

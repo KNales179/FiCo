@@ -18,6 +18,7 @@ export {
   listTransactions,
   recordTransaction,
   deleteTransaction,
+  setTransactionVisibility,
   type RecordTransactionInput,
   type ListTransactionsOptions,
 } from './transactions'

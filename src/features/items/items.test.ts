@@ -1,0 +1,74 @@
+import { beforeEach, describe, expect, it } from 'vitest'
+import { ctx, withDB } from '../../test/helpers'
+import { categoryRepository } from '../../repositories'
+import { createAccount } from '../money'
+import { createShoppingList, addItem, setItemChecked, updateItem } from '../shopping'
+import { completeListWithExpenses } from '../shopping/complete'
+import {
+  resolveItemProfile,
+  setItemNameCategory,
+  suggestForName,
+} from './index'
+
+const c = ctx()
+
+describe('item profiles (§10)', () => {
+  beforeEach(withDB)
+
+  it('resolves the same profile for names that differ only in case/spacing', async () => {
+    const a = await resolveItemProfile(c, 'Whole Milk')
+    const b = await resolveItemProfile(c, '  whole   milk ')
+    expect(b.id).toBe(a.id)
+  })
+
+  it('category is applied to future purchases only, never past ones', async () => {
+    const cat = await categoryRepository.create({
+      spaceId: c.spaceId,
+      name: 'Groceries',
+      normalizedName: 'groceries',
+      kind: 'EXPENSE',
+      archived: false,
+      createdBy: c.userId,
+      syncStatus: 'PENDING',
+      version: 1,
+    })
+    const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+
+    // First purchase — no category set yet.
+    const list1 = await createShoppingList(c, { title: 'T1' })
+    const eggs1 = await addItem(c, list1.id, { name: 'Eggs' })
+    await updateItem(c, eggs1.id, { actualPriceMinor: 12000 })
+    await setItemChecked(c, eggs1.id, true)
+    await completeListWithExpenses(c, list1.id, cash.id)
+
+    await setItemNameCategory(c, 'Eggs', cat.id)
+
+    // Second purchase — now categorised.
+    const list2 = await createShoppingList(c, { title: 'T2' })
+    const eggs2 = await addItem(c, list2.id, { name: 'eggs' })
+    await updateItem(c, eggs2.id, { actualPriceMinor: 13000 })
+    await setItemChecked(c, eggs2.id, true)
+    await completeListWithExpenses(c, list2.id, cash.id)
+
+    const { listTransactions } = await import('../money')
+    const expenses = await listTransactions(c.spaceId, { type: 'EXPENSE' })
+    const byAmount = Object.fromEntries(
+      expenses.map((e) => [e.amountMinor, e.categoryName]),
+    )
+    expect(byAmount[12000]).toBeNull()
+    expect(byAmount[13000]).toBe('Groceries')
+  })
+
+  it('suggestForName returns last price after a purchase', async () => {
+    const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+    const list = await createShoppingList(c, { title: 'T' })
+    const item = await addItem(c, list.id, { name: 'Rice' })
+    await updateItem(c, item.id, { actualPriceMinor: 24000 })
+    await setItemChecked(c, item.id, true)
+    await completeListWithExpenses(c, list.id, cash.id)
+
+    const suggestion = await suggestForName(c.spaceId, 'RICE')
+    expect(suggestion?.lastPriceMinor).toBe(24000)
+    expect(suggestion?.priceCount).toBe(1)
+  })
+})

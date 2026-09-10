@@ -1,4 +1,5 @@
 import {
+  categoryRepository,
   itemProfileRepository,
   priceHistoryRepository,
 } from '../../repositories'
@@ -10,6 +11,7 @@ import type { ItemProfile } from '../../types/models'
 export interface ItemSuggestion {
   itemProfileId: string
   displayName: string
+  categoryId: string | null
   category: string | null
   lastPriceMinor: number | null
   lastPurchasedAt: string | null
@@ -34,7 +36,6 @@ export const resolveItemProfile = async (
     normalizedName,
     displayName: name.trim(),
     categoryId: null,
-    category: null,
     syncStatus: 'PENDING',
     version: 1,
   })
@@ -59,10 +60,15 @@ export const suggestForName = async (
   const prices = await priceHistoryRepository.listByProfile(profile.id)
   const latest = prices[0]
 
+  const category = profile.categoryId
+    ? ((await categoryRepository.get(profile.categoryId))?.name ?? null)
+    : null
+
   return {
     itemProfileId: profile.id,
     displayName: profile.displayName,
-    category: profile.category ?? null,
+    categoryId: profile.categoryId ?? null,
+    category,
     lastPriceMinor: latest?.amountMinor ?? null,
     lastPurchasedAt: latest?.purchasedAt ?? null,
     priceCount: prices.length,
@@ -88,17 +94,27 @@ export const recordPurchasePrice = async (
 }
 
 /** Set an item's category. Affects future purchases only — never past ones (§10). */
-export const updateProfileCategory = async (
+export const setProfileCategory = async (
   ctx: MutationContext,
-  id: string,
-  category: string | null,
+  profileId: string,
+  categoryId: string | null,
 ): Promise<ItemProfile> => {
-  const profile = await itemProfileRepository.update(id, {
-    category,
+  const profile = await itemProfileRepository.update(profileId, {
+    categoryId,
     syncStatus: 'PENDING',
   })
-  await enqueueMutation(ctx, 'itemProfile', id, 'UPDATE', profile)
+  await enqueueMutation(ctx, 'itemProfile', profileId, 'UPDATE', profile)
   return profile
+}
+
+/** Resolve/create the profile for an item name, then set its category. */
+export const setItemNameCategory = async (
+  ctx: MutationContext,
+  name: string,
+  categoryId: string | null,
+): Promise<ItemProfile> => {
+  const profile = await resolveItemProfile(ctx, name)
+  return setProfileCategory(ctx, profile.id, categoryId)
 }
 
 export { normalizeItemName }
