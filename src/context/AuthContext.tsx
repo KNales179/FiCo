@@ -15,7 +15,7 @@ import {
   persistLocalAuth,
   wasSignedOut,
 } from '../features/auth/localAuth'
-import { useOnlineStatus } from '../hooks/useOnlineStatus'
+import { useConnectivity } from '../hooks/useConnectivity'
 import { AuthContext } from './auth-context'
 
 const toUser = (user: User): User => ({
@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [offline, setOffline] = useState(false)
-  const online = useOnlineStatus()
+  const { online } = useConnectivity()
   const revalidating = useRef(false)
 
   const applyServerAuth = useCallback(

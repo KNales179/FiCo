@@ -4,6 +4,7 @@ const LABELS: Record<string, string> = {
   IDLE: 'All changes synced',
   SYNCING: 'Syncing…',
   OFFLINE: 'Offline — saved on this device',
+  UNREACHABLE: "Can't reach the server — retrying",
   ERROR: 'Sync failed — will retry',
 }
 
@@ -11,6 +12,7 @@ const DOT: Record<string, string> = {
   IDLE: 'bg-emerald-500',
   SYNCING: 'bg-sky-500',
   OFFLINE: 'bg-gray-400',
+  UNREACHABLE: 'bg-amber-500',
   ERROR: 'bg-red-500',
 }
 

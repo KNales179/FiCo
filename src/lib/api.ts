@@ -1,5 +1,26 @@
-const API_URL =
+export const API_URL =
   import.meta.env?.VITE_API_URL || 'http://localhost:5000/api'
+
+/**
+ * Is the Fico API actually answering? Used to tell "this device has no network"
+ * apart from "the server is down / misconfigured", since `navigator.onLine`
+ * can't. Never throws.
+ */
+export const probeServer = async (timeoutMs = 4000): Promise<boolean> => {
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    const response = await fetch(`${API_URL}/health`, {
+      method: 'GET',
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+    clearTimeout(timer)
+    return response.ok
+  } catch {
+    return false
+  }
+}
 
 interface ApiOptions extends Omit<RequestInit, 'body'> {
   body?: unknown

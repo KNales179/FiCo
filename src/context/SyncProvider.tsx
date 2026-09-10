@@ -19,7 +19,7 @@ import { emitDataChanged, onMutation } from '../features/sync/events'
 import type { MutationContext } from '../features/sync/context'
 import { useAuth } from '../hooks/useAuth'
 import { useSpace } from '../hooks/useSpace'
-import { useOnlineStatus } from '../hooks/useOnlineStatus'
+import { useConnectivity } from '../hooks/useConnectivity'
 import { SyncContext, type SyncPhase } from './sync-context'
 
 const HEALTHY_INTERVAL = 45_000
@@ -30,7 +30,7 @@ const BACKOFF = [5_000, 15_000, 45_000, 120_000, 300_000]
 export const SyncProvider = ({ children }: { children: ReactNode }) => {
   const { user, isAuthenticated } = useAuth()
   const { activeSpaceId } = useSpace()
-  const online = useOnlineStatus()
+  const { online, navigatorOnline } = useConnectivity()
 
   const [deviceId, setDeviceId] = useState<string | null>(null)
   const [phase, setPhase] = useState<SyncPhase>('IDLE')
@@ -68,7 +68,7 @@ export const SyncProvider = ({ children }: { children: ReactNode }) => {
 
   const syncNow = useCallback(async () => {
     if (!ctx || running.current) return
-    if (!navigator.onLine) {
+    if (!online) {
       setPhase('OFFLINE')
       await refreshCounts()
       return
@@ -79,7 +79,9 @@ export const SyncProvider = ({ children }: { children: ReactNode }) => {
     try {
       const outcome = await runSync(ctx)
       if (outcome.offline) {
-        setPhase('OFFLINE')
+        // A failed request while the device reports a network means the
+        // server itself didn't answer — don't call that "offline".
+        setPhase(navigatorOnline ? 'UNREACHABLE' : 'OFFLINE')
         failures.current += 1
       } else if (!outcome.ok) {
         setPhase('ERROR')
@@ -96,7 +98,7 @@ export const SyncProvider = ({ children }: { children: ReactNode }) => {
       running.current = false
       await refreshCounts()
     }
-  }, [ctx, refreshCounts])
+  }, [ctx, refreshCounts, online, navigatorOnline])
 
   const retryNow = useCallback(async () => {
     if (activeSpaceId) {

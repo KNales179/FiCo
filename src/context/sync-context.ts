@@ -1,6 +1,19 @@
 import { createContext } from 'react'
 
-export type SyncPhase = 'IDLE' | 'SYNCING' | 'OFFLINE' | 'ERROR'
+/**
+ * IDLE       — nothing to do, last sync succeeded
+ * SYNCING    — a sync cycle is running
+ * OFFLINE    — the device has no network (`navigator.onLine` is false)
+ * UNREACHABLE— the device is online but the Fico server didn't answer
+ *              (server down, wrong `VITE_API_URL`, CORS, stale service worker)
+ * ERROR      — the server answered but the sync failed
+ */
+export type SyncPhase =
+  | 'IDLE'
+  | 'SYNCING'
+  | 'OFFLINE'
+  | 'UNREACHABLE'
+  | 'ERROR'
 
 export interface SyncContextValue {
   phase: SyncPhase
