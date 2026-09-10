@@ -2,34 +2,26 @@
 
 React + TypeScript + Vite PWA for Fico, Your Daily Financial Companion.
 
-See the [root README](../README.md) for the full project overview, and
-[`Plan/`](../Plan/) for the product specification, architecture, and roadmap.
-
-## Development
-
-```bash
-npm install
-cp .env.example .env   # optional; VITE_API_URL defaults to http://localhost:5000/api
-npm run dev            # http://localhost:5173
-```
-
-## Scripts
-
-| Command           | Description                          |
-| ----------------- | ---------------------------------- |
-| `npm run dev`     | Start the Vite dev server            |
-| `npm run build`   | Type-check and build for production  |
-| `npm run preview` | Preview the production build         |
-| `npm run lint`    | Run ESLint                           |
+See the [root README](../README.md) for the project overview and usage terms,
+and [`Plan/`](../Plan/) for the product specification, architecture, and
+roadmap.
 
 ## Structure
 
 ```
 src/
-├── components/   Shared UI components (e.g. ProtectedRoute)
-├── context/      React context providers (AuthContext)
-├── lib/          Low-level helpers (API fetch wrapper)
-├── pages/        Route-level views (Login, Register, Home)
-├── services/     API service modules (authService)
-└── types/        Shared TypeScript types
+├── components/     Shared UI components
+├── context/        React context providers (auth)
+├── db/             IndexedDB local-first data layer (see db/README.md)
+├── features/       Feature modules (auth, …)
+├── hooks/          Shared hooks
+├── lib/            Low-level helpers (API client)
+├── pages/          Route-level views
+├── repositories/   Typed data access over IndexedDB
+├── services/       Backend API service modules
+└── types/          Shared TypeScript types
 ```
+
+The [`db/`](src/db/README.md) directory documents the local database: 16 object
+stores, versioned migrations, and the repository layer the rest of the app
+reads and writes through.

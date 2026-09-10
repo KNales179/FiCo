@@ -5,6 +5,8 @@ export interface AuthContextValue {
   user: User | null
   loading: boolean
   isAuthenticated: boolean
+  /** Authenticated from a stored local session while the server is unreachable. */
+  offline: boolean
   login: (identifier: string, password: string) => Promise<void>
   register: (
     username: string,
