@@ -31,6 +31,7 @@ export {
   electricityRecordRepository,
 } from './bills'
 export { attachmentRepository } from './attachments'
+export { reconciliationRepository } from './reconciliations'
 export { sessionRepository } from './sessionRepository'
 export { syncEventRepository } from './syncEventRepository'
 export type { NewSyncEvent } from './syncEventRepository'
@@ -54,6 +55,7 @@ import {
   electricityRecordRepository,
 } from './bills'
 import { attachmentRepository } from './attachments'
+import { reconciliationRepository } from './reconciliations'
 import { sessionRepository } from './sessionRepository'
 import { syncEventRepository } from './syncEventRepository'
 import { metadataRepository } from './metadataRepository'
@@ -73,6 +75,7 @@ export const repositories = {
   billPayments: billPaymentRepository,
   electricityRecords: electricityRecordRepository,
   attachments: attachmentRepository,
+  reconciliations: reconciliationRepository,
   sessions: sessionRepository,
   syncEvents: syncEventRepository,
   metadata: metadataRepository,

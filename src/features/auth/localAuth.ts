@@ -58,7 +58,7 @@ export async function persistLocalAuth(
     id: user.id,
     username: user.username,
     email: user.email,
-    displayName: existingUser?.displayName,
+    displayName: user.displayName ?? existingUser?.displayName ?? undefined,
     status: 'ACTIVE',
     createdAt: existingUser?.createdAt ?? now,
     updatedAt: now,

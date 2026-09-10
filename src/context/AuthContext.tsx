@@ -22,6 +22,7 @@ const toUser = (user: User): User => ({
   id: user.id,
   username: user.username,
   email: user.email,
+  displayName: user.displayName ?? null,
 })
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -80,6 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               id: local.user.id,
               username: local.user.username,
               email: local.user.email ?? '',
+              displayName: local.user.displayName ?? null,
             })
             setOffline(true)
           } else {

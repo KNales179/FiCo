@@ -11,6 +11,7 @@ import type {
   Membership,
   MetadataEntry,
   PriceHistory,
+  Reconciliation,
   ShoppingItem,
   ShoppingList,
   Space,
@@ -24,8 +25,11 @@ export const DB_NAME = 'fico'
  * Bump this whenever the store/index layout changes, and add a matching entry
  * to `migrations` in `./migrations.ts`. Never mutate an existing migration —
  * append a new one.
+ *
+ * v1 — initial 16 stores
+ * v2 — + `reconciliations` (Phase 14)
  */
-export const DB_VERSION = 1
+export const DB_VERSION = 2
 
 /**
  * Typed description of every object store and its indexes, consumed by `idb`.
@@ -160,6 +164,15 @@ export interface FicoDB extends DBSchema {
       'by-status': string
       'by-createdAt': string
       'by-entity': [string, string]
+    }
+  }
+  reconciliations: {
+    key: string
+    value: Reconciliation
+    indexes: {
+      'by-spaceId': string
+      'by-accountId': string
+      'by-status': string
     }
   }
   metadata: {

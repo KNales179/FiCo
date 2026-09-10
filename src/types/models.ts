@@ -104,6 +104,8 @@ export interface Account extends SyncableEntity {
   currency: string
   openingBalanceMinor: number
   status: AccountStatus
+  /** The pre-selected payment source for Quick Add. At most one per space. */
+  isDefault: boolean
 }
 
 export type TransactionType = 'INCOME' | 'EXPENSE' | 'TRANSFER'
@@ -128,6 +130,8 @@ export interface Transaction extends SyncableEntity {
   /** Destination account — only for TRANSFER. */
   destinationAccountId?: string | null
   occurredAt: string
+  /** Category name captured when the transaction was created; never rewritten (§10). */
+  categoryName?: string | null
   sourceType: TransactionSourceType
   sourceId?: string | null
   createdBy: string
@@ -151,12 +155,15 @@ export interface ShoppingList extends SyncableEntity {
   spaceId: string
   title: string
   status: ShoppingListStatus
+  /** Optional cash set aside for this trip (minor units). */
+  plannedBudgetMinor?: number | null
   plannedAt?: string | null
   completedAt?: string | null
   createdBy: string
 }
 
 export interface ShoppingItem extends SyncableEntity {
+  spaceId: string
   shoppingListId: string
   itemProfileId?: string | null
   name: string
@@ -165,9 +172,9 @@ export interface ShoppingItem extends SyncableEntity {
   quantity: number
   checked: boolean
   purchased: boolean
-  /** True when the item was added while offline (Architecture §21). */
-  addedOffline: boolean
-  /** Expense transaction generated when the item was purchased. */
+  /** Added at the store rather than planned at home (Product Spec §21). */
+  addedDuringTrip: boolean
+  /** Expense transaction generated when the item was purchased (Phase 9). */
   transactionId?: string | null
   createdBy: string
 }
@@ -177,6 +184,8 @@ export interface ItemProfile extends SyncableEntity {
   normalizedName: string
   displayName: string
   categoryId?: string | null
+  /** Free-text category, applied to future purchases only (§10). */
+  category?: string | null
 }
 
 export interface PriceHistory extends BaseEntity {
@@ -201,19 +210,28 @@ export interface Bill extends SyncableEntity {
   expectedAmountMinor?: number | null
   nextDueDate: string
   categoryId?: string | null
+  categoryName?: string | null
   paymentAccountId?: string | null
   active: boolean
+  /** Show optional kWh / charge-breakdown fields when paying (§16). */
+  tracksElectricity: boolean
 }
 
 export interface BillPayment extends SyncableEntity {
+  spaceId: string
   billId: string
   amountMinor: number
   paidAt: string
+  /** The occurrence this settles: "YYYY-MM" monthly, "YYYY" yearly. */
+  periodKey: string
   accountId: string
   transactionId?: string | null
+  createdBy: string
 }
 
 export interface ElectricityRecord extends SyncableEntity {
+  spaceId: string
+  billId: string
   billPaymentId: string
   billingPeriod: string
   amountMinor: number
@@ -252,6 +270,27 @@ export interface Attachment extends BaseEntity {
   syncStatus: SyncStatus
   /** The bytes, held locally until uploaded. */
   blob?: Blob
+  createdBy: string
+}
+
+// ---------------------------------------------------------------------------
+// Cash reconciliation
+// ---------------------------------------------------------------------------
+
+export type ReconciliationStatus = 'OPEN' | 'RESOLVED'
+
+export interface Reconciliation extends SyncableEntity {
+  spaceId: string
+  accountId: string
+  /** Derived account balance snapshotted at the moment of the check (§33). */
+  expectedMinor: number
+  actualMinor: number
+  /** actual − expected. Positive = surplus, negative = short. */
+  differenceMinor: number
+  note?: string | null
+  status: ReconciliationStatus
+  resolvedNote?: string | null
+  resolvedAt?: string | null
   createdBy: string
 }
 

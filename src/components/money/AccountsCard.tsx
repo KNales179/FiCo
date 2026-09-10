@@ -1,0 +1,196 @@
+import { useState, type FormEvent } from 'react'
+import { useMoney } from '../../hooks/useMoney'
+import {
+  formatMoney,
+  parseAmountToMinor,
+} from '../../domain/money'
+import type { AccountType } from '../../types/models'
+
+const ACCOUNT_TYPES: AccountType[] = [
+  'CASH',
+  'BANK',
+  'EWALLET',
+  'SAVINGS',
+  'OTHER',
+]
+
+const AccountsCard = () => {
+  const {
+    accounts,
+    totalsByCurrency,
+    canEdit,
+    addAccount,
+    archiveAccount,
+    removeAccount,
+    makeDefaultAccount,
+  } = useMoney()
+
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [type, setType] = useState<AccountType>('CASH')
+  const [opening, setOpening] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setError('')
+
+    const openingBalanceMinor =
+      opening.trim() === '' ? 0 : parseAmountToMinor(opening)
+    if (openingBalanceMinor === null) {
+      setError('Opening balance is not a valid amount')
+      return
+    }
+
+    setBusy(true)
+    try {
+      await addAccount({ name, type, openingBalanceMinor })
+      setName('')
+      setOpening('')
+      setType('CASH')
+      setOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not add account')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="rounded border p-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Accounts</h2>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="border px-2 py-1 text-sm"
+          >
+            {open ? 'Cancel' : '+ Account'}
+          </button>
+        )}
+      </div>
+
+      {accounts.length === 0 && (
+        <p className="mt-3 text-sm text-gray-500">
+          No accounts yet. {canEdit && 'Add one to start recording money.'}
+        </p>
+      )}
+
+      <ul className="mt-3 divide-y">
+        {accounts.map((account) => (
+          <li
+            key={account.id}
+            className="flex items-center justify-between py-2"
+          >
+            <span>
+              {account.name}
+              <span className="ml-2 text-xs text-gray-500">
+                {account.type.toLowerCase()}
+                {account.isDefault && ' · default'}
+                {account.status === 'ARCHIVED' && ' · archived'}
+              </span>
+            </span>
+
+            <span className="flex items-center gap-3">
+              <span
+                className={
+                  account.balanceMinor < 0 ? 'text-red-600' : ''
+                }
+              >
+                {formatMoney(account.balanceMinor, account.currency)}
+              </span>
+              {canEdit &&
+                account.status === 'ACTIVE' &&
+                !account.isDefault && (
+                  <button
+                    type="button"
+                    onClick={() => void makeDefaultAccount(account.id)}
+                    className="text-xs text-gray-500 underline"
+                  >
+                    make default
+                  </button>
+                )}
+              {canEdit && account.status === 'ACTIVE' && (
+                <button
+                  type="button"
+                  onClick={() => void archiveAccount(account.id)}
+                  className="text-xs text-gray-500 underline"
+                >
+                  archive
+                </button>
+              )}
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => void removeAccount(account.id).catch(() => {})}
+                  className="text-xs text-gray-500 underline"
+                >
+                  delete
+                </button>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {Object.entries(totalsByCurrency).length > 0 && (
+        <div className="mt-3 border-t pt-2 text-right font-medium">
+          {Object.entries(totalsByCurrency).map(([currency, total]) => (
+            <div key={currency}>
+              Total {formatMoney(total, currency)}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {open && (
+        <form onSubmit={submit} className="mt-4 space-y-2 border-t pt-3">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Account name"
+            required
+            maxLength={60}
+            className="w-full border px-2 py-1 text-sm"
+          />
+          <div className="flex gap-2">
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value as AccountType)}
+              className="border px-2 py-1 text-sm"
+            >
+              {ACCOUNT_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t.toLowerCase()}
+                </option>
+              ))}
+            </select>
+            <input
+              value={opening}
+              onChange={(e) => setOpening(e.target.value)}
+              inputMode="decimal"
+              placeholder="Opening balance"
+              className="flex-1 border px-2 py-1 text-sm"
+            />
+          </div>
+          {error && (
+            <p role="alert" className="text-xs text-red-600">
+              {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={busy}
+            className="border px-3 py-1 text-sm disabled:opacity-50"
+          >
+            {busy ? 'Adding…' : 'Add account'}
+          </button>
+        </form>
+      )}
+    </section>
+  )
+}
+
+export default AccountsCard

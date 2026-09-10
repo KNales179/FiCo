@@ -157,6 +157,15 @@ export const STORE_DEFINITIONS: StoreDefinition[] = [
     ],
   },
   {
+    name: 'reconciliations',
+    keyPath: 'id',
+    indexes: [
+      { name: 'by-spaceId', keyPath: 'spaceId' },
+      { name: 'by-accountId', keyPath: 'accountId' },
+      { name: 'by-status', keyPath: 'status' },
+    ],
+  },
+  {
     name: 'metadata',
     keyPath: 'key',
   },
@@ -197,7 +206,12 @@ function createMissingStores(db: UpgradeDB, tx: UpgradeTx): void {
 export const migrations: Array<
   (db: UpgradeDB, tx: UpgradeTx) => void | Promise<void>
 > = [
-  // v1 — initial schema: all 16 stores.
+  // v1 — initial schema: the first 16 stores.
+  (db, tx) => {
+    createMissingStores(db, tx)
+  },
+  // v2 — add `reconciliations` (Phase 14). createMissingStores only adds what
+  // is absent, so this is safe for both fresh and existing databases.
   (db, tx) => {
     createMissingStores(db, tx)
   },
