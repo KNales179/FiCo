@@ -34,18 +34,38 @@ export const categoryName = async (
   return (await categoryRepository.get(id))?.name ?? null
 }
 
-/** Seed the default list the first time a space has no categories locally. */
+/** Same id on every device, for the same space's same default — so two
+ *  devices seeding the same space (e.g. one just cleared its local data,
+ *  before its first pull) land on the exact same record instead of
+ *  creating a duplicate. The push endpoint already merges a CREATE into
+ *  a matching existing id rather than treating it as a second record. */
+const defaultCategoryId = (spaceId: string, name: string): string =>
+  `default-${spaceId}-${normalizeCategoryName(name).replace(/\s+/g, '-')}`
+
+/**
+ * Seed any default this space doesn't have yet — per-default, not "skip
+ * entirely if the space already has anything", so this is safe to call on
+ * every load. Checked by name+kind *including* an already soft-deleted
+ * one, so intentionally deleting a default doesn't bring it back next
+ * time this runs.
+ */
 export const ensureDefaultCategories = async (
   ctx: MutationContext,
 ): Promise<void> => {
-  const existing = await categoryRepository.listBySpace(ctx.spaceId)
-  if (existing.length > 0) return
-
   for (const def of DEFAULTS) {
+    const normalizedName = normalizeCategoryName(def.name)
+    const rows = await categoryRepository.getAllByIndex(
+      'by-space-kind',
+      [ctx.spaceId, def.kind],
+      { includeDeleted: true },
+    )
+    if (rows.some((c) => c.normalizedName === normalizedName)) continue
+
     const category = await categoryRepository.create({
+      id: defaultCategoryId(ctx.spaceId, def.name),
       spaceId: ctx.spaceId,
       name: def.name,
-      normalizedName: normalizeCategoryName(def.name),
+      normalizedName,
       kind: def.kind,
       archived: false,
       tracksItems: def.tracksItems ?? false,
@@ -54,6 +74,38 @@ export const ensureDefaultCategories = async (
       version: 1,
     })
     await enqueueMutation(ctx, 'category', category.id, 'CREATE', category)
+  }
+}
+
+/**
+ * One-time cleanup for exactly the bug above, before this fix existed: two
+ * of every default category, from a device that re-seeded the space after
+ * a locally-empty start (a cleared cache, or a first sync that hadn't
+ * landed yet) before catching up with what the space already had. Merges
+ * same-name-same-kind categories down to the oldest one; anything that
+ * already pointed at a duplicate (a transaction's own name snapshot, an
+ * item profile's category) keeps resolving correctly regardless — a
+ * category's name is still readable long after the row itself is gone
+ * (§10, same rule everywhere else). Safe to call every load: nothing to
+ * do once there's only one of each.
+ */
+export const dedupeCategories = async (ctx: MutationContext): Promise<void> => {
+  const categories = await categoryRepository.listBySpace(ctx.spaceId)
+  const byKey = new Map<string, Category[]>()
+  for (const cat of categories) {
+    const key = `${cat.kind}:${cat.normalizedName}`
+    byKey.set(key, [...(byKey.get(key) ?? []), cat])
+  }
+
+  for (const group of byKey.values()) {
+    if (group.length <= 1) continue
+    const [, ...duplicates] = [...group].sort((a, b) =>
+      a.createdAt.localeCompare(b.createdAt),
+    )
+    for (const dup of duplicates) {
+      await categoryRepository.softDelete(dup.id)
+      await enqueueMutation(ctx, 'category', dup.id, 'DELETE', { id: dup.id })
+    }
   }
 }
 

@@ -11,6 +11,7 @@ import { onDataChanged } from '../features/sync/events'
 import { suggestForName } from '../features/items'
 import {
   createCategory as createCategoryFeature,
+  dedupeCategories,
   deleteCategory as deleteCategoryFeature,
   ensureDefaultCategories,
   listCategories,
@@ -83,6 +84,7 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
     setError(null)
     try {
       if (ctx && canEdit) {
+        await dedupeCategories(ctx)
         await ensureDefaultCategories(ctx)
         await backfillOpeningBalances(ctx)
       }
