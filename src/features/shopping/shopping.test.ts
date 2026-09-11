@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ctx, withDB } from '../../test/helpers'
 import { createAccount, computeSpaceBalances, listTransactions } from '../money'
+import { categoryRepository } from '../../repositories'
 import {
   addItem,
   createShoppingList,
@@ -12,22 +13,22 @@ import { completeListWithExpenses } from './complete'
 
 const c = ctx()
 
-describe('shopping lists → expenses (Phase 9)', () => {
+describe('shopping lists → one expense per trip (Roadmap Phase 9, revised)', () => {
   beforeEach(withDB)
 
-  it('only checked, priced items become expenses, and exactly once', async () => {
+  it('rolls every checked+priced item into a single expense, and exactly once', async () => {
     const cash = await createAccount(c, {
       name: 'Cash',
       type: 'CASH',
       openingBalanceMinor: 500000,
     })
-    const list = await createShoppingList(c, { title: 'Weekly' })
+    const list = await createShoppingList(c, { title: 'Groceries' })
 
     const milk = await addItem(c, list.id, { name: 'Milk' })
     const bread = await addItem(c, list.id, { name: 'Bread' })
     const soda = await addItem(c, list.id, { name: 'Soda' })
 
-    // Milk: checked + priced → becomes an expense
+    // Milk: checked + priced → counts
     await updateItem(c, milk.id, { actualPriceMinor: 8000 })
     await setItemChecked(c, milk.id, true)
     // Bread: priced but never checked → skipped
@@ -36,19 +37,19 @@ describe('shopping lists → expenses (Phase 9)', () => {
     await setItemChecked(c, soda.id, true)
 
     const first = await completeListWithExpenses(c, list.id, cash.id)
-    expect(first).toEqual({ createdCount: 1, spentMinor: 8000 })
+    expect(first).toEqual({ createdCount: 1, itemCount: 1, spentMinor: 8000 })
 
-    // Re-running is idempotent — the linked item is skipped.
+    // Re-running is idempotent — the list already has its rollup transaction.
     const second = await completeListWithExpenses(c, list.id, cash.id)
-    expect(second).toEqual({ createdCount: 0, spentMinor: 0 })
+    expect(second).toEqual({ createdCount: 0, itemCount: 0, spentMinor: 0 })
 
     const expenses = await listTransactions(c.spaceId, { type: 'EXPENSE' })
     expect(expenses).toHaveLength(1)
     expect(expenses[0]).toMatchObject({
-      title: 'Milk',
+      title: 'Groceries',
       amountMinor: 8000,
-      sourceType: 'SHOPPING_ITEM',
-      sourceId: milk.id,
+      sourceType: 'SHOPPING_LIST',
+      sourceId: list.id,
     })
 
     const bal = await computeSpaceBalances(c.spaceId)
@@ -57,7 +58,69 @@ describe('shopping lists → expenses (Phase 9)', () => {
     const items = await listItems(list.id)
     const milkAfter = items.find((i) => i.id === milk.id)!
     expect(milkAfter.purchased).toBe(true)
-    expect(milkAfter.transactionId).toBeTruthy()
+    expect(milkAfter.transactionId).toBe(expenses[0].id)
+  })
+
+  it('sums multiple items into one expense, titled after the list', async () => {
+    const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+    const list = await createShoppingList(c, { title: 'Weekly run' })
+
+    const a = await addItem(c, list.id, { name: 'Rice' })
+    const b = await addItem(c, list.id, { name: 'Eggs' })
+    for (const [item, price] of [[a, 24000], [b, 9000]] as const) {
+      await updateItem(c, item.id, { actualPriceMinor: price })
+      await setItemChecked(c, item.id, true)
+    }
+
+    const result = await completeListWithExpenses(c, list.id, cash.id)
+    expect(result).toEqual({ createdCount: 1, itemCount: 2, spentMinor: 33000 })
+
+    const expenses = await listTransactions(c.spaceId, { type: 'EXPENSE' })
+    expect(expenses).toHaveLength(1)
+    expect(expenses[0].title).toBe('Weekly run')
+    expect(expenses[0].amountMinor).toBe(33000)
+  })
+
+  it('a mixed-category trip is left uncategorized rather than guessed', async () => {
+    const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+    const groceries = await categoryRepository.create({
+      spaceId: c.spaceId,
+      name: 'Groceries',
+      normalizedName: 'groceries',
+      kind: 'EXPENSE',
+      archived: false,
+      createdBy: c.userId,
+      syncStatus: 'PENDING',
+      version: 1,
+    })
+    const household = await categoryRepository.create({
+      spaceId: c.spaceId,
+      name: 'Household',
+      normalizedName: 'household',
+      kind: 'EXPENSE',
+      archived: false,
+      createdBy: c.userId,
+      syncStatus: 'PENDING',
+      version: 1,
+    })
+
+    const list = await createShoppingList(c, { title: 'Errands' })
+    const rice = await addItem(c, list.id, { name: 'Rice' })
+    const soap = await addItem(c, list.id, { name: 'Soap' })
+
+    const { setItemNameCategory } = await import('../items')
+    await setItemNameCategory(c, 'Rice', groceries.id)
+    await setItemNameCategory(c, 'Soap', household.id)
+
+    await updateItem(c, rice.id, { actualPriceMinor: 20000 })
+    await setItemChecked(c, rice.id, true)
+    await updateItem(c, soap.id, { actualPriceMinor: 8000 })
+    await setItemChecked(c, soap.id, true)
+
+    await completeListWithExpenses(c, list.id, cash.id)
+
+    const expenses = await listTransactions(c.spaceId, { type: 'EXPENSE' })
+    expect(expenses[0].categoryName).toBeNull()
   })
 
   it('completing a list marks it COMPLETED', async () => {

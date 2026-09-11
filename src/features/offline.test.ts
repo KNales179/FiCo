@@ -102,7 +102,7 @@ describe('offline operation (Phase 23)', () => {
     expect(await listItems(list.id)).toHaveLength(2)
 
     const result = await completeListWithExpenses(c, list.id, cash.id)
-    expect(result).toEqual({ createdCount: 1, spentMinor: 45000 })
+    expect(result).toEqual({ createdCount: 1, itemCount: 1, spentMinor: 45000 })
 
     const bal = await computeSpaceBalances(c.spaceId)
     expect(bal.accounts[0].balanceMinor).toBe(155000)

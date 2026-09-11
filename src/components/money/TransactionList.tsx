@@ -1,14 +1,56 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMoney } from '../../hooks/useMoney'
 import { useAuth } from '../../hooks/useAuth'
 import { formatMoney } from '../../domain/money'
+import { listItems } from '../../features/shopping/items'
 import Attachments from '../Attachments'
-import type { Transaction } from '../../types/models'
+import type { ShoppingItem, Transaction } from '../../types/models'
 
 const SIGN: Record<string, string> = {
   INCOME: '+',
   EXPENSE: '−',
   TRANSFER: '→',
+}
+
+/** The itemized detail behind a rolled-up shopping trip (Roadmap Phase 26 feedback). */
+const ReceiptItems = ({ listId }: { listId: string }) => {
+  const [items, setItems] = useState<ShoppingItem[] | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void listItems(listId).then((rows) => {
+      if (!cancelled) setItems(rows.filter((i) => i.purchased))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [listId])
+
+  if (items === null) return <p className="mt-2 text-xs text-muted">Loading items…</p>
+  if (items.length === 0) return null
+
+  return (
+    <ul className="mt-2 divide-y divide-line rounded-lg border border-line">
+      {items.map((item) => (
+        <li
+          key={item.id}
+          className="flex items-center justify-between px-2.5 py-1.5 text-xs"
+        >
+          <span>
+            {item.name}
+            {item.quantity > 1 && (
+              <span className="text-muted"> × {item.quantity}</span>
+            )}
+          </span>
+          <span className="tabular-nums text-muted">
+            {item.actualPriceMinor != null
+              ? formatMoney(item.actualPriceMinor)
+              : '—'}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
 }
 
 const Row = ({
@@ -22,6 +64,7 @@ const Row = ({
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const isMine = txn.createdBy === user?.id
+  const isShoppingTrip = txn.sourceType === 'SHOPPING_LIST' && txn.sourceId
 
   return (
     <li className="py-2 text-sm">
@@ -59,7 +102,7 @@ const Row = ({
             onClick={() => setOpen((v) => !v)}
             className="text-xs text-muted underline"
           >
-            {open ? 'close' : 'receipt'}
+            {open ? 'close' : isShoppingTrip ? 'items' : 'receipt'}
           </button>
           {canEdit && (
             <button
@@ -75,6 +118,7 @@ const Row = ({
 
       {open && (
         <>
+          {isShoppingTrip && <ReceiptItems listId={txn.sourceId!} />}
           {isMine && (
             <button
               type="button"

@@ -1,6 +1,7 @@
 import { createContext } from 'react'
 import type { ShoppingItem, ShoppingList } from '../types/models'
 import type { NewItemInput, NewListInput } from '../features/shopping'
+import type { CompletionResult } from '../features/shopping/complete'
 
 export interface ShoppingContextValue {
   lists: ShoppingList[]
@@ -22,10 +23,7 @@ export interface ShoppingContextValue {
     >,
   ) => Promise<void>
   cancelList: (id: string) => Promise<void>
-  completeList: (
-    id: string,
-    accountId?: string,
-  ) => Promise<{ createdCount: number; spentMinor: number }>
+  completeList: (id: string, accountId?: string) => Promise<CompletionResult>
   deleteList: (id: string) => Promise<void>
   addItem: (input: NewItemInput) => Promise<void>
   renameItem: (id: string, name: string) => Promise<void>

@@ -407,9 +407,9 @@ const Shopping = () => {
                         payAccountId || defaultAccount?.id,
                       )
                       setCompletion(
-                        `Shopping done — ${r.createdCount} expense${
-                          r.createdCount === 1 ? '' : 's'
-                        } recorded (${formatMoney(r.spentMinor)}).`,
+                        r.createdCount === 0
+                          ? 'Shopping done — nothing new to record.'
+                          : `Shopping done — ${formatMoney(r.spentMinor)} recorded across ${r.itemCount} item${r.itemCount === 1 ? '' : 's'}.`,
                       )
                     } catch (err) {
                       setFormError(
