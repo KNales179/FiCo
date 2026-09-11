@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ctx, withDB } from '../../test/helpers'
-import { syncEventRepository } from '../../repositories'
+import { accountRepository, syncEventRepository } from '../../repositories'
 import {
+  backfillOpeningBalances,
   computeSpaceBalances,
   createAccount,
   deleteTransaction,
@@ -200,6 +201,43 @@ describe('money engine (Roadmap Phase 6 integrity)', () => {
       openingBalanceMinor: 0,
     })
     expect(await listTransactions(c.spaceId, { type: 'INCOME' })).toHaveLength(0)
+  })
+
+  it('backfillOpeningBalances catches an older account up, once, without double-counting', async () => {
+    // Simulate an account created before a starting balance became a real
+    // transaction — the stored field is set directly, bypassing createAccount.
+    const old = await accountRepository.create({
+      spaceId: c.spaceId,
+      name: 'Bank',
+      type: 'BANK',
+      currency: 'PHP',
+      openingBalanceMinor: 2000000,
+      status: 'ACTIVE',
+      isDefault: true,
+      syncStatus: 'SYNCED',
+      version: 1,
+    })
+
+    await backfillOpeningBalances(c)
+
+    const txns = await listTransactions(c.spaceId, { type: 'INCOME' })
+    expect(txns).toHaveLength(1)
+    expect(txns[0]).toMatchObject({
+      title: 'Starting balance',
+      amountMinor: 2000000,
+      accountId: old.id,
+      sourceType: 'OPENING_BALANCE',
+    })
+
+    const refreshed = await accountRepository.get(old.id)
+    expect(refreshed?.openingBalanceMinor).toBe(0)
+
+    const bal = await computeSpaceBalances(c.spaceId)
+    expect(bal.accounts[0].balanceMinor).toBe(2000000)
+
+    // Running it again must not create a second transaction.
+    await backfillOpeningBalances(c)
+    expect(await listTransactions(c.spaceId, { type: 'INCOME' })).toHaveLength(1)
   })
 
   it('first account is default; setDefaultAccount is exclusive', async () => {

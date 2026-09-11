@@ -5,7 +5,10 @@ import { categoryRepository } from '../../repositories'
 import {
   addItem,
   createShoppingList,
+  deleteShoppingList,
+  getShoppingList,
   listItems,
+  listShoppingLists,
   setItemChecked,
   updateItem,
 } from './index'
@@ -129,9 +132,27 @@ describe('shopping lists → one expense per trip (Roadmap Phase 9, revised)', (
     const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
     const list = await createShoppingList(c, { title: 'Trip' })
     await completeListWithExpenses(c, list.id, cash.id)
-    const { getShoppingList } = await import('./lists')
     const after = await getShoppingList(list.id)
     expect(after?.status).toBe('COMPLETED')
     expect(after?.completedAt).toBeTruthy()
+  })
+
+  it('deleting a completed list removes it and its items, but never the expense it already recorded', async () => {
+    const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+    const list = await createShoppingList(c, { title: 'Mistaken batch entry' })
+    const rice = await addItem(c, list.id, { name: 'Rice' })
+    await updateItem(c, rice.id, { actualPriceMinor: 15000 })
+    await setItemChecked(c, rice.id, true)
+    await completeListWithExpenses(c, list.id, cash.id)
+
+    await deleteShoppingList(c, list.id)
+
+    expect(await listShoppingLists(c.spaceId)).toHaveLength(0)
+    expect(await listItems(list.id)).toHaveLength(0)
+
+    // The recorded expense — real money that was actually spent — stays.
+    const expenses = await listTransactions(c.spaceId, { type: 'EXPENSE' })
+    expect(expenses).toHaveLength(1)
+    expect(expenses[0].amountMinor).toBe(15000)
   })
 })

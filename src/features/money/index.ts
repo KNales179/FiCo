@@ -7,6 +7,7 @@ export {
 export {
   listAccounts,
   createAccount,
+  backfillOpeningBalances,
   renameAccount,
   setAccountStatus,
   setDefaultAccount,

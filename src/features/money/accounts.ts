@@ -72,6 +72,46 @@ export const createAccount = async (
   return account
 }
 
+/**
+ * One-time catch-up for accounts created before a starting balance became
+ * a real transaction: any account still carrying a stored
+ * `openingBalanceMinor` gets that turned into the same "Starting balance"
+ * INCOME transaction a new account gets today, then the stored field is
+ * zeroed — same balance total either way, just finally visible to
+ * analytics and everything else that only looks at transactions. Safe to
+ * call on every load: an account already backfilled (or created with none
+ * to begin with) has nothing to do.
+ */
+export const backfillOpeningBalances = async (
+  ctx: MoneyContext,
+): Promise<void> => {
+  const accounts = await accountRepository.getAllByIndex(
+    'by-spaceId',
+    ctx.spaceId,
+  )
+  const pending = accounts.filter((a) => a.openingBalanceMinor > 0)
+  if (pending.length === 0) return
+
+  for (const account of pending) {
+    await recordTransaction(ctx, {
+      type: 'INCOME',
+      amountMinor: account.openingBalanceMinor,
+      title: 'Starting balance',
+      accountId: account.id,
+      // Dated when the account itself was actually created, not "now" —
+      // it's catching history up, not creating new income today.
+      occurredAt: account.createdAt,
+      sourceType: 'OPENING_BALANCE',
+      sourceId: account.id,
+    })
+    const updated = await accountRepository.update(account.id, {
+      openingBalanceMinor: 0,
+      syncStatus: 'PENDING',
+    })
+    await enqueueMutation(ctx, 'account', account.id, 'UPDATE', updated)
+  }
+}
+
 export const setDefaultAccount = async (
   ctx: MoneyContext,
   id: string,

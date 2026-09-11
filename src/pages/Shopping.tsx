@@ -443,6 +443,27 @@ const Shopping = () => {
               </div>
             </div>
           )}
+
+          {canEdit && !listIsActive && (
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      selectedList.status === 'COMPLETED'
+                        ? `Delete "${selectedList.title}"? This removes the list and its items only — the expense it recorded stays in your transactions untouched.`
+                        : `Delete "${selectedList.title}"?`,
+                    )
+                  )
+                    void deleteList(selectedList.id)
+                }}
+                className="border px-3 py-1 text-sm text-muted"
+              >
+                Delete list
+              </button>
+            </div>
+          )}
         </section>
       )}
 

@@ -17,6 +17,7 @@ import {
   updateCategory as updateCategoryFeature,
 } from '../features/categories'
 import {
+  backfillOpeningBalances,
   computeSpaceBalances,
   createAccount,
   deleteAccount,
@@ -83,6 +84,7 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
     try {
       if (ctx && canEdit) {
         await ensureDefaultCategories(ctx)
+        await backfillOpeningBalances(ctx)
       }
       const [balances, recent, cats] = await Promise.all([
         computeSpaceBalances(activeSpaceId),
