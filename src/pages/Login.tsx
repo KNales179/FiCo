@@ -38,9 +38,12 @@ const Login = () => {
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight text-brand">
-            Fico
-          </h1>
+          <div className="flex items-center gap-2.5">
+            <img src="/icon-192.png" alt="" className="h-10 w-10 rounded-lg" />
+            <h1 className="text-3xl font-semibold tracking-tight text-brand">
+              Fico
+            </h1>
+          </div>
           <p className="mt-2 text-muted">Your Daily Financial Companion</p>
         </div>
 

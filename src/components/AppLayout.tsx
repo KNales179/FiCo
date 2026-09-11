@@ -35,7 +35,8 @@ const AppLayout = () => {
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 border-b border-line bg-panel/90 backdrop-blur">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
-          <span className="text-base font-semibold tracking-tight text-brand">
+          <span className="flex items-center gap-1.5 text-base font-semibold tracking-tight text-brand">
+            <img src="/icon-192.png" alt="" className="h-7 w-7 rounded-md" />
             Fico
           </span>
           <SpaceSwitcher />
