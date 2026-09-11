@@ -28,15 +28,18 @@ interface DraftItem {
 const flagged = (value: string) =>
   value.trim() === '' ? 'ring-2 ring-warning/60 border-warning' : ''
 
+const sumItemPricesMinor = (rows: DraftItem[]): number =>
+  rows.reduce((sum, r) => sum + (parseAmountToMinor(r.price) ?? 0), 0)
+
 /**
- * Upload a receipt photo and have Fico read it (Roadmap Phase 26 feedback).
- * OCR runs entirely on this device (Tesseract.js); anything it can't read
- * confidently — including the purchase date — is left blank and flagged
- * rather than guessed, so the person always confirms before saving. Each
- * item keeps its own specific category (suggested from past purchases of
- * that item, never invented); the trip itself is categorized the same way a
- * manually completed shopping list is — whichever category most of the
- * items share.
+ * Upload one or more receipt photos and have Fico read them (Roadmap Phase
+ * 26 feedback). OCR runs entirely on this device (Tesseract.js); anything it
+ * can't read confidently — including the purchase date — is left blank and
+ * flagged rather than guessed, so the person always confirms before saving.
+ * Each item keeps its own specific category (suggested from past purchases
+ * of that item, never invented). The amount recorded is the running sum of
+ * the item rows — the same rule a manually completed shopping trip uses —
+ * so it updates live as rows are fixed up or added.
  */
 const ScanReceipt = () => {
   const { accounts, defaultAccount, categories, canEdit, refresh } =
@@ -51,8 +54,7 @@ const ScanReceipt = () => {
   const [error, setError] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
   const [discountMinor, setDiscountMinor] = useState<number | null>(null)
-  /** The receipt's own printed count — informational, cross-checked against
-   *  the item rows below, never used to compute the amount. */
+  /** The receipt's own printed count — cross-checked against the item rows, never used to compute the amount. */
   const [printedItemCount, setPrintedItemCount] = useState<number | null>(
     null,
   )
@@ -63,8 +65,16 @@ const ScanReceipt = () => {
   const [title, setTitle] = useState('')
   const [date, setDate] = useState('')
   const [amount, setAmount] = useState('')
+  /** True while `amount` is following the item-price sum automatically; a
+   *  manual edit turns this off so typing doesn't get clobbered. */
+  const [amountAuto, setAmountAuto] = useState(true)
   const [accountId, setAccountId] = useState('')
   const [items, setItems] = useState<DraftItem[]>([])
+
+  /** Several photos picked at once (Roadmap Phase 26 feedback) — each is its
+   *  own receipt/transaction, reviewed one at a time. */
+  const [queue, setQueue] = useState<File[]>([])
+  const [queueIndex, setQueueIndex] = useState(0)
 
   const activeAccounts = useMemo(
     () => accounts.filter((a) => a.status === 'ACTIVE'),
@@ -74,6 +84,20 @@ const ScanReceipt = () => {
     () => new Map(categories.map((c) => [c.id, c.name])),
     [categories],
   )
+  const itemTypeCount = items.length
+  const itemPieceCount = useMemo(
+    () => items.reduce((n, r) => n + (Number(r.quantity) || 0), 0),
+    [items],
+  )
+  const computedTotalMinor = useMemo(() => sumItemPricesMinor(items), [items])
+  // The amount field follows the item-price sum until the person types
+  // something different themselves — computed at render time so it can
+  // never lag a stale effect by a tick.
+  const displayedAmount = amountAuto
+    ? computedTotalMinor > 0
+      ? (computedTotalMinor / 100).toFixed(2)
+      : ''
+    : amount
 
   if (!canEdit || activeAccounts.length === 0) return null
 
@@ -88,7 +112,10 @@ const ScanReceipt = () => {
     setTitle('')
     setDate('')
     setAmount('')
+    setAmountAuto(true)
     setItems([])
+    setQueue([])
+    setQueueIndex(0)
     if (fileInput.current) fileInput.current.value = ''
   }
 
@@ -111,9 +138,8 @@ const ScanReceipt = () => {
       }),
     )
 
-  const onPick = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !ctx) return
+  const loadReceipt = async (file: File) => {
+    if (!ctx) return
     setError('')
     setPhoto(file)
     setStage('reading')
@@ -122,13 +148,11 @@ const ScanReceipt = () => {
       const parsed: ReceiptParseResult = parseReceiptText(text)
       setTitle(parsed.merchant ?? '')
       setDate(parsed.occurredAt ?? '')
-      setAmount(
-        parsed.totalMinor != null ? (parsed.totalMinor / 100).toFixed(2) : '',
-      )
       setDiscountMinor(parsed.discountMinor)
       setPrintedItemCount(parsed.itemCount)
       setRawText(parsed.rawText)
       setItems(await toDraftItems(ctx.spaceId, parsed.items))
+      setAmountAuto(true)
       setAccountId(defaultAccount?.id ?? activeAccounts[0].id)
       setStage('review')
     } catch (err) {
@@ -136,6 +160,25 @@ const ScanReceipt = () => {
         err instanceof Error ? err.message : 'Could not read that image',
       )
       setStage('idle')
+    }
+  }
+
+  const onPick = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0 || !ctx) return
+    setQueue(files)
+    setQueueIndex(0)
+    await loadReceipt(files[0])
+  }
+
+  /** Move to the next queued photo, or close out once they're all done. */
+  const advanceQueue = async () => {
+    const next = queueIndex + 1
+    if (next < queue.length) {
+      setQueueIndex(next)
+      await loadReceipt(queue[next])
+    } else {
+      reset()
     }
   }
 
@@ -162,9 +205,9 @@ const ScanReceipt = () => {
   const save = async () => {
     setError('')
 
-    const amountMinor = parseAmountToMinor(amount)
+    const amountMinor = parseAmountToMinor(displayedAmount)
     if (amountMinor === null || amountMinor <= 0) {
-      setError('Enter the receipt total before saving')
+      setError('Add at least one priced item, or enter the total by hand')
       return
     }
     if (!date) {
@@ -209,7 +252,7 @@ const ScanReceipt = () => {
       }
 
       await refresh()
-      reset()
+      await advanceQueue()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save')
       setStage('review')
@@ -222,10 +265,19 @@ const ScanReceipt = () => {
     )
   }
 
+  const inQueue = queue.length > 1
+
   return (
     <Card>
       <div className="flex items-center justify-between">
-        <h2 className="section-title">Scan a receipt</h2>
+        <h2 className="section-title">
+          Scan a receipt
+          {inQueue && (
+            <span className="ml-2 text-xs font-normal text-muted">
+              ({queueIndex + 1} of {queue.length})
+            </span>
+          )}
+        </h2>
         <button
           type="button"
           onClick={reset}
@@ -242,11 +294,14 @@ const ScanReceipt = () => {
             type="file"
             accept="image/*"
             capture="environment"
+            multiple
             onChange={(e) => void onPick(e)}
             className="text-sm"
           />
           <p className="mt-1 text-xs text-muted">
             Reading happens on this device — the photo isn't sent anywhere.
+            Pick more than one to go through several receipts (different
+            stores, same trip) one after another.
           </p>
         </div>
       )}
@@ -282,15 +337,13 @@ const ScanReceipt = () => {
                 className={`input ${flagged(date)}`}
               />
             </label>
-            <label className="block flex-1">
-              <span className="field-label">Total amount</span>
-              <Input
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                inputMode="decimal"
-                className={flagged(amount)}
-              />
-            </label>
+            <div className="block flex-1">
+              <span className="field-label">Items bought</span>
+              <p className="input flex items-center text-muted">
+                {itemTypeCount} item{itemTypeCount === 1 ? '' : 's'},{' '}
+                {itemPieceCount} piece{itemPieceCount === 1 ? '' : 's'}
+              </p>
+            </div>
             <label className="block flex-1">
               <span className="field-label">Paid from</span>
               <select
@@ -307,25 +360,10 @@ const ScanReceipt = () => {
             </label>
           </div>
 
-          {discountMinor != null && (
-            <p className="text-xs text-muted">
-              Includes a discount of {formatMoney(discountMinor)} already
-              reflected in the total above.
-            </p>
-          )}
-
-          {printedItemCount != null && (
-            <p className="text-xs text-muted">
-              Item count (per receipt): {printedItemCount}
-              {printedItemCount !==
-                items.reduce((n, r) => n + (Number(r.quantity) || 0), 0) && (
-                <span className="text-warning">
-                  {' '}
-                  — doesn't match the {items.length} row
-                  {items.length === 1 ? '' : 's'} below; some items may be
-                  missing.
-                </span>
-              )}
+          {printedItemCount != null && printedItemCount !== itemPieceCount && (
+            <p className="text-xs text-warning">
+              The receipt itself says {printedItemCount} — doesn't match{' '}
+              {itemPieceCount} above; some items may be missing.
             </p>
           )}
 
@@ -384,10 +422,45 @@ const ScanReceipt = () => {
               + add item
             </button>
             <p className="mt-1 text-xs text-muted">
-              Items are supplementary detail — the amount recorded is always
-              the total above, not a sum of these.
+              For anything bought at the same time but not on this receipt
+              (a different shop on the same trip).
             </p>
           </div>
+
+          {discountMinor != null && (
+            <p className="text-xs text-muted">
+              The receipt shows a discount of {formatMoney(discountMinor)} —
+              make sure the item prices above already reflect it.
+            </p>
+          )}
+
+          <div className="flex items-end justify-between gap-2 border-t border-line pt-3">
+            <label className="block flex-1">
+              <span className="field-label">Total amount</span>
+              <Input
+                value={displayedAmount}
+                onChange={(e) => {
+                  setAmount(e.target.value)
+                  setAmountAuto(false)
+                }}
+                inputMode="decimal"
+                className={flagged(displayedAmount)}
+              />
+            </label>
+            {!amountAuto && (
+              <button
+                type="button"
+                onClick={() => setAmountAuto(true)}
+                className="pb-2 text-xs text-muted underline hover:text-ink"
+              >
+                use sum of items
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-muted">
+            Adds up the priced items above — edit it directly if it needs to
+            differ (e.g. a discount the items don't already reflect).
+          </p>
 
           {error && (
             <p role="alert" className="text-xs text-danger">
@@ -395,13 +468,28 @@ const ScanReceipt = () => {
             </p>
           )}
 
-          <Button
-            variant="primary"
-            onClick={() => void save()}
-            disabled={stage === 'saving'}
-          >
-            {stage === 'saving' ? 'Saving…' : 'Save receipt'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="primary"
+              onClick={() => void save()}
+              disabled={stage === 'saving'}
+            >
+              {stage === 'saving'
+                ? 'Saving…'
+                : inQueue
+                  ? `Save & next (${queueIndex + 1}/${queue.length})`
+                  : 'Save receipt'}
+            </Button>
+            {inQueue && (
+              <button
+                type="button"
+                onClick={() => void advanceQueue()}
+                className="text-xs text-muted underline hover:text-ink"
+              >
+                skip this one
+              </button>
+            )}
+          </div>
 
           {rawText && (
             <details className="text-xs text-muted">
