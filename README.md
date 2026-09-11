@@ -16,12 +16,12 @@ src/
 ├── context/        React providers: auth, space, sync, money, shopping, bills
 ├── db/             IndexedDB local-first data layer (see db/README.md)
 ├── domain/         Pure rules: money, transactions, shopping, bills, items,
-│                   electricity, analytics
+│                   electricity, analytics, receipts (OCR text -> fields)
 ├── features/       Local-first feature modules that write to IndexedDB and
 │                   queue sync events (auth, money, shopping, items, bills,
-│                   attachments, reconciliation, analytics, sync)
+│                   attachments, reconciliation, analytics, receipts, sync)
 ├── hooks/          useAuth, useSpace, useMoney, useShopping, useBills,
-│                   useMutationContext, useOnlineStatus
+│                   useMutationContext, useConnectivity
 ├── lib/            API client (NetworkError vs ApiError)
 ├── pages/          Login, Register, Home (dashboard), Shopping, Bills,
 │                   Analytics, Categories, Members, Activity

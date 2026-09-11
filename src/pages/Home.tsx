@@ -3,6 +3,7 @@ import { useSpace } from '../hooks/useSpace'
 import { useMoney } from '../hooks/useMoney'
 import { PageHeader, Alert } from '../components/ui'
 import QuickAdd from '../components/money/QuickAdd'
+import ScanReceipt from '../components/money/ScanReceipt'
 import AccountsCard from '../components/money/AccountsCard'
 import CashCheck from '../components/money/CashCheck'
 import AddTransactionForm from '../components/money/AddTransactionForm'
@@ -32,6 +33,7 @@ const Home = () => {
       ) : (
         <>
           <QuickAdd />
+          <ScanReceipt />
           <AccountsCard />
           <CashCheck />
           <TransactionList />
