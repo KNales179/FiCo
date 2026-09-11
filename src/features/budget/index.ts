@@ -75,14 +75,20 @@ export const recommendBudget = async (
     billTrends[bill.id] = detectTrend(amounts.slice(-TREND_SAMPLE))
   }
 
-  const projectedBills = projectBillsForPeriod(
-    bills,
-    period,
-    recommendedAmountByBillId,
-  )
   const overdueBills = findOverdueBills(
     bills,
     now.toISOString(),
+    recommendedAmountByBillId,
+  )
+  // A bill already overdue hasn't been paid on schedule, so the regular
+  // forward projection — which assumes on-time payment — would otherwise
+  // also find a hypothetical occurrence in the target period on top of the
+  // real, still-unpaid one. Overdue bills only belong in `overdueBills`
+  // until they're actually paid.
+  const overdueBillIds = new Set(overdueBills.map((b) => b.billId))
+  const projectedBills = projectBillsForPeriod(
+    bills.filter((bill) => !overdueBillIds.has(bill.id)),
+    period,
     recommendedAmountByBillId,
   )
 

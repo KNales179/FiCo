@@ -87,6 +87,28 @@ describe('budget planning (Roadmap Phase 26 feedback)', () => {
     expect(rec.overdueBills[0].amountMinor).toBe(800000)
   })
 
+  it('never double-counts an overdue bill as also due next period', async () => {
+    // Unpaid since September (monthly) — walking forward from that date
+    // would otherwise also "project" a hypothetical October occurrence on
+    // top of the real, still-unpaid one.
+    await createBill(c, {
+      name: 'Wifi',
+      recurrence: 'MONTHLY',
+      billType: 'FIXED',
+      expectedAmountMinor: 129900,
+      nextDueDate: '2026-09-08T00:00:00.000Z',
+    })
+
+    const rec = await recommendBudget(
+      c.spaceId,
+      '2026-10',
+      new Date('2026-10-05T00:00:00.000Z'),
+    )
+    expect(rec.overdueBills).toHaveLength(1)
+    expect(rec.overdueBills[0].name).toBe('Wifi')
+    expect(rec.projectedBills).toHaveLength(0)
+  })
+
   it('ranks a real weekly habit above the rest, from ordinary recorded transactions', async () => {
     const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
 
