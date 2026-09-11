@@ -14,6 +14,7 @@ const STORE_FOR: Record<string, StoreName> = {
   electricityRecord: 'electricityRecords',
   reconciliation: 'reconciliations',
   category: 'categories',
+  budgetPlan: 'budgetPlans',
 }
 
 export const isApplicableEntity = (entityType: string): boolean =>

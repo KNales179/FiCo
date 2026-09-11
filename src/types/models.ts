@@ -308,6 +308,33 @@ export interface Reconciliation extends SyncableEntity {
 }
 
 // ---------------------------------------------------------------------------
+// Budget planning
+// ---------------------------------------------------------------------------
+
+/** A one-off planned expense for a period — "School expenses", a trip, etc. */
+export interface BudgetPlanItem {
+  id: string
+  name: string
+  amountMinor: number
+}
+
+/**
+ * A space's plan for one calendar month (Roadmap Phase 26 feedback). Bills
+ * and their projected amounts are never stored here — they're derived live
+ * from the space's own `Bill` records, so the plan can't go stale against
+ * them. Only what the person actually typed in lives on this record.
+ */
+export interface BudgetPlan extends SyncableEntity {
+  spaceId: string
+  /** "YYYY-MM". */
+  period: string
+  /** null until the person confirms one — the UI shows a recommendation until then. */
+  expectedIncomeMinor: number | null
+  plannedItems: BudgetPlanItem[]
+  createdBy: string
+}
+
+// ---------------------------------------------------------------------------
 // Sync
 // ---------------------------------------------------------------------------
 

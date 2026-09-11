@@ -21,6 +21,7 @@ const EXPECTED_STORES = [
   'syncEvents',
   'reconciliations',
   'categories',
+  'budgetPlans',
   'metadata',
 ]
 

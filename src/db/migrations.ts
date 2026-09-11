@@ -174,6 +174,18 @@ export const STORE_DEFINITIONS: StoreDefinition[] = [
     ],
   },
   {
+    name: 'budgetPlans',
+    keyPath: 'id',
+    indexes: [
+      { name: 'by-spaceId', keyPath: 'spaceId' },
+      {
+        name: 'by-space-period',
+        keyPath: ['spaceId', 'period'],
+        options: { unique: true },
+      },
+    ],
+  },
+  {
     name: 'metadata',
     keyPath: 'key',
   },
@@ -224,6 +236,10 @@ export const migrations: Array<
     createMissingStores(db, tx)
   },
   // v3 — add `categories` (managed category list).
+  (db, tx) => {
+    createMissingStores(db, tx)
+  },
+  // v4 — add `budgetPlans` (next-month budget planning).
   (db, tx) => {
     createMissingStores(db, tx)
   },

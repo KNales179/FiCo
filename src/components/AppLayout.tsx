@@ -9,6 +9,7 @@ const PRIMARY = [
   { to: '/', label: 'Dashboard', icon: '◎', end: true },
   { to: '/shopping', label: 'Shopping', icon: '🛒' },
   { to: '/bills', label: 'Bills', icon: '🧾' },
+  { to: '/budget', label: 'Budget', icon: '📅' },
   { to: '/analytics', label: 'Analytics', icon: '📊' },
 ] as const
 

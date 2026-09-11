@@ -4,6 +4,7 @@ import type {
   Attachment,
   Bill,
   BillPayment,
+  BudgetPlan,
   ElectricityRecord,
   ItemProfile,
   LocalSession,
@@ -30,8 +31,9 @@ export const DB_NAME = 'fico'
  * v1 — initial 16 stores
  * v2 — + `reconciliations` (Phase 14)
  * v3 — + `categories` (managed category list)
+ * v4 — + `budgetPlans` (next-month budget planning)
  */
-export const DB_VERSION = 3
+export const DB_VERSION = 4
 
 /**
  * Typed description of every object store and its indexes, consumed by `idb`.
@@ -183,6 +185,14 @@ export interface FicoDB extends DBSchema {
     indexes: {
       'by-spaceId': string
       'by-space-kind': [string, string]
+    }
+  }
+  budgetPlans: {
+    key: string
+    value: BudgetPlan
+    indexes: {
+      'by-spaceId': string
+      'by-space-period': [string, string]
     }
   }
   metadata: {

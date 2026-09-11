@@ -16,15 +16,17 @@ src/
 ├── context/        React providers: auth, space, sync, money, shopping, bills
 ├── db/             IndexedDB local-first data layer (see db/README.md)
 ├── domain/         Pure rules: money, transactions, shopping, bills, items,
-│                   electricity, analytics, receipts (OCR text -> fields)
+│                   electricity, analytics, receipts (OCR text -> fields),
+│                   budget (next-month planning arithmetic)
 ├── features/       Local-first feature modules that write to IndexedDB and
 │                   queue sync events (auth, money, shopping, items, bills,
-│                   attachments, reconciliation, analytics, receipts, sync)
+│                   attachments, reconciliation, analytics, receipts, budget,
+│                   sync)
 ├── hooks/          useAuth, useSpace, useMoney, useShopping, useBills,
 │                   useMutationContext, useConnectivity
 ├── lib/            API client (NetworkError vs ApiError)
 ├── pages/          Login, Register, Home (dashboard), Shopping, Bills,
-│                   Analytics, Categories, Members, Activity
+│                   Budget, Analytics, Categories, Members, Activity
 ├── repositories/   Typed data access over IndexedDB
 └── types/          Shared TypeScript types
 ```

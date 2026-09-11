@@ -18,6 +18,7 @@ import Home from './pages/Home'
 // Secondary routes are split out of the initial bundle (Roadmap Phase 26).
 const Shopping = lazy(() => import('./pages/Shopping'))
 const Bills = lazy(() => import('./pages/Bills'))
+const Budget = lazy(() => import('./pages/Budget'))
 const Analytics = lazy(() => import('./pages/Analytics'))
 const Categories = lazy(() => import('./pages/Categories'))
 const Members = lazy(() => import('./pages/Members'))
@@ -48,6 +49,7 @@ const App = () => {
                           <Route path="/" element={<Home />} />
                           <Route path="/shopping" element={<Shopping />} />
                           <Route path="/bills" element={<Bills />} />
+                          <Route path="/budget" element={<Budget />} />
                           <Route path="/analytics" element={<Analytics />} />
                           <Route path="/categories" element={<Categories />} />
                           <Route path="/members" element={<Members />} />
