@@ -1,11 +1,16 @@
 import { useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useMoney } from '../../hooks/useMoney'
 import { useMutationContext } from '../../hooks/useMutationContext'
-import { parseReceiptText, type ReceiptLineItem } from '../../domain/receipts'
+import {
+  parseReceiptText,
+  type ReceiptLineItem,
+  type ReceiptParseResult,
+} from '../../domain/receipts'
 import { recognizeReceiptText } from '../../features/receipts/ocr'
 import { recordScannedReceipt } from '../../features/receipts'
+import { suggestForName } from '../../features/items'
 import { addAttachment } from '../../features/attachments'
-import { parseAmountToMinor } from '../../domain/money'
+import { formatMoney, parseAmountToMinor } from '../../domain/money'
 import { Button, Card, Input } from '../ui'
 import CategoryPicker from './CategoryPicker'
 
@@ -15,15 +20,9 @@ interface DraftItem {
   quantity: string
   /** '' means blank/unparsed — highlighted until the person fills it in. */
   price: string
+  /** '' = no category. Suggested from a past purchase of the same item, never invented. */
+  categoryId: string
 }
-
-const toDraftItems = (items: ReceiptLineItem[]): DraftItem[] =>
-  items.map((item, i) => ({
-    id: i,
-    name: item.name,
-    quantity: String(item.quantity),
-    price: item.priceMinor != null ? (item.priceMinor / 100).toFixed(2) : '',
-  }))
 
 /** A field the scan couldn't read gets a visible amber ring, never a guess. */
 const flagged = (value: string) =>
@@ -33,10 +32,15 @@ const flagged = (value: string) =>
  * Upload a receipt photo and have Fico read it (Roadmap Phase 26 feedback).
  * OCR runs entirely on this device (Tesseract.js); anything it can't read
  * confidently — including the purchase date — is left blank and flagged
- * rather than guessed, so the person always confirms before saving.
+ * rather than guessed, so the person always confirms before saving. Each
+ * item keeps its own specific category (suggested from past purchases of
+ * that item, never invented); the trip itself is categorized the same way a
+ * manually completed shopping list is — whichever category most of the
+ * items share.
  */
 const ScanReceipt = () => {
-  const { accounts, defaultAccount, canEdit, refresh } = useMoney()
+  const { accounts, defaultAccount, categories, canEdit, refresh } =
+    useMoney()
   const { ctx } = useMutationContext()
   const fileInput = useRef<HTMLInputElement>(null)
 
@@ -46,17 +50,21 @@ const ScanReceipt = () => {
   )
   const [error, setError] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
+  const [discountMinor, setDiscountMinor] = useState<number | null>(null)
 
   const [title, setTitle] = useState('')
   const [date, setDate] = useState('')
   const [amount, setAmount] = useState('')
   const [accountId, setAccountId] = useState('')
-  const [categoryId, setCategoryId] = useState('')
   const [items, setItems] = useState<DraftItem[]>([])
 
   const activeAccounts = useMemo(
     () => accounts.filter((a) => a.status === 'ACTIVE'),
     [accounts],
+  )
+  const categoryNameById = useMemo(
+    () => new Map(categories.map((c) => [c.id, c.name])),
+    [categories],
   )
 
   if (!canEdit || activeAccounts.length === 0) return null
@@ -66,29 +74,49 @@ const ScanReceipt = () => {
     setStage('idle')
     setError('')
     setPhoto(null)
+    setDiscountMinor(null)
     setTitle('')
     setDate('')
     setAmount('')
-    setCategoryId('')
     setItems([])
     if (fileInput.current) fileInput.current.value = ''
   }
 
+  /** Suggest a category per item from what Fico already knows about it —
+   *  reusing a past decision, never guessing a new one. */
+  const toDraftItems = async (
+    spaceId: string,
+    parsedItems: ReceiptLineItem[],
+  ): Promise<DraftItem[]> =>
+    Promise.all(
+      parsedItems.map(async (item, i) => {
+        const suggestion = await suggestForName(spaceId, item.name)
+        return {
+          id: i,
+          name: item.name,
+          quantity: String(item.quantity),
+          price: item.priceMinor != null ? (item.priceMinor / 100).toFixed(2) : '',
+          categoryId: suggestion?.categoryId ?? '',
+        }
+      }),
+    )
+
   const onPick = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file || !ctx) return
     setError('')
     setPhoto(file)
     setStage('reading')
     try {
       const text = await recognizeReceiptText(file)
-      const parsed = parseReceiptText(text)
+      const parsed: ReceiptParseResult = parseReceiptText(text)
       setTitle(parsed.merchant ?? '')
       setDate(parsed.occurredAt ?? '')
       setAmount(
         parsed.totalMinor != null ? (parsed.totalMinor / 100).toFixed(2) : '',
       )
-      setItems(toDraftItems(parsed.items))
+      setDiscountMinor(parsed.discountMinor)
+      setItems(await toDraftItems(ctx.spaceId, parsed.items))
       setAccountId(defaultAccount?.id ?? activeAccounts[0].id)
       setStage('review')
     } catch (err) {
@@ -110,7 +138,13 @@ const ScanReceipt = () => {
   const addBlankItem = () =>
     setItems((rows) => [
       ...rows,
-      { id: (rows.at(-1)?.id ?? -1) + 1, name: '', quantity: '1', price: '' },
+      {
+        id: (rows.at(-1)?.id ?? -1) + 1,
+        name: '',
+        quantity: '1',
+        price: '',
+        categoryId: '',
+      },
     ])
 
   const save = async () => {
@@ -141,13 +175,16 @@ const ScanReceipt = () => {
         title,
         occurredAt: new Date(date).toISOString(),
         amountMinor,
-        categoryId: categoryId || null,
         items: items
           .filter((row) => row.name.trim())
           .map((row) => ({
             name: row.name.trim(),
             quantity: Math.max(1, Number(row.quantity) || 1),
             priceMinor: parseAmountToMinor(row.price),
+            categoryId: row.categoryId || null,
+            categoryName: row.categoryId
+              ? categoryNameById.get(row.categoryId) ?? null
+              : null,
           })),
       })
 
@@ -234,7 +271,7 @@ const ScanReceipt = () => {
               />
             </label>
             <label className="block flex-1">
-              <span className="field-label">Total</span>
+              <span className="field-label">Total amount</span>
               <Input
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
@@ -242,9 +279,6 @@ const ScanReceipt = () => {
                 className={flagged(amount)}
               />
             </label>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
             <label className="block flex-1">
               <span className="field-label">Paid from</span>
               <select
@@ -259,29 +293,27 @@ const ScanReceipt = () => {
                 ))}
               </select>
             </label>
-            <label className="block flex-1">
-              <span className="field-label">Category</span>
-              <CategoryPicker
-                kind="EXPENSE"
-                value={categoryId}
-                onChange={setCategoryId}
-                className="select"
-              />
-            </label>
           </div>
+
+          {discountMinor != null && (
+            <p className="text-xs text-muted">
+              Includes a discount of {formatMoney(discountMinor)} already
+              reflected in the total above.
+            </p>
+          )}
 
           <div>
             <span className="field-label">Items</span>
             <div className="space-y-1.5">
               {items.map((row) => (
-                <div key={row.id} className="flex items-center gap-1.5">
+                <div key={row.id} className="flex flex-wrap items-center gap-1.5">
                   <input
                     value={row.name}
                     onChange={(e) =>
                       updateItem(row.id, { name: e.target.value })
                     }
                     placeholder="Item"
-                    className="input flex-1"
+                    className="input min-w-[7rem] flex-1"
                   />
                   <input
                     value={row.quantity}
@@ -301,6 +333,12 @@ const ScanReceipt = () => {
                     placeholder="Price"
                     className={`input w-24 ${flagged(row.price)}`}
                   />
+                  <CategoryPicker
+                    kind="EXPENSE"
+                    value={row.categoryId}
+                    onChange={(categoryId) => updateItem(row.id, { categoryId })}
+                    className="select w-auto"
+                  />
                   <button
                     type="button"
                     onClick={() => removeItem(row.id)}
@@ -318,6 +356,10 @@ const ScanReceipt = () => {
             >
               + add item
             </button>
+            <p className="mt-1 text-xs text-muted">
+              Items are supplementary detail — the amount recorded is always
+              the total above, not a sum of these.
+            </p>
           </div>
 
           {error && (

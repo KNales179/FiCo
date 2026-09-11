@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { balanceEffect, validateTransactionInput } from './transactions'
 import { advanceDueDate, periodKey } from './bills'
 import { resolveRange, summarize } from './analytics'
+import { pickTripCategory } from './shopping'
 import type { Account, Transaction } from '../types/models'
 
 describe('balanceEffect', () => {
@@ -116,6 +117,34 @@ describe('bill recurrence', () => {
   it('periodKey dedupes an occurrence', () => {
     expect(periodKey('2026-03-01T00:00:00.000Z', 'MONTHLY')).toBe('2026-03')
     expect(periodKey('2026-03-01T00:00:00.000Z', 'YEARLY')).toBe('2026')
+  })
+})
+
+describe('pickTripCategory', () => {
+  it('picks the category most items share', () => {
+    const r = pickTripCategory([
+      { categoryId: 'g', categoryName: 'Groceries' },
+      { categoryId: 'g', categoryName: 'Groceries' },
+      { categoryId: 'h', categoryName: 'Household' },
+    ])
+    expect(r).toEqual({ categoryId: 'g', categoryName: 'Groceries' })
+  })
+
+  it('leaves a genuine tie uncategorized', () => {
+    const r = pickTripCategory([
+      { categoryId: 'g', categoryName: 'Groceries' },
+      { categoryId: 'h', categoryName: 'Household' },
+    ])
+    expect(r).toEqual({ categoryId: null, categoryName: null })
+  })
+
+  it('leaves an all-uncategorized trip uncategorized', () => {
+    expect(
+      pickTripCategory([
+        { categoryId: null, categoryName: null },
+        { categoryId: null, categoryName: null },
+      ]),
+    ).toEqual({ categoryId: null, categoryName: null })
   })
 })
 

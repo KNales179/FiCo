@@ -25,12 +25,17 @@ export interface ReceiptParseResult {
   occurredAt: string | null
   totalMinor: number | null
   taxMinor: number | null
+  /** Positive magnitude already reflected in `totalMinor` — shown for reference, not subtracted again. */
+  discountMinor: number | null
   items: ReceiptLineItem[]
   /** The OCR text this was parsed from, kept so a person can sanity-check it. */
   rawText: string
 }
 
-const MONEY = /(\d{1,3}(?:[,\s]\d{3})*(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)\s*$/
+// Requires an explicit 2-digit cents suffix — a bare digit run ("02530" from
+// a TIN, "8" from an item count) is common receipt boilerplate, not money,
+// and real printed amounts almost always carry ".00".
+const MONEY = /(\d{1,3}(?:[,\s]\d{3})*[.,]\d{2}|\d+[.,]\d{2})\s*$/
 
 /** Pull the trailing money-looking number off a line, in minor units. */
 const trailingAmountMinor = (line: string): number | null => {
@@ -53,6 +58,10 @@ const nonEmptyLines = (text: string): string[] =>
 const TOTAL_KEYWORDS = /\b(grand\s*total|amount\s*due|total\s*due|total)\b/i
 const SUBTOTAL_KEYWORD = /\bsub\s*-?\s*total\b/i
 const TAX_KEYWORDS = /\b(vat|gst|tax)\b/i
+// A receipt's tax breakdown often lists "Vat Exempt Sale" / "Vatable Sale"
+// alongside the real "VAT (12%)" line — none of those are the tax amount.
+const TAX_EXCLUDE = /\b(exempt|zero[\s-]?rated|vatable)\b/i
+const DISCOUNT_KEYWORDS = /\b(discount|promo)\b/i
 
 const findLastMatch = (
   lines: string[],
@@ -67,6 +76,18 @@ const findLastMatch = (
     }
   }
   return found
+}
+
+/** Sums every matching line rather than taking the last — a receipt can stack more than one promo/discount line. */
+const sumMatches = (lines: string[], keyword: RegExp): number | null => {
+  let sum: number | null = null
+  for (const line of lines) {
+    if (keyword.test(line)) {
+      const amount = trailingAmountMinor(line)
+      if (amount !== null) sum = (sum ?? 0) + amount
+    }
+  }
+  return sum
 }
 
 // ---------------------------------------------------------------------------
@@ -147,23 +168,43 @@ const findMerchant = (lines: string[]): string | null => {
 // ---------------------------------------------------------------------------
 
 const SKIP_LINE =
-  /\b(total|subtotal|sub-total|tax|vat|gst|change|cash|card|balance|thank you|receipt|invoice|cashier|qty|quantity|date|time|payment|amount due|approved|reference|terminal)\b/i
+  /\b(total|subtotal|sub-total|tax|vat|gst|discount|promo|change|cash|card|balance|thank you|receipt|invoice|cashier|qty|quantity|purchased|item.?s|date|time|payment|amount due|approved|reference|terminal|vatable|exempt|zero.rated|tin|permit|accredtn|invoice no)\b/i
 
+// The price group requires an explicit 2-digit cents suffix, same reasoning
+// as `MONEY` above — otherwise a bare reference number reads as an item.
 const ITEM_LINE =
-  /^(?:(\d+(?:\.\d+)?)\s*[xX]\s*)?(.{2,40}?)\s{1,}(\d{1,3}(?:[,\s]\d{3})*(?:[.,]\d{2})?)\s*$/
+  /^(?:(\d+(?:\.\d+)?)\s*[xX]\s*)?(.{2,40}?)\s{1,}(\d{1,3}(?:[,\s]\d{3})*[.,]\d{2})\s*$/
+
+/** A standalone "qty*unitPrice" line, printed above the item's name on some
+ *  receipts (e.g. Philippine retail format: "3*15.000" then "EMBORG… 105.00"). */
+const QTY_PRICE_LINE = /^(\d+(?:\.\d+)?)\s*[x×*]\s*\d+(?:[.,]\d+)?\s*$/i
 
 /**
  * Best-effort line items. Conservative on purpose: a line has to look like
- * "name ... price" (optionally "2 x name ... price") to be treated as an
- * item at all — anything else (store hours, addresses, a header) is simply
- * not included, rather than added as a wrong guess. A name found without a
- * readable trailing price still becomes a row, with `priceMinor: null`, so
- * the person reviewing sees exactly what needs filling in.
+ * "name ... price" (optionally "2 x name ... price", or a standalone
+ * "qty*price" line right before the name — a common receipt layout) to be
+ * treated as an item at all. Anything else (store hours, an address, a
+ * discount line) is simply not included, rather than added as a wrong
+ * guess. A name found without a readable trailing price still becomes a
+ * row, with `priceMinor: null`, so the person reviewing sees exactly what
+ * needs filling in.
  */
 const findItems = (lines: string[]): ReceiptLineItem[] => {
   const items: ReceiptLineItem[] = []
+  let pendingQuantity: number | null = null
+
   for (const line of lines) {
-    if (SKIP_LINE.test(line)) continue
+    const qtyOnly = QTY_PRICE_LINE.exec(line)
+    if (qtyOnly) {
+      pendingQuantity = Math.max(1, Math.round(Number(qtyOnly[1])))
+      continue
+    }
+
+    if (SKIP_LINE.test(line)) {
+      pendingQuantity = null
+      continue
+    }
+
     const match = ITEM_LINE.exec(line)
     if (!match) continue
 
@@ -173,7 +214,10 @@ const findItems = (lines: string[]): ReceiptLineItem[] => {
 
     const cleanedPrice = priceRaw.replace(/\s/g, '').replace(/,(?=\d{3}\b)/g, '')
     const priceMinor = parseAmountToMinor(cleanedPrice.replace(',', '.'))
-    const quantity = qtyRaw ? Math.max(1, Math.round(Number(qtyRaw))) : 1
+    const quantity = qtyRaw
+      ? Math.max(1, Math.round(Number(qtyRaw)))
+      : pendingQuantity ?? 1
+    pendingQuantity = null
 
     items.push({ name, quantity, priceMinor })
   }
@@ -188,7 +232,8 @@ export const parseReceiptText = (rawText: string): ReceiptParseResult => {
     merchant: findMerchant(lines),
     occurredAt: findDate(lines),
     totalMinor: findLastMatch(lines, TOTAL_KEYWORDS, SUBTOTAL_KEYWORD),
-    taxMinor: findLastMatch(lines, TAX_KEYWORDS),
+    taxMinor: findLastMatch(lines, TAX_KEYWORDS, TAX_EXCLUDE),
+    discountMinor: sumMatches(lines, DISCOUNT_KEYWORDS),
     items: findItems(lines),
     rawText,
   }

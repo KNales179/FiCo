@@ -8,6 +8,7 @@ import { recordTransaction } from '../money'
 import { recordPurchasePrice, resolveItemProfile } from '../items'
 import { enqueueMutation } from '../sync/enqueue'
 import type { MutationContext } from '../sync/context'
+import { pickTripCategory } from '../../domain/shopping'
 import { completeShoppingList } from './lists'
 
 export interface CompletionResult {
@@ -77,19 +78,13 @@ export const completeListWithExpenses = async (
     }),
   )
 
-  // The category most of the trip's items share; leave it uncategorized
-  // rather than pick one arbitrarily when the trip is genuinely mixed (a tie
-  // for the lead counts as mixed, not a coin flip).
-  const counts = new Map<string, number>()
-  for (const r of resolved) {
-    if (r.categoryName) counts.set(r.categoryName, (counts.get(r.categoryName) ?? 0) + 1)
-  }
-  const maxCount = Math.max(0, ...counts.values())
-  const leaders = [...counts.entries()].filter(([, count]) => count === maxCount)
-  const tripCategoryName = leaders.length === 1 ? leaders[0][0] : null
-  const tripCategoryId =
-    resolved.find((r) => r.categoryName === tripCategoryName)?.profile
-      .categoryId ?? null
+  const { categoryId: tripCategoryId, categoryName: tripCategoryName } =
+    pickTripCategory(
+      resolved.map((r) => ({
+        categoryId: r.profile.categoryId ?? null,
+        categoryName: r.categoryName,
+      })),
+    )
 
   const spentMinor = eligible.reduce(
     (sum, item) => sum + item.actualPriceMinor!,

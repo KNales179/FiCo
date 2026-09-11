@@ -85,4 +85,68 @@ THANK YOU
     const r = parseReceiptText('Total due 50.00\nAMOUNT DUE 55.00')
     expect(r.totalMinor).toBe(5500)
   })
+
+  it('parses a real Philippine retail receipt layout (qty*unitPrice above the item line)', () => {
+    // Transcribed from an actual Alfamart receipt (this feature's motivating
+    // bug report) — quantity and unit price print on their own line above
+    // the item name and its line total.
+    const receipt = `
+ALFAMART TRADING PHILIPPINES, INC.
+ALFAMART, ATP BRGY MAYAO CROSSING LUCENA
+ALFAMART LOT NO 3508-C-1-B PSD 185194 BR
+VAT-REG TIN 008-685-624-02530
+MIN 26061712311649678
+SN# 0093202512122
+SALES INVOICE NO. : 008488
+1*80.250
+GAR WHEAT BREAD 400                80.25
+1*116.000
+LC HAM POUCH 220ML                116.00
+1*27.000
+BINGO DBLE CHOCO 75G               27.00
+1*34.000
+NESTLE CHUCKIE 250ML               34.00
+1*105.000
+EMBORG SLCES 200G12S               105.00
+3*15.000
+KPKBLNCWNTRBLDMLW40G               45.00
+   Promo Discount                 -22.00
+      SUBTOTAL                    385.25
+      TOTAL                       385.25
+CASH                              1,000.00
+
+Change                            614.75
+   ITEM/S PURCHASED : 8
+
+Vatable Sale                      343.97
+VAT (12%)                          41.28
+Vat Exempt Sale                     0.00
+Zero Rated Sale                     0.00
+`
+    const r = parseReceiptText(receipt)
+
+    expect(r.merchant).toBe('ALFAMART TRADING PHILIPPINES, INC.')
+    expect(r.totalMinor).toBe(38525)
+    // The real tax amount, not the "Vat Exempt" / "Vatable Sale" breakdown lines.
+    expect(r.taxMinor).toBe(4128)
+    expect(r.discountMinor).toBe(2200)
+
+    // Neither "Change", "Cash" nor the item-count line became a fake item.
+    expect(r.items).toEqual([
+      { name: 'GAR WHEAT BREAD 400', quantity: 1, priceMinor: 8025 },
+      { name: 'LC HAM POUCH 220ML', quantity: 1, priceMinor: 11600 },
+      { name: 'BINGO DBLE CHOCO 75G', quantity: 1, priceMinor: 2700 },
+      { name: 'NESTLE CHUCKIE 250ML', quantity: 1, priceMinor: 3400 },
+      { name: 'EMBORG SLCES 200G12S', quantity: 1, priceMinor: 10500 },
+      // "3*15.000" above it -> quantity 3, even though its own line only
+      // carries the line total (45.00), matching how Fico stores item
+      // prices as line totals rather than unit prices.
+      { name: 'KPKBLNCWNTRBLDMLW40G', quantity: 3, priceMinor: 4500 },
+    ])
+  })
+
+  it('never treats a TIN / reference number as an amount', () => {
+    const r = parseReceiptText('VAT-REG TIN 008-685-624-02530\nTOTAL 10.00')
+    expect(r.taxMinor).toBeNull()
+  })
 })
