@@ -173,16 +173,19 @@ const History = ({ billId, canEdit }: { billId: string; canEdit: boolean }) => {
 const Bills = () => {
   const {
     bills,
+    deletedBills,
     electricity,
     loading,
     error,
     canEdit,
     createBill,
     deleteBill,
+    restoreBill,
     deletePayment,
   } = useBills()
   const [electricityBusyId, setElectricityBusyId] = useState<string | null>(null)
   const [electricityError, setElectricityError] = useState('')
+  const [restoringId, setRestoringId] = useState<string | null>(null)
 
   const removeElectricityRecord = async (billPaymentId: string) => {
     if (
@@ -300,7 +303,14 @@ const Bills = () => {
                 {canEdit && (
                   <button
                     type="button"
-                    onClick={() => void deleteBill(bill.id)}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Delete "${bill.name}"? This removes the whole bill, not just one payment — its payment history stays intact and can be restored later. To fix one wrong payment instead, use "delete" under that payment's own history below.`,
+                        )
+                      )
+                        void deleteBill(bill.id)
+                    }}
                     className="text-xs text-muted underline"
                   >
                     delete
@@ -315,6 +325,43 @@ const Bills = () => {
           )}
         </ul>
       </section>
+
+      {canEdit && deletedBills.length > 0 && (
+        <section className="card">
+          <h2 className="text-lg font-semibold">Deleted bills</h2>
+          <p className="mt-1 text-xs text-muted">
+            Deleted by mistake? Restore brings it back as active, exactly as
+            it was — its payment history comes with it.
+          </p>
+          <ul className="mt-2 divide-y">
+            {deletedBills.map((bill) => (
+              <li key={bill.id} className="flex items-center justify-between py-2 text-sm">
+                <span>
+                  {bill.name}
+                  <span className="ml-2 text-xs text-muted">
+                    was due {new Date(bill.nextDueDate).toLocaleDateString()}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  disabled={restoringId === bill.id}
+                  onClick={async () => {
+                    setRestoringId(bill.id)
+                    try {
+                      await restoreBill(bill.id)
+                    } finally {
+                      setRestoringId(null)
+                    }
+                  }}
+                  className="text-xs text-muted underline hover:text-ink disabled:opacity-50"
+                >
+                  {restoringId === bill.id ? 'restoring…' : 'restore'}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {electricity.length > 0 && (
         <section className="card">

@@ -127,6 +127,23 @@ export const deleteBill = async (
   await enqueueMutation(ctx, 'bill', id, 'DELETE', { id })
 }
 
+export const listDeletedBills = (spaceId: string): Promise<Bill[]> =>
+  billRepository.listDeleted(spaceId)
+
+/** Undoes `deleteBill` — brings a mistakenly-deleted bill back as active. */
+export const restoreBill = async (
+  ctx: MutationContext,
+  id: string,
+): Promise<Bill> => {
+  await billRepository.restore(id)
+  const updated = await billRepository.update(id, {
+    active: true,
+    syncStatus: 'PENDING',
+  })
+  await enqueueMutation(ctx, 'bill', id, 'UPDATE', updated)
+  return updated
+}
+
 /**
  * Pay the current occurrence of a bill (Roadmap Phase 11, Product Spec §14):
  * records a BillPayment, creates the linked EXPENSE, advances `nextDueDate`.

@@ -8,6 +8,7 @@ import type { NewBillInput, PayBillInput } from '../features/bills'
 
 export interface BillsContextValue {
   bills: Bill[]
+  deletedBills: Bill[]
   electricity: ElectricityRecord[]
   loading: boolean
   error: string | null
@@ -19,6 +20,7 @@ export interface BillsContextValue {
     patch: Partial<NewBillInput> & { active?: boolean },
   ) => Promise<void>
   deleteBill: (id: string) => Promise<void>
+  restoreBill: (id: string) => Promise<void>
   payBill: (
     billId: string,
     input: PayBillInput,

@@ -3,11 +3,15 @@ import { ctx, withDB } from '../../test/helpers'
 import { createAccount, computeSpaceBalances, listTransactions } from '../money'
 import {
   createBill,
+  deleteBill,
   deleteBillPayment,
   getBill,
   listBillPayments,
+  listBills,
+  listDeletedBills,
   listElectricity,
   payBill,
+  restoreBill,
 } from './index'
 
 const c = ctx()
@@ -152,6 +156,31 @@ describe('bills (Phase 11)', () => {
     await payBill(c, bill.id, { amountMinor: 31000, accountId: cash.id })
 
     await expect(deleteBillPayment(c, first.id)).rejects.toThrow(/most recent/i)
+  })
+
+  it('a mistakenly deleted bill can be found and restored, payment history intact', async () => {
+    const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+    const bill = await createBill(c, {
+      name: 'Electric',
+      recurrence: 'MONTHLY',
+      billType: 'VARIABLE',
+      nextDueDate: '2026-10-01T00:00:00.000Z',
+    })
+    await payBill(c, bill.id, { amountMinor: 401500, accountId: cash.id })
+
+    await deleteBill(c, bill.id)
+    expect(await listBills(c.spaceId)).toHaveLength(0)
+    const deleted = await listDeletedBills(c.spaceId)
+    expect(deleted).toHaveLength(1)
+    expect(deleted[0].name).toBe('Electric')
+
+    const restored = await restoreBill(c, bill.id)
+    expect(restored.active).toBe(true)
+    expect(restored.deletedAt).toBeFalsy()
+    expect(await listDeletedBills(c.spaceId)).toHaveLength(0)
+    expect(await listBills(c.spaceId)).toHaveLength(1)
+    // The payment made before deletion is still there, untouched.
+    expect(await listBillPayments(bill.id)).toHaveLength(1)
   })
 
   it('an electricity-tracking bill stores a meter record on payment', async () => {

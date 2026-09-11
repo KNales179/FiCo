@@ -31,6 +31,14 @@ export const billRepository = {
       .filter((bill) => bill.active && bill.nextDueDate <= beforeIso)
       .sort((a, b) => a.nextDueDate.localeCompare(b.nextDueDate))
   },
+
+  /** Deleted bills in a space — so an accidental delete can be found and undone. */
+  async listDeleted(spaceId: string): Promise<Bill[]> {
+    const rows = await bills.getAllByIndex('by-spaceId', spaceId, {
+      includeDeleted: true,
+    })
+    return rows.filter((bill) => bill.deletedAt)
+  },
 }
 
 export const billPaymentRepository = {

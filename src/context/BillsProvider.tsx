@@ -12,8 +12,10 @@ import {
   deleteBillPayment as deleteBillPaymentFeature,
   listBillPayments,
   listBills,
+  listDeletedBills,
   listElectricity,
   payBill as payBillFeature,
+  restoreBill as restoreBillFeature,
   updateBill as updateBillFeature,
   type NewBillInput,
   type PayBillInput,
@@ -33,6 +35,7 @@ export const BillsProvider = ({ children }: { children: ReactNode }) => {
 
   const [deviceId, setDeviceId] = useState<string | null>(null)
   const [bills, setBills] = useState<Bill[]>([])
+  const [deletedBills, setDeletedBills] = useState<Bill[]>([])
   const [electricity, setElectricity] = useState<ElectricityRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -57,6 +60,7 @@ export const BillsProvider = ({ children }: { children: ReactNode }) => {
   const load = useCallback(async () => {
     if (!activeSpaceId) {
       setBills([])
+      setDeletedBills([])
       setElectricity([])
       setLoading(false)
       return
@@ -64,17 +68,15 @@ export const BillsProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true)
     setError(null)
     try {
-      const [b, e] = await Promise.all([
+      const [b, deleted, e] = await Promise.all([
         listBills(activeSpaceId),
+        listDeletedBills(activeSpaceId),
         listElectricity(activeSpaceId),
       ])
-      setBills(
-        b.filter(
-          (bill) =>
-            bill.visibility !== 'PRIVATE' ||
-            bill.createdBy === user?.id,
-        ),
-      )
+      const visibleToMe = (bill: Bill) =>
+        bill.visibility !== 'PRIVATE' || bill.createdBy === user?.id
+      setBills(b.filter(visibleToMe))
+      setDeletedBills(deleted.filter(visibleToMe))
       setElectricity(e)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load bills')
@@ -92,6 +94,7 @@ export const BillsProvider = ({ children }: { children: ReactNode }) => {
 
   const value = {
     bills,
+    deletedBills,
     electricity,
     loading,
     error,
@@ -110,6 +113,10 @@ export const BillsProvider = ({ children }: { children: ReactNode }) => {
     },
     deleteBill: async (id: string) => {
       await deleteBillFeature(requireCtx(), id)
+      await load()
+    },
+    restoreBill: async (id: string) => {
+      await restoreBillFeature(requireCtx(), id)
       await load()
     },
     payBill: async (billId: string, input: PayBillInput) => {
