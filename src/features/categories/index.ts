@@ -6,13 +6,17 @@ import type { Category, CategoryKind } from '../../types/models'
 export const normalizeCategoryName = (name: string): string =>
   name.trim().toLowerCase().replace(/\s+/g, ' ')
 
-const DEFAULTS: Array<{ name: string; kind: CategoryKind }> = [
+const DEFAULTS: Array<{
+  name: string
+  kind: CategoryKind
+  tracksItems?: boolean
+}> = [
   { name: 'Food', kind: 'EXPENSE' },
-  { name: 'Groceries', kind: 'EXPENSE' },
+  { name: 'Groceries', kind: 'EXPENSE', tracksItems: true },
   { name: 'Transportation', kind: 'EXPENSE' },
   { name: 'Bills', kind: 'EXPENSE' },
   { name: 'Health', kind: 'EXPENSE' },
-  { name: 'Shopping', kind: 'EXPENSE' },
+  { name: 'Shopping', kind: 'EXPENSE', tracksItems: true },
   { name: 'Entertainment', kind: 'EXPENSE' },
   { name: 'Education', kind: 'EXPENSE' },
   { name: 'Other', kind: 'EXPENSE' },
@@ -44,6 +48,7 @@ export const ensureDefaultCategories = async (
       normalizedName: normalizeCategoryName(def.name),
       kind: def.kind,
       archived: false,
+      tracksItems: def.tracksItems ?? false,
       createdBy: ctx.userId,
       syncStatus: 'PENDING',
       version: 1,
@@ -54,7 +59,7 @@ export const ensureDefaultCategories = async (
 
 export const createCategory = async (
   ctx: MutationContext,
-  input: { name: string; kind: CategoryKind },
+  input: { name: string; kind: CategoryKind; tracksItems?: boolean },
 ): Promise<Category> => {
   const normalizedName = normalizeCategoryName(input.name)
   const existing = await categoryRepository.findByName(
@@ -72,6 +77,7 @@ export const createCategory = async (
     normalizedName,
     kind: input.kind,
     archived: false,
+    tracksItems: input.tracksItems ?? false,
     createdBy: ctx.userId,
     syncStatus: 'PENDING',
     version: 1,
@@ -83,7 +89,7 @@ export const createCategory = async (
 export const updateCategory = async (
   ctx: MutationContext,
   id: string,
-  patch: { name?: string; archived?: boolean },
+  patch: { name?: string; archived?: boolean; tracksItems?: boolean },
 ): Promise<Category> => {
   const next: Partial<Category> = { syncStatus: 'PENDING' }
   if (patch.name !== undefined) {
@@ -91,6 +97,7 @@ export const updateCategory = async (
     next.normalizedName = normalizeCategoryName(patch.name)
   }
   if (patch.archived !== undefined) next.archived = patch.archived
+  if (patch.tracksItems !== undefined) next.tracksItems = patch.tracksItems
 
   const category = await categoryRepository.update(id, next)
   await enqueueMutation(ctx, 'category', id, 'UPDATE', category)

@@ -12,24 +12,17 @@ import { suggestForName } from '../../features/items'
 import { addAttachment } from '../../features/attachments'
 import { formatMoney, parseAmountToMinor } from '../../domain/money'
 import { Button, Card, Input } from '../ui'
-import CategoryPicker from './CategoryPicker'
-
-interface DraftItem {
-  id: number
-  name: string
-  quantity: string
-  /** '' means blank/unparsed — highlighted until the person fills it in. */
-  price: string
-  /** '' = no category. Suggested from a past purchase of the same item, never invented. */
-  categoryId: string
-}
+import ItemRowsEditor from './ItemRowsEditor'
+import {
+  newBlankItem,
+  sumItemPricesMinor,
+  toScannedReceiptItems,
+  type DraftItem,
+} from './draftItems'
 
 /** A field the scan couldn't read gets a visible amber ring, never a guess. */
 const flagged = (value: string) =>
   value.trim() === '' ? 'ring-2 ring-warning/60 border-warning' : ''
-
-const sumItemPricesMinor = (rows: DraftItem[]): number =>
-  rows.reduce((sum, r) => sum + (parseAmountToMinor(r.price) ?? 0), 0)
 
 /**
  * Upload one or more receipt photos and have Fico read them (Roadmap Phase
@@ -190,17 +183,7 @@ const ScanReceipt = () => {
   const removeItem = (id: number) =>
     setItems((rows) => rows.filter((r) => r.id !== id))
 
-  const addBlankItem = () =>
-    setItems((rows) => [
-      ...rows,
-      {
-        id: (rows.at(-1)?.id ?? -1) + 1,
-        name: '',
-        quantity: '1',
-        price: '',
-        categoryId: '',
-      },
-    ])
+  const addBlankItem = () => setItems((rows) => [...rows, newBlankItem(rows)])
 
   const save = async () => {
     setError('')
@@ -230,17 +213,7 @@ const ScanReceipt = () => {
         title,
         occurredAt: new Date(date).toISOString(),
         amountMinor,
-        items: items
-          .filter((row) => row.name.trim())
-          .map((row) => ({
-            name: row.name.trim(),
-            quantity: Math.max(1, Number(row.quantity) || 1),
-            priceMinor: parseAmountToMinor(row.price),
-            categoryId: row.categoryId || null,
-            categoryName: row.categoryId
-              ? categoryNameById.get(row.categoryId) ?? null
-              : null,
-          })),
+        items: toScannedReceiptItems(items, categoryNameById),
       })
 
       if (photo) {
@@ -367,65 +340,13 @@ const ScanReceipt = () => {
             </p>
           )}
 
-          <div>
-            <span className="field-label">Items</span>
-            <div className="space-y-1.5">
-              {items.map((row) => (
-                <div key={row.id} className="flex flex-wrap items-center gap-1.5">
-                  <input
-                    value={row.name}
-                    onChange={(e) =>
-                      updateItem(row.id, { name: e.target.value })
-                    }
-                    placeholder="Item"
-                    className="input min-w-[7rem] flex-1"
-                  />
-                  <input
-                    value={row.quantity}
-                    onChange={(e) =>
-                      updateItem(row.id, { quantity: e.target.value })
-                    }
-                    inputMode="numeric"
-                    className="input w-14 text-center"
-                    title="Quantity"
-                  />
-                  <input
-                    value={row.price}
-                    onChange={(e) =>
-                      updateItem(row.id, { price: e.target.value })
-                    }
-                    inputMode="decimal"
-                    placeholder="Price"
-                    className={`input w-24 ${flagged(row.price)}`}
-                  />
-                  <CategoryPicker
-                    kind="EXPENSE"
-                    value={row.categoryId}
-                    onChange={(categoryId) => updateItem(row.id, { categoryId })}
-                    className="select w-auto"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeItem(row.id)}
-                    className="text-xs text-muted underline hover:text-ink"
-                  >
-                    remove
-                  </button>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={addBlankItem}
-              className="mt-1.5 text-xs text-muted underline hover:text-ink"
-            >
-              + add item
-            </button>
-            <p className="mt-1 text-xs text-muted">
-              For anything bought at the same time but not on this receipt
-              (a different shop on the same trip).
-            </p>
-          </div>
+          <ItemRowsEditor
+            items={items}
+            onUpdate={updateItem}
+            onRemove={removeItem}
+            onAdd={addBlankItem}
+            addHint="For anything bought at the same time but not on this receipt (a different shop on the same trip)."
+          />
 
           {discountMinor != null && (
             <p className="text-xs text-muted">

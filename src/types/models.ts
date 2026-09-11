@@ -151,6 +151,8 @@ export interface Category extends SyncableEntity {
   normalizedName: string
   kind: CategoryKind
   archived: boolean
+  /** Picking this category switches entry to an itemized list, like a scanned receipt. */
+  tracksItems: boolean
   createdBy: string
 }
 

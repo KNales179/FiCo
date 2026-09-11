@@ -28,6 +28,7 @@ describe('item profiles (§10)', () => {
       normalizedName: 'groceries',
       kind: 'EXPENSE',
       archived: false,
+      tracksItems: false,
       createdBy: c.userId,
       syncStatus: 'PENDING',
       version: 1,

@@ -37,10 +37,11 @@ export interface MoneyContextValue {
   addCategory: (input: {
     name: string
     kind: CategoryKind
+    tracksItems?: boolean
   }) => Promise<void>
   editCategory: (
     id: string,
-    patch: { name?: string; archived?: boolean },
+    patch: { name?: string; archived?: boolean; tracksItems?: boolean },
   ) => Promise<void>
   removeCategory: (id: string) => Promise<void>
 }

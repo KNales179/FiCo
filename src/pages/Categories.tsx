@@ -8,6 +8,7 @@ const Categories = () => {
 
   const [name, setName] = useState('')
   const [kind, setKind] = useState<CategoryKind>('EXPENSE')
+  const [tracksItems, setTracksItems] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [error, setError] = useState('')
 
@@ -29,8 +30,9 @@ const Categories = () => {
     e.preventDefault()
     setError('')
     try {
-      await addCategory({ name, kind })
+      await addCategory({ name, kind, tracksItems })
       setName('')
+      setTracksItems(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add category')
     }
@@ -41,7 +43,10 @@ const Categories = () => {
       <h1 className="text-2xl font-semibold tracking-tight">Categories</h1>
       <p className="text-sm text-muted">
         Renaming or removing a category never changes transactions already
-        recorded — they keep the name they were saved with.
+        recorded — they keep the name they were saved with. A category marked{' '}
+        <strong>tracks items</strong> switches Quick Add to an itemized list
+        instead of one amount — useful for a grocery run or any batch
+        purchase.
       </p>
 
       {(['EXPENSE', 'INCOME'] as CategoryKind[]).map((k) => (
@@ -55,12 +60,26 @@ const Categories = () => {
                 key={c.id}
                 className="flex items-center justify-between py-1.5 text-sm"
               >
-                <span className={c.archived ? 'text-gray-400' : ''}>
+                <span className={c.archived ? 'text-muted' : ''}>
                   {c.name}
                   {c.archived && ' (archived)'}
+                  {c.tracksItems && (
+                    <span className="chip ml-2">tracks items</span>
+                  )}
                 </span>
                 {canEdit && (
                   <span className="flex gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void editCategory(c.id, {
+                          tracksItems: !c.tracksItems,
+                        })
+                      }
+                      className="text-muted underline"
+                    >
+                      {c.tracksItems ? 'stop tracking items' : 'track items'}
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -130,6 +149,16 @@ const Categories = () => {
             <option value="EXPENSE">expense</option>
             <option value="INCOME">income</option>
           </select>
+          {kind === 'EXPENSE' && (
+            <label className="flex items-center gap-1.5 text-xs text-muted">
+              <input
+                type="checkbox"
+                checked={tracksItems}
+                onChange={(e) => setTracksItems(e.target.checked)}
+              />
+              tracks items
+            </label>
+          )}
           <button type="submit" className="border px-3 py-1 text-sm">
             Add
           </button>
