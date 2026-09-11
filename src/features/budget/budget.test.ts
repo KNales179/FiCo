@@ -173,6 +173,16 @@ describe('budget planning (Roadmap Phase 26 feedback)', () => {
     expect(rec.weeklyCategories[0].categoryName).toBe('Groceries')
     expect(rec.weeklyCategories[0].weeklyMedianMinor).toBe(30000)
     expect(rec.weeklyCategories.find((w) => w.categoryName === 'Shopping')).toBeUndefined()
+
+    // Same data, from the Tipid-tips angle: Groceries (10 of 10 weeks) is a
+    // need; the one-off Laptop purchase (1 of 10 weeks) is a want worth
+    // mentioning as somewhere to cut — unlike weeklyCategories, it isn't
+    // dropped just for being infrequent.
+    const groceries = rec.categoryNecessity.find((c) => c.categoryName === 'Groceries')
+    expect(groceries?.necessity).toBe('need')
+    const shopping = rec.categoryNecessity.find((c) => c.categoryName === 'Shopping')
+    expect(shopping?.necessity).toBe('want')
+    expect(rec.savingsTips[0].categoryName).toBe('Shopping')
   })
 
   it('saveBudgetPlan creates then updates the same period, never duplicating it', async () => {

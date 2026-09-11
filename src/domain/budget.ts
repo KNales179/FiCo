@@ -172,36 +172,24 @@ export const detectTrend = (
   return 'flat'
 }
 
-export interface WeeklyCategorySpend {
-  categoryName: string
-  /** Median of this category's per-week totals over the sampled weeks. */
-  weeklyMedianMinor: number
+type WeeklyTransaction = {
+  occurredAt: string
+  amountMinor: number
+  categoryName?: string | null
+  type: string
+  sourceType: string
 }
 
 /**
- * Ranks categories by how much of a weekly habit they actually are, from a
- * space's own transaction history — "important/frequent" down to "rarely
- * bought", per the owner's ask, without a separate frequency calculation.
- *
  * Buckets each non-bill expense into which 7-day window (from `weekStartIso`)
- * it fell in, sums per category per week, then takes the *median* across
- * `weekCount` weeks. A category bought almost every week gets a median close
- * to a typical week's spend; one bought only occasionally has more zero
- * weeks than not, so its median comes out at or near 0 — which is exactly
- * "not a routine weekly cost", with no separate rule needed. Categories
- * whose median is 0 are dropped: nothing to recommend weekly for them.
+ * it fell in, and sums per category per week — the shared groundwork behind
+ * both `rankWeeklyCategories` and `classifyCategoryNecessity`.
  */
-export const rankWeeklyCategories = (
-  transactions: Array<{
-    occurredAt: string
-    amountMinor: number
-    categoryName?: string | null
-    type: string
-    sourceType: string
-  }>,
+const bucketWeeklySpend = (
+  transactions: WeeklyTransaction[],
   weekStartIso: string,
   weekCount: number,
-): WeeklyCategorySpend[] => {
+): Map<string, number[]> => {
   const weekStartMs = new Date(weekStartIso).getTime()
   const WEEK_MS = 7 * 24 * 60 * 60 * 1000
   const byCategory = new Map<string, number[]>()
@@ -220,6 +208,34 @@ export const rankWeeklyCategories = (
     byCategory.set(name, weeks)
   }
 
+  return byCategory
+}
+
+export interface WeeklyCategorySpend {
+  categoryName: string
+  /** Median of this category's per-week totals over the sampled weeks. */
+  weeklyMedianMinor: number
+}
+
+/**
+ * Ranks categories by how much of a weekly habit they actually are, from a
+ * space's own transaction history — "important/frequent" down to "rarely
+ * bought", per the owner's ask, without a separate frequency calculation.
+ *
+ * Sums per category per week, then takes the *median* across `weekCount`
+ * weeks. A category bought almost every week gets a median close to a
+ * typical week's spend; one bought only occasionally has more zero weeks
+ * than not, so its median comes out at or near 0 — which is exactly "not a
+ * routine weekly cost", with no separate rule needed. Categories whose
+ * median is 0 are dropped: nothing to recommend weekly for them.
+ */
+export const rankWeeklyCategories = (
+  transactions: WeeklyTransaction[],
+  weekStartIso: string,
+  weekCount: number,
+): WeeklyCategorySpend[] => {
+  const byCategory = bucketWeeklySpend(transactions, weekStartIso, weekCount)
+
   return [...byCategory.entries()]
     .map(([categoryName, weeks]) => ({
       categoryName,
@@ -228,6 +244,98 @@ export const rankWeeklyCategories = (
     .filter((c) => c.weeklyMedianMinor > 0)
     .sort((a, b) => b.weeklyMedianMinor - a.weeklyMedianMinor)
 }
+
+export type Necessity = 'need' | 'sometimes' | 'want'
+
+export interface CategoryNecessity {
+  categoryName: string
+  /** How many of the sampled weeks had any spend in this category at all. */
+  weeksWithPurchase: number
+  weekCount: number
+  /** weeksWithPurchase / weekCount. */
+  frequencyRatio: number
+  /** Total spend over the window, spread evenly across every sampled week (including the weeks with none) — a realistic "what this costs on average", not skewed by only counting the weeks it was actually bought. */
+  averageWeeklyMinor: number
+  necessity: Necessity
+}
+
+/** Bought at least this fraction of sampled weeks → a real weekly need. */
+const NEED_RATIO = 0.7
+/** Below this fraction → occasional enough to call a want, not a need. */
+const SOMETIMES_RATIO = 0.35
+
+/**
+ * Scores every non-bill expense category — including one-off and occasional
+ * ones that `rankWeeklyCategories` deliberately drops — by how much of a
+ * weekly *need* it actually is versus an occasional *want*, purely from how
+ * regularly it's actually bought (the owner's cousin's suggestion: chicken
+ * bought most weeks but sometimes skipped is a need; something bought a
+ * handful of times in ten weeks is a want, whatever it happens to cost when
+ * it is bought). This is what "Tipid tips" draws its cut-this-instead
+ * suggestions from — `rankWeeklyCategories` stays focused on seeding the
+ * weekly-staples list with genuine habits only.
+ */
+export const classifyCategoryNecessity = (
+  transactions: WeeklyTransaction[],
+  weekStartIso: string,
+  weekCount: number,
+): CategoryNecessity[] => {
+  const byCategory = bucketWeeklySpend(transactions, weekStartIso, weekCount)
+
+  return [...byCategory.entries()]
+    .map(([categoryName, weeks]) => {
+      const weeksWithPurchase = weeks.filter((w) => w > 0).length
+      const totalMinor = weeks.reduce((sum, w) => sum + w, 0)
+      const frequencyRatio = weekCount > 0 ? weeksWithPurchase / weekCount : 0
+      const necessity: Necessity =
+        frequencyRatio >= NEED_RATIO
+          ? 'need'
+          : frequencyRatio >= SOMETIMES_RATIO
+            ? 'sometimes'
+            : 'want'
+      return {
+        categoryName,
+        weeksWithPurchase,
+        weekCount,
+        frequencyRatio,
+        averageWeeklyMinor: Math.round(totalMinor / weekCount),
+        necessity,
+      }
+    })
+    .filter((c) => c.averageWeeklyMinor > 0)
+    .sort((a, b) => b.averageWeeklyMinor - a.averageWeeklyMinor)
+}
+
+export interface SavingsTip {
+  categoryName: string
+  weeksWithPurchase: number
+  weekCount: number
+  /** What skipping this category entirely would be worth, over the period's weeks. */
+  potentialMonthlyMinor: number
+}
+
+const MAX_TIPS = 5
+
+/**
+ * "Tipid tips": the `want`-classified categories worth actually mentioning,
+ * ranked by how much skipping each one would be worth over the period —
+ * "Tipid" tips, not a scold, so this stays capped to a handful rather than
+ * listing every occasional purchase someone's ever made.
+ */
+export const savingsTips = (
+  necessity: CategoryNecessity[],
+  weeks: number,
+): SavingsTip[] =>
+  necessity
+    .filter((c) => c.necessity === 'want')
+    .map((c) => ({
+      categoryName: c.categoryName,
+      weeksWithPurchase: c.weeksWithPurchase,
+      weekCount: c.weekCount,
+      potentialMonthlyMinor: c.averageWeeklyMinor * weeks,
+    }))
+    .sort((a, b) => b.potentialMonthlyMinor - a.potentialMonthlyMinor)
+    .slice(0, MAX_TIPS)
 
 /** How many weekly chunks a calendar month splits into. */
 export const weeksInPeriod = (period: string): number => {

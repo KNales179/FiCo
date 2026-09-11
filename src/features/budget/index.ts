@@ -8,6 +8,7 @@ import { enqueueMutation } from '../sync/enqueue'
 import type { MutationContext } from '../sync/context'
 import type { BudgetPlan, BudgetPlanItem } from '../../types/models'
 import {
+  classifyCategoryNecessity,
   detectTrend,
   findOverdueBills,
   medianMinor,
@@ -16,9 +17,13 @@ import {
   projectBillsForPeriod,
   rankWeeklyCategories,
   recommendBillAmount,
+  savingsTips,
+  weeksInPeriod,
+  type CategoryNecessity,
   type OverdueBill,
   type PaidAheadBill,
   type ProjectedBill,
+  type SavingsTip,
   type Trend,
   type WeeklyCategorySpend,
 } from '../../domain/budget'
@@ -43,6 +48,10 @@ export interface BudgetRecommendation {
   billTrends: Record<string, Trend | null>
   /** Groceries/Food/etc., ranked weekly-habit first, rare-purchase last (medians of ₱0 already excluded). */
   weeklyCategories: WeeklyCategorySpend[]
+  /** Every non-bill expense category scored need/sometimes/want by how regularly it's actually bought. */
+  categoryNecessity: CategoryNecessity[]
+  /** "Tipid tips" — the want-classified categories worth mentioning, with what skipping each would be worth this period. */
+  savingsTips: SavingsTip[]
 }
 
 const INCOME_LOOKBACK_MONTHS = 3
@@ -134,6 +143,11 @@ export const recommendBudget = async (
     weekStart,
     WEEKLY_LOOKBACK_WEEKS,
   )
+  const categoryNecessity = classifyCategoryNecessity(
+    allTransactionsInWindow,
+    weekStart,
+    WEEKLY_LOOKBACK_WEEKS,
+  )
 
   return {
     incomeMinor: medianMinor(monthlyIncome),
@@ -142,6 +156,8 @@ export const recommendBudget = async (
     paidAheadBills,
     billTrends,
     weeklyCategories,
+    categoryNecessity,
+    savingsTips: savingsTips(categoryNecessity, weeksInPeriod(period)),
   }
 }
 

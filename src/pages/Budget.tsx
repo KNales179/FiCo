@@ -649,8 +649,8 @@ const Budget = () => {
                     {formatMoney(requiredIncomeMinor)}
                   </span>{' '}
                   ({formatMoney(-allocation.remainingMinor)} more than what's
-                  set now) — or trim a bill, a planned item, or a staple
-                  instead.
+                  set now) — or trim a bill, a planned item, or a staple,
+                  or see the Tipid tips below for somewhere specific to cut.
                 </p>
                 {canEdit && (
                   <button
@@ -673,6 +673,53 @@ const Budget = () => {
               </Button>
             )}
             {saved && <p className="mt-2 text-xs text-success">Saved.</p>}
+          </Card>
+
+          <Card>
+            <h2 className="section-title">Tipid tips</h2>
+            <p className="mt-1 text-xs text-muted">
+              Not everything you spend on is a weekly need — these are
+              bought only occasionally, from how often you've actually
+              bought them, not a guess. Cutting one back is money that can
+              go to savings instead, whether or not the plan is tight this
+              month.
+            </p>
+            {recommendation.savingsTips.length === 0 ? (
+              <p className="mt-2 text-sm text-muted">
+                Nothing occasional enough to flag yet — everything recorded
+                looks like a real weekly need.
+              </p>
+            ) : (
+              <>
+                <p className="mt-2 text-sm">
+                  Cutting all of these could free up about{' '}
+                  <span className="font-medium text-brand">
+                    {formatMoney(
+                      recommendation.savingsTips.reduce(
+                        (sum, t) => sum + t.potentialMonthlyMinor,
+                        0,
+                      ),
+                    )}
+                  </span>{' '}
+                  this month.
+                </p>
+                <ul className="mt-2 divide-y divide-line">
+                  {recommendation.savingsTips.map((tip) => (
+                    <li key={tip.categoryName} className="flex items-center justify-between py-1.5 text-sm">
+                      <span>
+                        {tip.categoryName}
+                        <span className="ml-2 text-xs text-muted">
+                          bought {tip.weeksWithPurchase} of the last {tip.weekCount} weeks
+                        </span>
+                      </span>
+                      <span className="tabular-nums text-muted">
+                        ~{formatMoney(tip.potentialMonthlyMinor)}/mo if skipped
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </Card>
         </>
       )}

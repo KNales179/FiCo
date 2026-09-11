@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   allocateBudget,
   averageMinor,
+  classifyCategoryNecessity,
   detectTrend,
   findOverdueBills,
   medianMinor,
@@ -11,6 +12,7 @@ import {
   projectBillsForPeriod,
   rankWeeklyCategories,
   recommendBillAmount,
+  savingsTips,
   weeksInPeriod,
 } from './budget'
 import type { Bill } from '../types/models'
@@ -221,6 +223,85 @@ describe('rankWeeklyCategories', () => {
       4,
     )
     expect(rows).toHaveLength(0)
+  })
+})
+
+describe('classifyCategoryNecessity / savingsTips', () => {
+  const txn = (over: {
+    occurredAt: string
+    amountMinor: number
+    categoryName?: string | null
+  }) => ({
+    type: 'EXPENSE',
+    sourceType: 'MANUAL',
+    categoryName: null,
+    ...over,
+  })
+
+  it('scores a near-every-week purchase as a need, an occasional one as a want', () => {
+    const rows = classifyCategoryNecessity(
+      [
+        // Chicken: bought 8 of 10 weeks — a real, if imperfect, weekly need.
+        ...['09-02', '09-09', '09-16', '09-23', '09-30', '10-07', '10-14', '10-28'].map((d) =>
+          txn({ occurredAt: `2026-${d}T00:00:00Z`, amountMinor: 4000, categoryName: 'Chicken' }),
+        ),
+        // Fancy coffee: bought only 2 of 10 weeks — occasional, a want.
+        txn({ occurredAt: '2026-09-04T00:00:00Z', amountMinor: 2500, categoryName: 'Coffee' }),
+        txn({ occurredAt: '2026-10-16T00:00:00Z', amountMinor: 2500, categoryName: 'Coffee' }),
+      ],
+      '2026-09-01T00:00:00Z',
+      10,
+    )
+
+    const chicken = rows.find((r) => r.categoryName === 'Chicken')
+    expect(chicken?.necessity).toBe('need')
+    expect(chicken?.weeksWithPurchase).toBe(8)
+
+    const coffee = rows.find((r) => r.categoryName === 'Coffee')
+    expect(coffee?.necessity).toBe('want')
+    expect(coffee?.weeksWithPurchase).toBe(2)
+    // Total ₱50 over 10 sampled weeks, spread evenly, including the weeks with none.
+    expect(coffee?.averageWeeklyMinor).toBe(500)
+  })
+
+  it('does not drop an occasional category the way rankWeeklyCategories does', () => {
+    const rows = classifyCategoryNecessity(
+      [txn({ occurredAt: '2026-09-04T00:00:00Z', amountMinor: 50000, categoryName: 'Gadget' })],
+      '2026-09-01T00:00:00Z',
+      4,
+    )
+    expect(rows.find((r) => r.categoryName === 'Gadget')?.necessity).toBe('want')
+  })
+
+  it('excludes bill payments and income, same as rankWeeklyCategories', () => {
+    const rows = classifyCategoryNecessity(
+      [
+        { ...txn({ occurredAt: '2026-09-02T00:00:00Z', amountMinor: 1000, categoryName: 'Bills' }), sourceType: 'BILL_PAYMENT' },
+        { ...txn({ occurredAt: '2026-09-02T00:00:00Z', amountMinor: 5000 }), type: 'INCOME' },
+      ],
+      '2026-09-01T00:00:00Z',
+      4,
+    )
+    expect(rows).toHaveLength(0)
+  })
+
+  it('savingsTips ranks want categories by what skipping them is worth, capped to a handful', () => {
+    const necessity = classifyCategoryNecessity(
+      [
+        txn({ occurredAt: '2026-09-04T00:00:00Z', amountMinor: 2500, categoryName: 'Coffee' }),
+        txn({ occurredAt: '2026-09-11T00:00:00Z', amountMinor: 100000, categoryName: 'Concert ticket' }),
+        // A real weekly need — never a tip candidate even though it costs more overall.
+        ...['09-02', '09-09', '09-16', '09-23', '09-30', '10-07', '10-14', '10-28'].map((d) =>
+          txn({ occurredAt: `2026-${d}T00:00:00Z`, amountMinor: 40000, categoryName: 'Rent-like need' }),
+        ),
+      ],
+      '2026-09-01T00:00:00Z',
+      10,
+    )
+    const tips = savingsTips(necessity, 4)
+    expect(tips.find((t) => t.categoryName === 'Rent-like need')).toBeUndefined()
+    expect(tips[0].categoryName).toBe('Concert ticket') // biggest one-off want, ranked first
+    expect(tips[0].potentialMonthlyMinor).toBe(10000 * 4)
   })
 })
 
