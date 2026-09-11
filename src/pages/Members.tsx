@@ -1,31 +1,29 @@
-import {
-  useCallback,
-  useEffect,
-  useState,
-  type FormEvent,
-} from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useSpace } from '../hooks/useSpace'
 import { useAuth } from '../hooks/useAuth'
 import {
   inviteToSpace,
+  leaveSpace,
   listInvitations,
   listMembers,
   removeMember,
   revokeInvitation,
-  updateMemberRole,
+  transferOwnership,
   type PendingInvitation,
 } from '../services/spaceService'
 import { isNetworkError } from '../lib/api'
 import type { SpaceMember } from '../types/space'
+import { PageHeader, Card, Button, Input, Alert, EmptyState } from '../components/ui'
 
 const Members = () => {
-  const { activeSpace } = useSpace()
+  const { activeSpace, refresh } = useSpace()
   const { user } = useAuth()
+  const navigate = useNavigate()
 
   const [members, setMembers] = useState<SpaceMember[]>([])
   const [invites, setInvites] = useState<PendingInvitation[]>([])
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState<'EDITOR' | 'VIEWER'>('VIEWER')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -69,7 +67,7 @@ const Members = () => {
     setMessage('')
     setError('')
     try {
-      const res = await inviteToSpace(spaceId, email, role)
+      const res = await inviteToSpace(spaceId, email)
       setMessage(res.message)
       setEmail('')
       await load()
@@ -78,143 +76,161 @@ const Members = () => {
     }
   }
 
+  const makeOwner = async (member: SpaceMember) => {
+    if (!spaceId) return
+    const name = member.displayName || member.username || 'this member'
+    if (
+      !window.confirm(
+        `Make ${name} the owner of ${activeSpace?.name}? You'll stay on as a member and lose owner-only controls.`,
+      )
+    )
+      return
+    try {
+      await transferOwnership(spaceId, member.userId)
+      await Promise.all([load(), refresh()])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not transfer ownership')
+    }
+  }
+
+  const leave = async () => {
+    if (!spaceId) return
+    if (!window.confirm(`Leave ${activeSpace?.name}? You'll lose access to it.`))
+      return
+    try {
+      await leaveSpace(spaceId)
+      await refresh()
+      navigate('/')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not leave')
+    }
+  }
+
   if (!activeSpace) return null
 
   if (!isFamily) {
     return (
-      <div className="mx-auto max-w-xl">
-        <h1 className="text-2xl font-semibold tracking-tight">Members</h1>
-        <p className="mt-2 text-sm text-muted">
-          {activeSpace.name} is a personal space — it's just you. Create a
-          family space from the switcher to share with others.
-        </p>
+      <div>
+        <PageHeader
+          title="Members"
+          description={`${activeSpace.name} is a personal Finance — it's just you.`}
+        />
+        <EmptyState title="Nothing to manage here">
+          Create a shared Finance from the switcher to plan money with other
+          people.
+        </EmptyState>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight">{activeSpace.name} · members</h1>
-      {error && (
-        <p role="alert" className="text-sm text-danger">
-          {error}
-        </p>
-      )}
-      {loading && <p className="text-sm text-muted">Loading…</p>}
+    <div className="space-y-4">
+      <PageHeader
+        title={`${activeSpace.name} · members`}
+        description="Everyone here is a full participant. Only the owner can invite, remove, or hand over the Finance."
+        actions={
+          !isOwner ? (
+            <Button variant="ghost" onClick={() => void leave()}>
+              Leave Finance
+            </Button>
+          ) : undefined
+        }
+      />
 
-      <section className="card">
-        <ul className="divide-y">
+      {error && <Alert>{error}</Alert>}
+      {loading && <p className="muted">Loading…</p>}
+
+      <Card>
+        <ul className="divide-y divide-line">
           {members.map((m) => (
             <li
               key={m.userId}
-              className="flex items-center justify-between py-2 text-sm"
+              className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm"
             >
               <span>
                 {m.displayName || m.username || m.userId}
-                {m.userId === user?.id && ' (you)'}
-              </span>
-              <span className="flex items-center gap-2">
-                {isOwner && m.role !== 'OWNER' ? (
-                  <select
-                    value={m.role}
-                    onChange={(e) =>
-                      void updateMemberRole(
-                        spaceId!,
-                        m.userId,
-                        e.target.value as 'EDITOR' | 'VIEWER',
-                      ).then(load)
-                    }
-                    className="border px-1 py-0.5 text-xs"
-                  >
-                    <option value="EDITOR">editor</option>
-                    <option value="VIEWER">viewer</option>
-                  </select>
-                ) : (
-                  <span className="text-xs text-muted">
-                    {m.role.toLowerCase()}
-                  </span>
+                {m.userId === user?.id && (
+                  <span className="text-muted"> (you)</span>
                 )}
-                {isOwner && m.role !== 'OWNER' && (
+                {m.role === 'OWNER' && (
+                  <span className="chip ml-2">owner</span>
+                )}
+              </span>
+
+              {isOwner && m.role !== 'OWNER' && (
+                <span className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void makeOwner(m)}
+                    className="text-xs text-muted underline hover:text-ink"
+                  >
+                    make owner
+                  </button>
                   <button
                     type="button"
                     onClick={() =>
                       void removeMember(spaceId!, m.userId).then(load)
                     }
-                    className="text-xs text-muted underline"
+                    className="text-xs text-muted underline hover:text-ink"
                   >
                     remove
                   </button>
-                )}
-              </span>
+                </span>
+              )}
             </li>
           ))}
         </ul>
-      </section>
+      </Card>
 
       {isOwner && invites.length > 0 && (
-        <section className="card">
-          <h2 className="text-sm font-semibold">Pending invitations</h2>
-          <ul className="mt-2 divide-y">
+        <Card>
+          <h2 className="section-title">Pending invitations</h2>
+          <ul className="mt-2 divide-y divide-line">
             {invites.map((inv) => (
               <li
                 key={inv.id}
                 className="flex items-center justify-between py-2 text-sm"
               >
-                <span>
-                  {inv.email}{' '}
-                  <span className="text-xs text-muted">
-                    · {inv.role.toLowerCase()}
-                  </span>
-                </span>
+                <span>{inv.email}</span>
                 <button
                   type="button"
                   onClick={() =>
                     void revokeInvitation(spaceId!, inv.id).then(load)
                   }
-                  className="text-xs text-muted underline"
+                  className="text-xs text-muted underline hover:text-ink"
                 >
                   revoke
                 </button>
               </li>
             ))}
           </ul>
-        </section>
+        </Card>
       )}
 
       {isOwner && (
-        <form onSubmit={invite} className="card">
-          <h2 className="text-sm font-semibold">Invite someone</h2>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="their email"
-              required
-              className="min-w-[12rem] flex-1 border px-2 py-1 text-sm"
-            />
-            <select
-              value={role}
-              onChange={(e) =>
-                setRole(e.target.value as 'EDITOR' | 'VIEWER')
-              }
-              className="border px-2 py-1 text-sm"
-            >
-              <option value="VIEWER">viewer</option>
-              <option value="EDITOR">editor</option>
-            </select>
-            <button type="submit" className="border px-3 py-1 text-sm">
-              Invite
-            </button>
-          </div>
-          <p className="mt-1 text-xs text-muted">
-            If they already use Fico they're added straight away; otherwise
-            they join automatically when they sign up with that email.
-          </p>
-          {message && (
-            <p className="mt-2 text-xs text-success">{message}</p>
-          )}
-        </form>
+        <Card>
+          <form onSubmit={invite}>
+            <h2 className="section-title">Invite someone</h2>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="their email"
+                required
+                className="min-w-[12rem] flex-1"
+              />
+              <Button type="submit" variant="primary">
+                Invite
+              </Button>
+            </div>
+            <p className="mt-1 text-xs text-muted">
+              If they already use Fico they're added straight away; otherwise
+              they join automatically when they sign up with that email.
+            </p>
+            {message && <p className="mt-2 text-xs text-success">{message}</p>}
+          </form>
+        </Card>
       )}
     </div>
   )

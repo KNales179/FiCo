@@ -40,8 +40,7 @@ export const BillsProvider = ({ children }: { children: ReactNode }) => {
     void ensureDeviceId().then(setDeviceId).catch(() => setDeviceId(null))
   }, [])
 
-  const canEdit =
-    activeSpace?.role === 'OWNER' || activeSpace?.role === 'EDITOR'
+  const canEdit = Boolean(activeSpace?.role)
 
   const ctx: MutationContext | null =
     activeSpaceId && user?.id && deviceId

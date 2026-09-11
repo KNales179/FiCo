@@ -74,7 +74,9 @@ export interface Space extends SyncableEntity {
   ownerId: string
 }
 
-export type MembershipRole = 'OWNER' | 'EDITOR' | 'VIEWER'
+/** No view-only role — every member is a full participant; the owner alone
+ *  can remove members, transfer ownership, and delete the Finance. */
+export type MembershipRole = 'OWNER' | 'MEMBER'
 export type MembershipStatus = 'ACTIVE' | 'INVITED' | 'REVOKED'
 
 export interface Membership extends SyncableEntity {

@@ -20,8 +20,8 @@ export const useMutationContext = (): {
     void ensureDeviceId().then(setDeviceId).catch(() => setDeviceId(null))
   }, [])
 
-  const canEdit =
-    activeSpace?.role === 'OWNER' || activeSpace?.role === 'EDITOR'
+  // Every member of a Finance can edit it — there is no view-only role.
+  const canEdit = Boolean(activeSpace?.role)
 
   const ctx =
     activeSpaceId && user?.id && deviceId

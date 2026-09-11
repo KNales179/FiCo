@@ -61,8 +61,7 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
       .catch(() => setDeviceId(null))
   }, [])
 
-  const canEdit =
-    activeSpace?.role === 'OWNER' || activeSpace?.role === 'EDITOR'
+  const canEdit = Boolean(activeSpace?.role)
 
   const ctx: MoneyCtx | null =
     activeSpaceId && user?.id && deviceId

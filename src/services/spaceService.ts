@@ -1,5 +1,4 @@
 import { api } from '../lib/api'
-import type { MembershipRole } from '../types/models'
 import type {
   MembersResponse,
   SpaceResponse,
@@ -37,24 +36,17 @@ export const leaveSpace = (spaceId: string) =>
 export const listMembers = (spaceId: string) =>
   api<MembersResponse>(`/spaces/${spaceId}/members`)
 
-export const addMember = (
-  spaceId: string,
-  identifier: string,
-  role: 'EDITOR' | 'VIEWER',
-) =>
+export const addMember = (spaceId: string, identifier: string) =>
   api<{ success: boolean; message: string }>(
     `/spaces/${spaceId}/members`,
-    { method: 'POST', body: { identifier, role } },
+    { method: 'POST', body: { identifier } },
   )
 
-export const updateMemberRole = (
-  spaceId: string,
-  userId: string,
-  role: Exclude<MembershipRole, 'OWNER'>,
-) =>
-  api<{ success: boolean; message: string }>(
-    `/spaces/${spaceId}/members/${userId}`,
-    { method: 'PATCH', body: { role } },
+/** Owner-only: hand the Finance to another member. The old owner stays on as a member. */
+export const transferOwnership = (spaceId: string, userId: string) =>
+  api<{ success: boolean; message: string; ownerId: string }>(
+    `/spaces/${spaceId}/transfer-ownership`,
+    { method: 'POST', body: { userId } },
   )
 
 export const removeMember = (spaceId: string, userId: string) =>
@@ -66,7 +58,6 @@ export const removeMember = (spaceId: string, userId: string) =>
 export interface PendingInvitation {
   id: string
   email: string
-  role: 'EDITOR' | 'VIEWER'
   status: string
   expiresAt: string
   createdAt: string
@@ -77,18 +68,14 @@ export const listInvitations = (spaceId: string) =>
     `/spaces/${spaceId}/invitations`,
   )
 
-export const inviteToSpace = (
-  spaceId: string,
-  email: string,
-  role: 'EDITOR' | 'VIEWER',
-) =>
+export const inviteToSpace = (spaceId: string, email: string) =>
   api<{
     success: boolean
     message: string
     addedExistingUser: boolean
   }>(`/spaces/${spaceId}/invitations`, {
     method: 'POST',
-    body: { email, role },
+    body: { email },
   })
 
 export const revokeInvitation = (
