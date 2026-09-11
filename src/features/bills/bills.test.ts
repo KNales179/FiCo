@@ -12,6 +12,7 @@ import {
   listElectricity,
   payBill,
   restoreBill,
+  updateBill,
 } from './index'
 
 const c = ctx()
@@ -87,7 +88,6 @@ describe('bills (Phase 11)', () => {
     })
     await payBill(c, bill.id, { amountMinor: 30000, accountId: cash.id })
 
-    const { updateBill } = await import('./index')
     await updateBill(c, bill.id, {
       nextDueDate: '2026-05-01T00:00:00.000Z',
     })
@@ -132,7 +132,6 @@ describe('bills (Phase 11)', () => {
     expect(payments.filter((p) => !p.deletedAt)).toHaveLength(0)
 
     // Now the corrected due date can be edited and paid for real.
-    const { updateBill } = await import('./index')
     await updateBill(c, bill.id, { nextDueDate: '2026-09-30T00:00:00.000Z' })
     const { bill: paidAgain } = await payBill(c, bill.id, {
       amountMinor: 310000,
@@ -181,6 +180,53 @@ describe('bills (Phase 11)', () => {
     expect(await listBills(c.spaceId)).toHaveLength(1)
     // The payment made before deletion is still there, untouched.
     expect(await listBillPayments(bill.id)).toHaveLength(1)
+  })
+
+  it('a bill created with a category passes it on to the transactions it creates', async () => {
+    const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+    const bill = await createBill(c, {
+      name: 'Wifi',
+      recurrence: 'MONTHLY',
+      billType: 'FIXED',
+      nextDueDate: '2026-05-01T00:00:00.000Z',
+      categoryId: 'cat-1',
+      categoryName: 'Bills',
+    })
+    await payBill(c, bill.id, { amountMinor: 129900, accountId: cash.id })
+
+    const expenses = await listTransactions(c.spaceId, { type: 'EXPENSE' })
+    expect(expenses[0].categoryName).toBe('Bills')
+  })
+
+  it('setting a category on an existing bill only shapes the next payment, never past ones (§10)', async () => {
+    const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+    const bill = await createBill(c, {
+      name: 'Electric',
+      recurrence: 'MONTHLY',
+      billType: 'VARIABLE',
+      nextDueDate: '2026-09-01T00:00:00.000Z',
+    })
+    // Paid before the bill ever had a category — recorded uncategorized.
+    await payBill(c, bill.id, { amountMinor: 401500, accountId: cash.id })
+
+    const updated = await updateBill(c, bill.id, {
+      categoryId: 'cat-1',
+      categoryName: 'Bills',
+    })
+    expect(updated.categoryName).toBe('Bills')
+
+    // The already-recorded expense keeps the snapshot it was created
+    // with — still no category — exactly like an item profile's category
+    // change never rewrites its own past purchases.
+    const pastExpense = (await listTransactions(c.spaceId, { type: 'EXPENSE' }))[0]
+    expect(pastExpense.categoryName).toBeNull()
+
+    // The *next* payment, made after the category was set, picks it up.
+    await payBill(c, bill.id, { amountMinor: 420000, accountId: cash.id })
+    const nextExpense = (await listTransactions(c.spaceId, { type: 'EXPENSE' })).find(
+      (t) => t.amountMinor === 420000,
+    )
+    expect(nextExpense?.categoryName).toBe('Bills')
   })
 
   it('an electricity-tracking bill stores a meter record on payment', async () => {

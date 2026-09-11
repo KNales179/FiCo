@@ -31,6 +31,7 @@ export interface NewBillInput {
   billType: BillType
   nextDueDate: string
   expectedAmountMinor?: number | null
+  categoryId?: string | null
   categoryName?: string | null
   paymentAccountId?: string | null
   tracksElectricity?: boolean
@@ -76,7 +77,7 @@ export const createBill = async (
     billType: input.billType,
     expectedAmountMinor: input.expectedAmountMinor ?? null,
     nextDueDate: input.nextDueDate,
-    categoryId: null,
+    categoryId: input.categoryId ?? null,
     categoryName: input.categoryName ?? null,
     paymentAccountId: input.paymentAccountId ?? null,
     active: true,
@@ -101,12 +102,18 @@ export const updateBill = async (
       | 'billType'
       | 'expectedAmountMinor'
       | 'nextDueDate'
+      | 'categoryId'
       | 'categoryName'
       | 'paymentAccountId'
       | 'active'
     >
   >,
 ): Promise<Bill> => {
+  // Deliberately does not touch this bill's already-recorded payments: a
+  // transaction's category is a snapshot taken at the time it was created
+  // and is never rewritten afterward (§10, same rule an item profile's
+  // category follows) — setting or changing a bill's category here only
+  // shapes the *next* payment onward, not history.
   const bill = await billRepository.update(id, {
     ...patch,
     syncStatus: 'PENDING',

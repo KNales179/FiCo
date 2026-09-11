@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSpace } from '../hooks/useSpace'
+import { useAuth } from '../hooks/useAuth'
+import { useBills } from '../hooks/useBills'
+import { listMembers } from '../services/spaceService'
 import {
   computeAnalytics,
   type Analytics as AnalyticsData,
 } from '../features/analytics'
 import type { AnalyticsPeriod } from '../domain/analytics'
+import { compareElectricityPeriods } from '../domain/electricity'
 import { formatMoney } from '../domain/money'
 
 const PERIODS: { value: AnalyticsPeriod; label: string }[] = [
@@ -30,11 +34,29 @@ const Bar = ({
   </div>
 )
 
+/** Percent-change badge — up in red, down in green, "—" when there's nothing to compare against. */
+const PctChange = ({ pct }: { pct: number | null }) => {
+  if (pct == null) return <span className="text-muted">—</span>
+  const rounded = Math.round(pct)
+  if (rounded === 0) return <span className="text-muted">steady</span>
+  const up = rounded > 0
+  return (
+    <span className={up ? 'text-danger' : 'text-success'}>
+      {up ? '↑' : '↓'} {Math.abs(rounded)}%
+    </span>
+  )
+}
+
 const Analytics = () => {
   const { activeSpaceId } = useSpace()
+  const { user } = useAuth()
+  const { electricity } = useBills()
   const [period, setPeriod] = useState<AnalyticsPeriod>('THIS_MONTH')
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [memberNames, setMemberNames] = useState<Map<string, string>>(
+    new Map(),
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -57,6 +79,24 @@ const Analytics = () => {
     }
   }, [activeSpaceId, period])
 
+  useEffect(() => {
+    if (!activeSpaceId) return
+    listMembers(activeSpaceId)
+      .then((res) => {
+        setMemberNames(
+          new Map(
+            res.members.map((m) => [
+              m.userId,
+              m.displayName || m.username || 'Someone',
+            ]),
+          ),
+        )
+      })
+      // Names are a nice-to-have here — offline or a hiccup just falls
+      // back to showing the raw id rather than breaking the page.
+      .catch(() => {})
+  }, [activeSpaceId])
+
   const maxMonth = useMemo(
     () =>
       data
@@ -68,6 +108,15 @@ const Analytics = () => {
           )
         : 1,
     [data],
+  )
+
+  // Electricity specifically — not "bills in general": a FIXED bill's
+  // amount never moves, so there's nothing to compare month to month, but
+  // electricity's amount *and* consumption both move independently, and
+  // most recent first is more useful here than the trip down memory lane.
+  const electricityTrend = useMemo(
+    () => compareElectricityPeriods(electricity).slice(-6).reverse(),
+    [electricity],
   )
 
   return (
@@ -160,6 +209,93 @@ const Analytics = () => {
               </ul>
             )}
           </section>
+
+          {data.byMember.length > 1 && (
+            <section className="card">
+              <h2 className="text-sm font-semibold">Spending by person</h2>
+              <p className="mt-1 text-xs text-muted">
+                Who recorded the expense, not who it was for.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {data.byMember.map((m) => (
+                  <li key={m.userId} className="text-sm">
+                    <div className="flex justify-between">
+                      <span>
+                        {m.userId === user?.id
+                          ? 'You'
+                          : memberNames.get(m.userId) ?? 'Someone'}
+                      </span>
+                      <span className="text-muted">
+                        {formatMoney(m.amountMinor, data.currency)} ·{' '}
+                        {Math.round(m.pct)}%
+                      </span>
+                    </div>
+                    <Bar pct={m.pct} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {electricityTrend.length > 0 && (
+            <section className="card">
+              <h2 className="text-sm font-semibold">Electricity</h2>
+              <p className="mt-1 text-xs text-muted">
+                A fixed bill's amount never moves, so there's nothing to
+                track there — electricity's amount and usage each move on
+                their own, and telling them apart is the useful part.
+              </p>
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="text-left text-muted">
+                    <tr>
+                      <th className="py-1 pr-2">Period</th>
+                      <th className="py-1 pr-2 text-right">Amount</th>
+                      <th className="py-1 pr-2 text-right">vs last month</th>
+                      <th className="py-1 pr-2 text-right">kWh</th>
+                      <th className="py-1 pr-2 text-right">vs last month</th>
+                      <th className="py-1 text-right">vs last year</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {electricityTrend.map((r) => (
+                      <tr key={r.billingPeriod} className="border-t">
+                        <td className="py-1 pr-2">{r.billingPeriod}</td>
+                        <td className="py-1 pr-2 text-right">
+                          {formatMoney(r.amountMinor)}
+                        </td>
+                        <td className="py-1 pr-2 text-right">
+                          <PctChange pct={r.amountVsPriorPct} />
+                        </td>
+                        <td className="py-1 pr-2 text-right">
+                          {r.consumptionKwh ?? '—'}
+                        </td>
+                        <td className="py-1 pr-2 text-right">
+                          <PctChange pct={r.kwhVsPriorPct} />
+                        </td>
+                        <td className="py-1 text-right">
+                          {r.amountVsLastYearPct == null &&
+                          r.kwhVsLastYearPct == null ? (
+                            <span className="text-muted">—</span>
+                          ) : (
+                            <span className="inline-flex gap-1">
+                              <PctChange pct={r.amountVsLastYearPct} />
+                              <span className="text-muted">/</span>
+                              <PctChange pct={r.kwhVsLastYearPct} />
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-2 text-xs text-muted">
+                Amount up but kWh flat means the rate went up, not your
+                usage — amount and kWh both up means you're using more.
+              </p>
+            </section>
+          )}
 
           {data.byMonth.length > 1 && (
             <section className="card">

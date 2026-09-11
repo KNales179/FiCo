@@ -3,7 +3,32 @@ import { useBills } from '../hooks/useBills'
 import { useMoney } from '../hooks/useMoney'
 import { formatMoney, parseAmountToMinor } from '../domain/money'
 import { costPerKwhMinor } from '../domain/electricity'
+import CategoryPicker from '../components/money/CategoryPicker'
 import type { Bill, BillPayment, BillRecurrence, BillType } from '../types/models'
+
+/** Inline category picker on an existing bill's row — sets the category for
+ *  this bill's *next* payment onward; already-recorded payments keep the
+ *  category (or lack of one) they were actually created with (§10). */
+const BillCategoryPicker = ({ bill }: { bill: Bill }) => {
+  const { updateBill } = useBills()
+  const { categories } = useMoney()
+
+  const setCategory = (categoryId: string) => {
+    const categoryName = categoryId
+      ? categories.find((c) => c.id === categoryId)?.name ?? null
+      : null
+    void updateBill(bill.id, { categoryId: categoryId || null, categoryName })
+  }
+
+  return (
+    <CategoryPicker
+      kind="EXPENSE"
+      value={bill.categoryId ?? ''}
+      onChange={setCategory}
+      className="select w-auto text-xs"
+    />
+  )
+}
 
 const PayRow = ({ bill }: { bill: Bill }) => {
   const { payBill } = useBills()
@@ -183,6 +208,7 @@ const Bills = () => {
     restoreBill,
     deletePayment,
   } = useBills()
+  const { categories } = useMoney()
   const [electricityBusyId, setElectricityBusyId] = useState<string | null>(null)
   const [electricityError, setElectricityError] = useState('')
   const [restoringId, setRestoringId] = useState<string | null>(null)
@@ -213,6 +239,9 @@ const Bills = () => {
   const [expected, setExpected] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [tracksElectricity, setTracksElectricity] = useState(false)
+  const [categoryId, setCategoryId] = useState(
+    () => categories.find((c) => c.name === 'Bills')?.id ?? '',
+  )
   const [formError, setFormError] = useState('')
 
   const horizon = useMemo(() => {
@@ -250,6 +279,10 @@ const Bills = () => {
         nextDueDate: due,
         expectedAmountMinor: expectedMinor,
         tracksElectricity,
+        categoryId: categoryId || null,
+        categoryName: categoryId
+          ? categories.find((c) => c.id === categoryId)?.name ?? null
+          : null,
       })
       setName('')
       setExpected('')
@@ -291,7 +324,7 @@ const Bills = () => {
         <ul className="mt-2 divide-y">
           {active.map((bill) => (
             <li key={bill.id} className="py-2 text-sm">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <span>
                   {bill.name}
                   <span className="ml-2 text-xs text-muted">
@@ -300,22 +333,25 @@ const Bills = () => {
                       ` · ~${formatMoney(bill.expectedAmountMinor)}`}
                   </span>
                 </span>
-                {canEdit && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          `Delete "${bill.name}"? This removes the whole bill, not just one payment — its payment history stays intact and can be restored later. To fix one wrong payment instead, use "delete" under that payment's own history below.`,
+                <span className="flex items-center gap-2">
+                  {canEdit && <BillCategoryPicker bill={bill} />}
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Delete "${bill.name}"? This removes the whole bill, not just one payment — its payment history stays intact and can be restored later. To fix one wrong payment instead, use "delete" under that payment's own history below.`,
+                          )
                         )
-                      )
-                        void deleteBill(bill.id)
-                    }}
-                    className="text-xs text-muted underline"
-                  >
-                    delete
-                  </button>
-                )}
+                          void deleteBill(bill.id)
+                      }}
+                      className="text-xs text-muted underline"
+                    >
+                      delete
+                    </button>
+                  )}
+                </span>
               </div>
               <History billId={bill.id} canEdit={canEdit} />
             </li>
@@ -460,6 +496,12 @@ const Bills = () => {
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
+              className="border px-2 py-1"
+            />
+            <CategoryPicker
+              kind="EXPENSE"
+              value={categoryId}
+              onChange={setCategoryId}
               className="border px-2 py-1"
             />
             <label className="flex items-center gap-1">

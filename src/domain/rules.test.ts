@@ -165,6 +165,7 @@ describe('analytics summarize', () => {
       occurredAt: '2026-03-05T00:00:00.000Z',
       categoryName: null,
       sourceType: 'MANUAL',
+      createdBy: 'u1',
       ...over,
     }) as Transaction
 
@@ -187,6 +188,19 @@ describe('analytics summarize', () => {
     expect(s.billSpendMinor).toBe(20000)
     expect(s.byCategory[0]).toMatchObject({ name: 'Food', amountMinor: 30000 })
     expect(Math.round(s.expensePctOfIncome)).toBe(50)
+  })
+
+  it('ranks who spent more in a shared Finance, by whoever recorded the expense', () => {
+    const s = summarize([
+      t({ amountMinor: 30000, createdBy: 'u1' }),
+      t({ amountMinor: 10000, createdBy: 'u2' }),
+      t({ type: 'INCOME', amountMinor: 100000, createdBy: 'u1' }), // never counted
+      t({ type: 'TRANSFER', amountMinor: 5000, createdBy: 'u1' }), // never counted
+    ])
+    expect(s.byMember).toEqual([
+      { userId: 'u1', amountMinor: 30000, pct: 75 },
+      { userId: 'u2', amountMinor: 10000, pct: 25 },
+    ])
   })
 
   it('resolveRange this-year spans the calendar year', () => {

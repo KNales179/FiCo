@@ -68,6 +68,12 @@ export interface CategoryTotal {
   pct: number
 }
 
+export interface MemberTotal {
+  userId: string
+  amountMinor: number
+  pct: number
+}
+
 export interface MonthTotal {
   month: string
   incomeMinor: number
@@ -83,6 +89,8 @@ export interface AnalyticsSummary {
   /** Expense as a share of income, 0–100+ (can exceed 100 when overspending). */
   expensePctOfIncome: number
   byCategory: CategoryTotal[]
+  /** Who's spending more, in a shared Finance — by whoever recorded the expense, not who it was "for". */
+  byMember: MemberTotal[]
   byMonth: MonthTotal[]
   billSpendMinor: number
   transactionCount: number
@@ -105,6 +113,7 @@ export const summarize = (
   let billSpendMinor = 0
 
   const categoryMap = new Map<string, number>()
+  const memberMap = new Map<string, number>()
   const monthMap = new Map<string, MonthTotal>()
 
   for (const txn of transactions) {
@@ -126,6 +135,10 @@ export const summarize = (
       }
       const cat = txn.categoryName?.trim() || 'Uncategorized'
       categoryMap.set(cat, (categoryMap.get(cat) ?? 0) + txn.amountMinor)
+      memberMap.set(
+        txn.createdBy,
+        (memberMap.get(txn.createdBy) ?? 0) + txn.amountMinor,
+      )
     } else if (txn.type === 'TRANSFER') {
       transferMinor += txn.amountMinor
     }
@@ -136,6 +149,14 @@ export const summarize = (
   const byCategory: CategoryTotal[] = [...categoryMap.entries()]
     .map(([name, amountMinor]) => ({
       name,
+      amountMinor,
+      pct: expenseMinor > 0 ? (amountMinor / expenseMinor) * 100 : 0,
+    }))
+    .sort((a, b) => b.amountMinor - a.amountMinor)
+
+  const byMember: MemberTotal[] = [...memberMap.entries()]
+    .map(([userId, amountMinor]) => ({
+      userId,
       amountMinor,
       pct: expenseMinor > 0 ? (amountMinor / expenseMinor) * 100 : 0,
     }))
@@ -154,6 +175,7 @@ export const summarize = (
     expensePctOfIncome:
       incomeMinor > 0 ? (expenseMinor / incomeMinor) * 100 : 0,
     byCategory,
+    byMember,
     byMonth,
     billSpendMinor,
     transactionCount: transactions.filter(
