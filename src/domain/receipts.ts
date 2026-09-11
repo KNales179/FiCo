@@ -36,9 +36,13 @@ export interface ReceiptParseResult {
   rawText: string
 }
 
-// Requires an explicit 2-digit cents suffix — a bare digit run ("02530" from
-// a TIN, "8" from an item count) is common receipt boilerplate, not money,
-// and real printed amounts almost always carry ".00".
+// Requires an explicit 2-digit cents suffix. This is a deliberate choice, not
+// laziness: if OCR drops the decimal *point* but keeps the digits ("80.25"
+// read as "8025"), a parser that accepts bare digit runs would silently
+// record ₱8,025 instead of ₱80.25 — a confidently wrong number, which is
+// worse than the field coming back blank (§ receipt scanning: never guess).
+// A dropped decimal point is the more common OCR failure than a dropped
+// digit, so this errs toward "blank and flagged" over "wrong by 100x".
 const MONEY = /(\d{1,3}(?:[,\s]\d{3})*[.,]\d{2}|\d+[.,]\d{2})\s*$/
 
 /** Pull the trailing money-looking number off a line, in minor units. */
@@ -59,14 +63,23 @@ const nonEmptyLines = (text: string): string[] =>
 // Total / tax
 // ---------------------------------------------------------------------------
 
-const TOTAL_KEYWORDS = /\b(grand\s*total|amount\s*due|total\s*due|total)\b/i
-const SUBTOTAL_KEYWORD = /\bsub\s*-?\s*total\b/i
-const TAX_KEYWORDS = /\b(vat|gst|tax)\b/i
+// Thermal-receipt OCR from a phone photo routinely confuses O/0 and V/U —
+// "TOTAL" and "VAT" tolerate exactly those, the two that actually showed up
+// in a real scan ("T0TAL", "UAT (12%)").
+const TOTAL_KEYWORDS =
+  /\bgrand\s*t[o0]tal\b|\bamount\s*due\b|\btotal\s*due\b|\bt[o0]tal\b/i
+const SUBTOTAL_KEYWORD = /\bsub\s*-?\s*t[o0]tal\b/i
+const TAX_KEYWORDS = /\b[uv]at\b|\bgst\b|\btax\b/i
 // A receipt's tax breakdown often lists "Vat Exempt Sale" / "Vatable Sale"
-// alongside the real "VAT (12%)" line — none of those are the tax amount.
-const TAX_EXCLUDE = /\b(exempt|zero[\s-]?rated|vatable)\b/i
-const DISCOUNT_KEYWORDS = /\b(discount|promo)\b/i
+// alongside the real "VAT (12%)" line — neither is the tax amount. Nor is a
+// "VAT-REG TIN ..." registration line, which contains the word "VAT" too.
+const TAX_EXCLUDE =
+  /\bexempt\b|\bzero[\s-]?rated\b|\b[uv]atable\b|\breg\b|\btin\b/i
+const DISCOUNT_KEYWORDS = /\bdiscount\b|\bpromo\b/i
 const ITEM_COUNT_KEYWORDS = /\bitem.?s?\b/i
+// Serial / TIN / permit / invoice-number lines — never a total, tax, or item.
+const REFERENCE_LINE_KEYWORDS =
+  /\btin\b|\bpermit\b|\baccredtn\b|\binvoice\s*no\b|\bmin\b|\bsn#/i
 
 /** Trailing whole number — no decimal required, since a count is never money. */
 const trailingInteger = (line: string): number | null => {
@@ -92,7 +105,8 @@ const findLastMatch = (
 ): number | null => {
   let found: number | null = null
   for (const line of lines) {
-    if (keyword.test(line) && !(exclude && exclude.test(line))) {
+    const excluded = REFERENCE_LINE_KEYWORDS.test(line) || (exclude && exclude.test(line))
+    if (keyword.test(line) && !excluded) {
       const amount = trailingAmountMinor(line)
       if (amount !== null) found = amount
     }
@@ -104,7 +118,7 @@ const findLastMatch = (
 const sumMatches = (lines: string[], keyword: RegExp): number | null => {
   let sum: number | null = null
   for (const line of lines) {
-    if (keyword.test(line)) {
+    if (keyword.test(line) && !REFERENCE_LINE_KEYWORDS.test(line)) {
       const amount = trailingAmountMinor(line)
       if (amount !== null) sum = (sum ?? 0) + amount
     }
@@ -189,8 +203,28 @@ const findMerchant = (lines: string[]): string | null => {
 // Line items
 // ---------------------------------------------------------------------------
 
-const SKIP_LINE =
-  /\b(total|subtotal|sub-total|tax|vat|gst|discount|promo|change|cash|card|balance|thank you|receipt|invoice|cashier|qty|quantity|purchased|item.?s|date|time|payment|amount due|approved|reference|terminal|vatable|exempt|zero.rated|tin|permit|accredtn|invoice no)\b/i
+// Anything recognized as the total/tax/discount/item-count/reference fields
+// above is by definition not an item — built from those same patterns (plus
+// generic receipt boilerplate) so this can't drift out of sync with them the
+// way two independently-maintained keyword lists eventually will.
+const BOILERPLATE_KEYWORDS =
+  /\bchange\b|\bcash\b|\bcard\b|\bbalance\b|\bthank\s*you\b|\breceipt\b|\binvoice\b|\bcashier\b|\bqty\b|\bquantity\b|\bdate\b|\btime\b|\bpayment\b|\bapproved\b|\breference\b|\bterminal\b/i
+
+const SKIP_LINE = new RegExp(
+  [
+    TOTAL_KEYWORDS,
+    SUBTOTAL_KEYWORD,
+    TAX_KEYWORDS,
+    TAX_EXCLUDE,
+    DISCOUNT_KEYWORDS,
+    ITEM_COUNT_KEYWORDS,
+    REFERENCE_LINE_KEYWORDS,
+    BOILERPLATE_KEYWORDS,
+  ]
+    .map((r) => r.source)
+    .join('|'),
+  'i',
+)
 
 // A serial/TIN/reference number is a long run of digits with no separators —
 // six or more in a row is never a printed price (those break into groups of
@@ -199,12 +233,11 @@ const SKIP_LINE =
 // next to labels this parser has never seen before.
 const LOOKS_LIKE_A_CODE = /\d{6,}/
 
-// Decimals are optional here (unlike `MONEY` above) — OCR noise sometimes
-// drops a trailing digit or the decimal point itself, and losing a real
-// item is worse than the rare reference number this doesn't otherwise catch
-// (guarded against separately via `LOOKS_LIKE_A_CODE`).
+// Same reasoning as `MONEY` above: an explicit cents suffix, so a dropped
+// decimal point comes back as a blank, flagged price rather than a number
+// 100x too large.
 const ITEM_LINE =
-  /^(?:(\d+(?:\.\d+)?)\s*[xX]\s*)?(.{2,40}?)\s{1,}(\d{1,3}(?:[,\s]\d{3})*(?:[.,]\d{2})?)\s*$/
+  /^(?:(\d+(?:\.\d+)?)\s*[xX]\s*)?(.{2,40}?)\s{1,}(\d{1,3}(?:[,\s]\d{3})*[.,]\d{2})\s*$/
 
 /** A standalone "qty*unitPrice" line, printed above the item's name on some
  *  receipts (e.g. Philippine retail format: "3*15.000" then "EMBORG… 105.00"). */

@@ -56,6 +56,9 @@ const ScanReceipt = () => {
   const [printedItemCount, setPrintedItemCount] = useState<number | null>(
     null,
   )
+  /** The exact text the OCR pass produced — shown so a mis-read can be
+   *  reported precisely instead of guessed at from the parsed result. */
+  const [rawText, setRawText] = useState('')
 
   const [title, setTitle] = useState('')
   const [date, setDate] = useState('')
@@ -81,6 +84,7 @@ const ScanReceipt = () => {
     setPhoto(null)
     setDiscountMinor(null)
     setPrintedItemCount(null)
+    setRawText('')
     setTitle('')
     setDate('')
     setAmount('')
@@ -123,6 +127,7 @@ const ScanReceipt = () => {
       )
       setDiscountMinor(parsed.discountMinor)
       setPrintedItemCount(parsed.itemCount)
+      setRawText(parsed.rawText)
       setItems(await toDraftItems(ctx.spaceId, parsed.items))
       setAccountId(defaultAccount?.id ?? activeAccounts[0].id)
       setStage('review')
@@ -397,6 +402,17 @@ const ScanReceipt = () => {
           >
             {stage === 'saving' ? 'Saving…' : 'Save receipt'}
           </Button>
+
+          {rawText && (
+            <details className="text-xs text-muted">
+              <summary className="cursor-pointer">
+                Show what the scan actually read
+              </summary>
+              <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg border border-line bg-panel-2 p-2 text-[11px]">
+                {rawText}
+              </pre>
+            </details>
+          )}
         </div>
       )}
     </Card>

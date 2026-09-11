@@ -165,16 +165,39 @@ Zero Rated Sale                     0.00
     expect(r.items).toEqual([{ name: 'Milk', quantity: 1, priceMinor: 4500 }])
   })
 
-  it('still reads an item whose price has no decimal point (OCR noise)', () => {
-    // A real item must not be dropped just because the cents got misread or
-    // dropped -- only reference numbers (6+ run-on digits) are excluded.
+  it('drops an item rather than risk a 100x-wrong price when OCR loses the decimal point', () => {
+    // "80.25" read as "8025" would record 8,025 instead of 80.25 if a bare
+    // digit run were accepted -- a confidently wrong number is worse than a
+    // missing row (which "+ add item" can fix by hand).
     const r = parseReceiptText('Soda 45\nTOTAL 45.00')
-    expect(r.items).toEqual([{ name: 'Soda', quantity: 1, priceMinor: 4500 }])
+    expect(r.items).toHaveLength(0)
   })
 
   it('the receipt\'s printed item count is separate from the parsed rows', () => {
     const r = parseReceiptText('Milk 45.00\nITEM/S PURCHASED : 3\nTOTAL 45.00')
     expect(r.itemCount).toBe(3)
     expect(r.items).toHaveLength(1)
+  })
+
+  // A real scan of the same receipt produced this exact noise: "VAT (12%)"
+  // read as "UAT (128)" (V misread as U, "%" dropped and merged into the
+  // digits) and "TOTAL" read as "T0TAL" (O misread as zero) — both common
+  // thermal-receipt OCR confusions, not edge cases.
+  it('tolerates the V/U and O/0 misreads a real scan produced', () => {
+    const r = parseReceiptText('GAR WHEAT BREAD 400   80.25\nT0TAL   385.25\nUAT (128)   41.28')
+
+    expect(r.totalMinor).toBe(38525)
+    expect(r.taxMinor).toBe(4128)
+    // The garbled VAT line must not become a fake "UAT (128)" item.
+    expect(r.items).toEqual([{ name: 'GAR WHEAT BREAD 400', quantity: 1, priceMinor: 8025 }])
+  })
+
+  it('leaves total/tax null rather than treat a decimal-less OCR read as pesos', () => {
+    // If the decimal point in "385.25" is lost, the digits alone ("38525")
+    // could mean 385.25 or (wrongly, if taken at face value) 38,525 -- ambiguous
+    // enough that flagging it blank beats guessing either way.
+    const r = parseReceiptText('TOTAL 38525\nVAT 4128')
+    expect(r.totalMinor).toBeNull()
+    expect(r.taxMinor).toBeNull()
   })
 })
