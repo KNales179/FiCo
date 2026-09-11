@@ -44,43 +44,24 @@ export interface ScannedReceiptResult {
 }
 
 /**
- * Records a receipt that was scanned and reviewed (Roadmap Phase 26
- * feedback). One EXPENSE for the confirmed total, tagged `SHOPPING_LIST` so
- * it rolls up and expands exactly like a manually completed shopping trip
- * (§ shopping -> expenses); the parsed line items become that list's items,
- * already checked and purchased, so "last time" suggestions and price
- * history pick them up the same as any other purchase.
+ * Resolve each item's profile (learning a new category choice for *future*
+ * purchases, never rewriting history — §10), pick the trip's overall
+ * category from what the items share, and record the one EXPENSE for the
+ * confirmed total. Shared by `recordScannedReceipt` (an actual scanned
+ * receipt, which also builds a shopping-list record out of the result) and
+ * `recordItemizedExpense` (Quick Add's batch entry, which doesn't — see
+ * there for why).
  *
  * The transaction amount is always what the person confirmed on the review
  * screen, not a sum of the (best-effort) parsed items — those can be
- * incomplete or wrong without making the recorded amount wrong. The
- * transaction's category is the one most of the reviewed items share
- * (`pickTripCategory`) — the same rule a manually completed trip uses — so a
- * receipt full of groceries reads as "Groceries" even though each item kept
- * its own specific category underneath.
+ * incomplete or wrong without making the recorded amount wrong.
  */
-export const recordScannedReceipt = async (
+const recordItemizedTransaction = async (
   ctx: MutationContext,
   input: ScannedReceiptInput,
-): Promise<ScannedReceiptResult> => {
-  const list = await shoppingListRepository.create({
-    spaceId: ctx.spaceId,
-    title: input.title.trim() || 'Scanned receipt',
-    status: 'COMPLETED',
-    plannedBudgetMinor: null,
-    plannedAt: null,
-    completedAt: new Date().toISOString(),
-    visibility: 'SPACE',
-    createdBy: ctx.userId,
-    syncStatus: 'PENDING',
-    version: 1,
-  })
-  await enqueueMutation(ctx, 'shoppingList', list.id, 'CREATE', list)
-
-  // Resolve each item's profile first, and remember a category the person
-  // picked that differs from what Fico already had on file — that becomes
-  // the item's new default for *future* purchases, never rewriting history
-  // (§10), matching how a manually completed trip categorizes items.
+  sourceType: Transaction['sourceType'],
+  sourceId: string | null,
+) => {
   const resolved = await Promise.all(
     input.items.map(async (row) => {
       const profile = await resolveItemProfile(ctx, row.name)
@@ -115,11 +96,57 @@ export const recordScannedReceipt = async (
     categoryId: tripCategory.categoryId,
     categoryName: tripCategory.categoryName,
     occurredAt: input.occurredAt,
-    sourceType: 'SHOPPING_LIST',
-    sourceId: list.id,
+    sourceType,
+    sourceId,
   })
 
   const purchasedAt = new Date().toISOString()
+  for (const { row, profileId } of resolved) {
+    if (row.priceMinor != null && row.priceMinor > 0) {
+      await recordPurchasePrice(ctx, {
+        itemProfileId: profileId,
+        amountMinor: row.priceMinor,
+        purchasedAt,
+        transactionId: txn.id,
+      })
+    }
+  }
+
+  return { txn, resolved }
+}
+
+/**
+ * Records a receipt that was scanned and reviewed (Roadmap Phase 26
+ * feedback). One EXPENSE for the confirmed total, tagged `SHOPPING_LIST` so
+ * it rolls up and expands exactly like a manually completed shopping trip
+ * (§ shopping -> expenses); the parsed line items become that list's items,
+ * already checked and purchased, so "last time" suggestions and price
+ * history pick them up the same as any other purchase.
+ */
+export const recordScannedReceipt = async (
+  ctx: MutationContext,
+  input: ScannedReceiptInput,
+): Promise<ScannedReceiptResult> => {
+  const list = await shoppingListRepository.create({
+    spaceId: ctx.spaceId,
+    title: input.title.trim() || 'Scanned receipt',
+    status: 'COMPLETED',
+    plannedBudgetMinor: null,
+    plannedAt: null,
+    completedAt: new Date().toISOString(),
+    visibility: 'SPACE',
+    createdBy: ctx.userId,
+    syncStatus: 'PENDING',
+    version: 1,
+  })
+  await enqueueMutation(ctx, 'shoppingList', list.id, 'CREATE', list)
+
+  const { txn, resolved } = await recordItemizedTransaction(
+    ctx,
+    input,
+    'SHOPPING_LIST',
+    list.id,
+  )
 
   for (const { row, profileId } of resolved) {
     const item = await shoppingItemRepository.create({
@@ -139,16 +166,25 @@ export const recordScannedReceipt = async (
       version: 1,
     })
     await enqueueMutation(ctx, 'shoppingItem', item.id, 'CREATE', item)
-
-    if (row.priceMinor != null && row.priceMinor > 0) {
-      await recordPurchasePrice(ctx, {
-        itemProfileId: profileId,
-        amountMinor: row.priceMinor,
-        purchasedAt,
-        transactionId: txn.id,
-      })
-    }
   }
 
   return { transaction: txn, listId: list.id }
+}
+
+/**
+ * Quick Add's batch entry for a category marked "tracks items" (Roadmap
+ * Phase 26 feedback) — a grocery run logged straight from the dashboard,
+ * not from the Shopping page. Records the one EXPENSE and still teaches
+ * each item's category/price history, exactly like a scanned receipt does,
+ * but deliberately does **not** create a shopping list or its items: the
+ * Shopping page is the one that feeds the dashboard (completing a list
+ * there becomes a transaction), never the other way around — a dashboard
+ * entry has no shopping list to attach to and shouldn't invent one.
+ */
+export const recordItemizedExpense = async (
+  ctx: MutationContext,
+  input: ScannedReceiptInput,
+): Promise<{ transaction: Transaction }> => {
+  const { txn } = await recordItemizedTransaction(ctx, input, 'MANUAL', null)
+  return { transaction: txn }
 }

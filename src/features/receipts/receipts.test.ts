@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ctx, withDB } from '../../test/helpers'
-import { categoryRepository } from '../../repositories'
+import { categoryRepository, shoppingItemRepository, shoppingListRepository } from '../../repositories'
 import { createAccount, computeSpaceBalances, listTransactions } from '../money'
 import { listItems } from '../shopping/items'
-import { recordScannedReceipt } from './index'
+import { recordItemizedExpense, recordScannedReceipt } from './index'
 
 const c = ctx()
 
@@ -155,5 +155,56 @@ describe('recordScannedReceipt (receipt scanning)', () => {
 
     expect(transaction.amountMinor).toBe(10000)
     expect(await listItems(listId)).toHaveLength(0)
+  })
+})
+
+describe('recordItemizedExpense (Quick Add batch entry, Roadmap Phase 26 feedback)', () => {
+  beforeEach(withDB)
+
+  it('records the expense and still learns item category/price history, but creates no shopping list', async () => {
+    const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+    const groceries = await categoryRepository.create({
+      spaceId: c.spaceId,
+      name: 'Groceries',
+      normalizedName: 'groceries',
+      kind: 'EXPENSE',
+      archived: false,
+      tracksItems: true,
+      createdBy: c.userId,
+      syncStatus: 'PENDING',
+      version: 1,
+    })
+
+    const { transaction } = await recordItemizedExpense(c, {
+      accountId: cash.id,
+      title: 'Sari-sari store',
+      occurredAt: '2026-05-01',
+      amountMinor: 15000,
+      items: [
+        {
+          name: 'Rice',
+          quantity: 2,
+          priceMinor: 15000,
+          categoryId: groceries.id,
+          categoryName: 'Groceries',
+        },
+      ],
+    })
+
+    expect(transaction.amountMinor).toBe(15000)
+    expect(transaction.sourceType).toBe('MANUAL')
+    expect(transaction.categoryName).toBe('Groceries')
+
+    // The whole point: adding a batch entry from the dashboard must never
+    // show up as a shopping list or an "already bought" item to check off.
+    expect(await shoppingListRepository.listBySpace(c.spaceId)).toHaveLength(0)
+    expect(await shoppingItemRepository.getAll()).toHaveLength(0)
+
+    // But it still teaches the item's category and price history, same as
+    // a scanned receipt would, so "last time" suggestions keep working.
+    const { suggestForName } = await import('../items')
+    const suggestion = await suggestForName(c.spaceId, 'Rice')
+    expect(suggestion?.category).toBe('Groceries')
+    expect(suggestion?.lastPriceMinor).toBe(15000)
   })
 })

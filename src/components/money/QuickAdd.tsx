@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { useMoney } from '../../hooks/useMoney'
 import { useMutationContext } from '../../hooks/useMutationContext'
 import { formatMoney, parseAmountToMinor } from '../../domain/money'
-import { recordScannedReceipt } from '../../features/receipts'
+import { recordItemizedExpense } from '../../features/receipts'
 import { Button } from '../ui'
 import CategoryPicker from './CategoryPicker'
 import ItemRowsEditor from './ItemRowsEditor'
@@ -96,7 +96,7 @@ const QuickAdd = () => {
 
       setBusy(true)
       try {
-        await recordScannedReceipt(ctx, {
+        await recordItemizedExpense(ctx, {
           accountId,
           title,
           occurredAt: new Date().toISOString(),

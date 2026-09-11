@@ -2,6 +2,7 @@ import { accountRepository, transactionRepository } from '../../repositories'
 import type { Account, AccountType } from '../../types/models'
 import type { MoneyContext } from './context'
 import { enqueueMutation } from './enqueue'
+import { recordTransaction } from './transactions'
 
 export interface NewAccountInput {
   name: string
@@ -38,12 +39,17 @@ export const createAccount = async (
     )
   }
 
+  // A starting balance is represented as an actual INCOME transaction (below)
+  // rather than stored directly on the account, so it's real money that
+  // shows up everywhere money is supposed to show up — analytics, income
+  // recommendations, recent activity — not just baked invisibly into the
+  // balance. `openingBalanceMinor` stays 0 on the record itself.
   const account = await accountRepository.create({
     spaceId: ctx.spaceId,
     name: input.name.trim(),
     type: input.type,
     currency: (input.currency ?? 'PHP').toUpperCase(),
-    openingBalanceMinor: input.openingBalanceMinor ?? 0,
+    openingBalanceMinor: 0,
     status: 'ACTIVE',
     isDefault: makeDefault,
     syncStatus: 'PENDING',
@@ -51,6 +57,18 @@ export const createAccount = async (
   })
 
   await enqueueMutation(ctx, 'account', account.id, 'CREATE', account)
+
+  if (input.openingBalanceMinor && input.openingBalanceMinor > 0) {
+    await recordTransaction(ctx, {
+      type: 'INCOME',
+      amountMinor: input.openingBalanceMinor,
+      title: 'Starting balance',
+      accountId: account.id,
+      sourceType: 'OPENING_BALANCE',
+      sourceId: account.id,
+    })
+  }
+
   return account
 }
 

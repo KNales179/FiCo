@@ -118,6 +118,7 @@ export type TransactionSourceType =
   | 'SHOPPING_ITEM'
   | 'SHOPPING_LIST'
   | 'BILL_PAYMENT'
+  | 'OPENING_BALANCE'
 
 /** SPACE = every member sees it; PRIVATE = only the creator (Product Spec §22). */
 export type RecordVisibility = 'SPACE' | 'PRIVATE'

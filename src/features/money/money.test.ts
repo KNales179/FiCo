@@ -167,6 +167,41 @@ describe('money engine (Roadmap Phase 6 integrity)', () => {
     expect(ops).toContain('CREATE:transaction')
   })
 
+  it('a starting balance is real income, not a hidden field — shows up, is counted once', async () => {
+    const cash = await createAccount(c, {
+      name: 'Cash',
+      type: 'CASH',
+      openingBalanceMinor: 500000,
+    })
+
+    // Not silently baked into the account record...
+    expect(cash.openingBalanceMinor).toBe(0)
+
+    // ...it's an actual, visible INCOME transaction instead.
+    const txns = await listTransactions(c.spaceId, { type: 'INCOME' })
+    expect(txns).toHaveLength(1)
+    expect(txns[0]).toMatchObject({
+      title: 'Starting balance',
+      amountMinor: 500000,
+      accountId: cash.id,
+      sourceType: 'OPENING_BALANCE',
+    })
+
+    // And the balance is the same either way — counted once, not twice.
+    const bal = await computeSpaceBalances(c.spaceId)
+    expect(bal.accounts[0].balanceMinor).toBe(500000)
+  })
+
+  it('no starting-balance transaction is created when there is nothing to start with', async () => {
+    await createAccount(c, { name: 'Cash', type: 'CASH' })
+    await createAccount(c, {
+      name: 'Bank',
+      type: 'BANK',
+      openingBalanceMinor: 0,
+    })
+    expect(await listTransactions(c.spaceId, { type: 'INCOME' })).toHaveLength(0)
+  })
+
   it('first account is default; setDefaultAccount is exclusive', async () => {
     const bank = await createAccount(c, { name: 'Bank', type: 'BANK' })
     const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })

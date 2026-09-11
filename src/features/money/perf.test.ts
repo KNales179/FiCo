@@ -52,9 +52,11 @@ describe('performance — large transaction history (Phase 26)', () => {
     const elapsed = performance.now() - start
 
     expect(recent).toHaveLength(50)
-    // Newest first.
-    expect(recent[0].title).toBe('txn 4999')
-    expect(recent[49].title).toBe('txn 4950')
+    // Newest first — the account's own starting-balance transaction (dated
+    // "now", ahead of every 2020-dated seed row) is newer than all of them.
+    expect(recent[0].title).toBe('Starting balance')
+    expect(recent[1].title).toBe('txn 4999')
+    expect(recent[49].title).toBe('txn 4951')
     for (let i = 1; i < recent.length; i += 1) {
       expect(recent[i - 1].occurredAt >= recent[i].occurredAt).toBe(true)
     }
