@@ -201,20 +201,41 @@ type UpgradeTx = IDBPTransaction<FicoDB, StoreName[], 'versionchange'>
  */
 function createMissingStores(db: UpgradeDB, tx: UpgradeTx): void {
   for (const definition of STORE_DEFINITIONS) {
-    // Schema-only operations: work through the raw IDB types so the declarative
-    // loop isn't fighting idb's per-store generics.
-    const store = (
-      db.objectStoreNames.contains(definition.name)
-        ? tx.objectStore(definition.name)
-        : db.createObjectStore(definition.name, {
-            keyPath: definition.keyPath,
-          })
-    ) as unknown as IDBObjectStore
+    try {
+      const alreadyExists = db.objectStoreNames.contains(definition.name)
+      // TEMPORARY DEBUG LOG — see which branch each store takes.
+      console.log(
+        `[fico/db DEBUG] store "${definition.name}":`,
+        alreadyExists ? 'already exists' : 'creating',
+      )
 
-    for (const index of definition.indexes ?? []) {
-      if (!store.indexNames.contains(index.name)) {
-        store.createIndex(index.name, index.keyPath, index.options)
+      // Schema-only operations: work through the raw IDB types so the
+      // declarative loop isn't fighting idb's per-store generics.
+      const store = (
+        alreadyExists
+          ? tx.objectStore(definition.name)
+          : db.createObjectStore(definition.name, {
+              keyPath: definition.keyPath,
+            })
+      ) as unknown as IDBObjectStore
+
+      for (const index of definition.indexes ?? []) {
+        if (!store.indexNames.contains(index.name)) {
+          console.log(
+            `[fico/db DEBUG]   creating index "${index.name}" on "${definition.name}"`,
+          )
+          store.createIndex(index.name, index.keyPath, index.options)
+        }
       }
+    } catch (err) {
+      // TEMPORARY — a throw here should abort the whole upgrade transaction
+      // per the IndexedDB spec, but log loudly first in case that's not
+      // actually what's happening in practice.
+      console.error(
+        `[fico/db DEBUG] FAILED creating store/index for "${definition.name}":`,
+        err,
+      )
+      throw err
     }
   }
 }

@@ -2,6 +2,12 @@ import { deleteDB, openDB, type IDBPDatabase } from 'idb'
 import { DB_NAME, DB_VERSION, type FicoDB } from './schema'
 import { runMigrations } from './migrations'
 
+// TEMPORARY DEBUG LOG — proves which build of this module the browser is
+// actually running, since a stale cache/service worker would silently keep
+// serving an older DB_VERSION with no visible symptom otherwise. Remove once
+// the missing-store issue is confirmed fixed.
+console.log('[fico/db DEBUG] database.ts loaded, DB_VERSION =', DB_VERSION)
+
 let dbPromise: Promise<IDBPDatabase<FicoDB>> | null = null
 
 /**
@@ -10,9 +16,22 @@ let dbPromise: Promise<IDBPDatabase<FicoDB>> | null = null
  */
 export function getDB(): Promise<IDBPDatabase<FicoDB>> {
   if (!dbPromise) {
+    console.log('[fico/db DEBUG] opening database, requested version =', DB_VERSION)
     dbPromise = openDB<FicoDB>(DB_NAME, DB_VERSION, {
       async upgrade(db, oldVersion, newVersion, tx) {
+        console.log(
+          '[fico/db DEBUG] upgrade callback firing: oldVersion =',
+          oldVersion,
+          'newVersion =',
+          newVersion,
+          'stores before =',
+          [...db.objectStoreNames],
+        )
         await runMigrations(db, oldVersion, newVersion ?? DB_VERSION, tx)
+        console.log(
+          '[fico/db DEBUG] upgrade callback done. stores after =',
+          [...db.objectStoreNames],
+        )
       },
       blocked() {
         console.warn(
@@ -30,6 +49,14 @@ export function getDB(): Promise<IDBPDatabase<FicoDB>> {
         console.warn('[fico/db] Connection terminated unexpectedly; will reopen on next use.')
         dbPromise = null
       },
+    })
+    void dbPromise.then((db) => {
+      console.log(
+        '[fico/db DEBUG] connection ready. actual version =',
+        db.version,
+        'stores =',
+        [...db.objectStoreNames],
+      )
     })
   }
 
