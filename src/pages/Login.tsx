@@ -92,12 +92,6 @@ const Login = () => {
             Create one
           </Link>
         </p>
-        {/* TEMPORARY — remove this link alongside DevResetPassword.tsx. */}
-        <p className="mt-2 text-xs text-muted">
-          <Link to="/dev-reset-password" className="underline">
-            Locked out? Temporary password reset
-          </Link>
-        </p>
       </div>
     </main>
   )

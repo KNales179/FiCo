@@ -14,8 +14,6 @@ import ConnectionStatus from './components/ConnectionStatus'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Home from './pages/Home'
-// TEMPORARY — remove this import and its route once real password reset ships.
-import DevResetPassword from './pages/DevResetPassword'
 
 // Secondary routes are split out of the initial bundle (Roadmap Phase 26).
 const Shopping = lazy(() => import('./pages/Shopping'))
@@ -44,11 +42,6 @@ const App = () => {
                     <Routes>
                       <Route path="/login" element={<Login />} />
                       <Route path="/register" element={<Register />} />
-                      {/* TEMPORARY — remove alongside DevResetPassword.tsx. */}
-                      <Route
-                        path="/dev-reset-password"
-                        element={<DevResetPassword />}
-                      />
 
                       <Route element={<ProtectedRoute />}>
                         <Route element={<AppLayout />}>
