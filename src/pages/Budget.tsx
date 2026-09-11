@@ -219,6 +219,12 @@ const Budget = () => {
     })
   }, [recommendation, incomeMinor, includedOverdueBills, plannedItems, weeklyStaples, period])
 
+  // Bills + planned + staples×weeks — what income would need to be for
+  // remainingMinor to land at exactly 0, i.e. the "close the gap" figure.
+  const requiredIncomeMinor = allocation
+    ? allocation.incomeMinor - allocation.remainingMinor
+    : 0
+
   const toggleOverdueBill = (billId: string) =>
     setIncludedOverdueBillIds((prev) => {
       const next = new Set(prev)
@@ -435,13 +441,29 @@ const Budget = () => {
                 <dt className="text-muted">− Other planned expenses</dt>
                 <dd className="tabular-nums">{formatMoney(allocation.plannedTotalMinor)}</dd>
               </div>
-              <div className="flex justify-between">
-                <dt className="text-muted">
-                  − Weekly staples ({formatMoney(allocation.weeklyStaplesTotalMinor)}/wk × {allocation.weeks})
-                </dt>
-                <dd className="tabular-nums">
-                  {formatMoney(allocation.weeklyStaplesTotalMinor * allocation.weeks)}
-                </dd>
+              <div>
+                <details>
+                  <summary className="flex cursor-pointer list-none justify-between">
+                    <span className="text-muted">
+                      − Weekly staples ({formatMoney(allocation.weeklyStaplesTotalMinor)}/wk × {allocation.weeks})
+                    </span>
+                    <span className="tabular-nums">
+                      {formatMoney(allocation.weeklyStaplesTotalMinor * allocation.weeks)}
+                    </span>
+                  </summary>
+                  {weeklyStaples.length > 0 ? (
+                    <ul className="mt-1 space-y-0.5 pl-3 text-xs text-muted">
+                      {weeklyStaples.map((s) => (
+                        <li key={s.id} className="flex justify-between">
+                          <span>{s.name}</span>
+                          <span className="tabular-nums">{formatMoney(s.amountMinor)}/wk</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-1 pl-3 text-xs text-muted">Nothing listed.</p>
+                  )}
+                </details>
               </div>
               <div className="flex justify-between border-t border-line pt-1 font-medium">
                 <dt>Left over</dt>
@@ -462,10 +484,34 @@ const Budget = () => {
             </dl>
 
             {allocation.overBudget && (
-              <p className="mt-2 text-sm text-danger">
-                Bills, planned items and staples alone come to more than the
-                expected income — something will need to move or wait.
-              </p>
+              <div className="mt-2 space-y-1.5">
+                <p className="text-sm text-danger">
+                  Bills, planned items and staples alone come to more than the
+                  expected income — something will need to move or wait.
+                </p>
+                <p className="text-xs text-muted">
+                  To cover all of it as planned, expected income would need
+                  to be at least{' '}
+                  <span className="font-medium text-ink">
+                    {formatMoney(requiredIncomeMinor)}
+                  </span>{' '}
+                  ({formatMoney(-allocation.remainingMinor)} more than what's
+                  set now) — or trim a bill, a planned item, or a staple
+                  instead.
+                </p>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIncomeAuto(false)
+                      setIncomeInput((requiredIncomeMinor / 100).toFixed(2))
+                    }}
+                    className="text-xs text-brand underline"
+                  >
+                    Use {formatMoney(requiredIncomeMinor)} instead
+                  </button>
+                )}
+              </div>
             )}
 
             {canEdit && (
