@@ -1,8 +1,30 @@
 import { metadataRepository, MetadataKeys } from '../repositories/metadataRepository'
 import { getDB } from './database'
 import { DB_VERSION } from './schema'
+import { STORE_DEFINITIONS } from './migrations'
 
 let initPromise: Promise<void> | null = null
+
+/**
+ * A version bump normally guarantees every store in `STORE_DEFINITIONS`
+ * exists — but at least one browser was seen completing an upgrade
+ * (version bumped) without actually creating the new store, which then has
+ * no way to be created until the *next* version bump. This can't repair
+ * itself (IndexedDB only runs `upgrade()` on a real version increase), but
+ * logging it clearly beats the cryptic native "object store was not found"
+ * exception whatever code eventually hits the missing store.
+ */
+const checkStoresPresent = (db: { objectStoreNames: DOMStringList }): void => {
+  const missing = STORE_DEFINITIONS.filter(
+    (def) => !db.objectStoreNames.contains(def.name),
+  ).map((def) => def.name)
+  if (missing.length > 0) {
+    console.error(
+      `[fico/db] Missing object store(s) at version ${DB_VERSION}: ${missing.join(', ')}. ` +
+        'A future app update will bump the version again to backfill this automatically.',
+    )
+  }
+}
 
 /**
  * Opens the database (running any pending migrations) and ensures the baseline
@@ -16,7 +38,8 @@ let initPromise: Promise<void> | null = null
 export function initDB(): Promise<void> {
   if (!initPromise) {
     initPromise = (async () => {
-      await getDB()
+      const db = await getDB()
+      checkStoresPresent(db)
 
       const existingDeviceId = await metadataRepository.get<string>(
         MetadataKeys.deviceId,

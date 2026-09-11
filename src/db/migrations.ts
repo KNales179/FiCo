@@ -243,6 +243,12 @@ export const migrations: Array<
   (db, tx) => {
     createMissingStores(db, tx)
   },
+  // v5 — re-run createMissingStores: at least one browser reached v4 without
+  // actually creating `budgetPlans` (see the note on DB_VERSION). Idempotent,
+  // so this is a no-op for anyone whose v4 upgrade worked correctly.
+  (db, tx) => {
+    createMissingStores(db, tx)
+  },
 ]
 
 /**

@@ -32,8 +32,14 @@ export const DB_NAME = 'fico'
  * v2 — + `reconciliations` (Phase 14)
  * v3 — + `categories` (managed category list)
  * v4 — + `budgetPlans` (next-month budget planning)
+ * v5 — re-run `createMissingStores`. At least one browser completed the v4
+ *      upgrade (version bumped) without actually creating `budgetPlans`,
+ *      which then never gets another chance to run since IDB only invokes
+ *      `upgrade()` on a real version increase. This backfills it — safe
+ *      even for databases where v4 worked fine, since it only adds what's
+ *      still missing.
  */
-export const DB_VERSION = 4
+export const DB_VERSION = 5
 
 /**
  * Typed description of every object store and its indexes, consumed by `idb`.
