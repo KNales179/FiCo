@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   newBlankItem,
+  parseItemQuantity,
+  rowTotalMinor,
   sumItemPricesMinor,
   toScannedReceiptItems,
   type DraftItem,
@@ -15,14 +17,39 @@ const row = (over: Partial<DraftItem>): DraftItem => ({
   ...over,
 })
 
+describe('parseItemQuantity', () => {
+  it('parses a plain integer', () => {
+    expect(parseItemQuantity('3')).toBe(3)
+  })
+
+  it('defaults a blank or unparseable quantity to 1, never 0', () => {
+    expect(parseItemQuantity('')).toBe(1)
+    expect(parseItemQuantity('not-a-number')).toBe(1)
+    expect(parseItemQuantity('0')).toBe(1)
+    expect(parseItemQuantity('-2')).toBe(1)
+  })
+})
+
+describe('rowTotalMinor', () => {
+  it('multiplies price-per-unit by quantity', () => {
+    expect(rowTotalMinor(row({ price: '50.00', quantity: '3' }))).toBe(15000)
+  })
+
+  it('is null when the price is blank, regardless of quantity', () => {
+    expect(rowTotalMinor(row({ price: '', quantity: '3' }))).toBeNull()
+  })
+})
+
 describe('sumItemPricesMinor', () => {
-  it('sums parseable prices and ignores blanks', () => {
+  it('sums each row as price × quantity, ignoring blanks', () => {
     const total = sumItemPricesMinor([
-      row({ price: '80.25' }),
+      row({ price: '80.25', quantity: '1' }),
       row({ price: '' }),
-      row({ price: '45.00' }),
+      // 3 units at ₱45 each — the bug report this fixes: the list total
+      // must reflect the quantity, not just the typed price.
+      row({ price: '45.00', quantity: '3' }),
     ])
-    expect(total).toBe(12525)
+    expect(total).toBe(8025 + 45 * 3 * 100)
   })
 
   it('is zero for an empty list', () => {
@@ -41,7 +68,7 @@ describe('newBlankItem', () => {
 })
 
 describe('toScannedReceiptItems', () => {
-  it('drops unnamed rows and resolves the category name', () => {
+  it('drops unnamed rows, multiplies price by quantity, and resolves the category name', () => {
     const names = new Map([['cat-1', 'Groceries']])
     const out = toScannedReceiptItems(
       [
@@ -52,7 +79,8 @@ describe('toScannedReceiptItems', () => {
       names,
     )
     expect(out).toEqual([
-      { name: 'Milk', quantity: 2, priceMinor: 9000, categoryId: 'cat-1', categoryName: 'Groceries' },
+      // 2 units at ₱90 each -> ₱180 recorded, not ₱90.
+      { name: 'Milk', quantity: 2, priceMinor: 18000, categoryId: 'cat-1', categoryName: 'Groceries' },
       { name: 'Soap', quantity: 1, priceMinor: null, categoryId: null, categoryName: null },
     ])
   })

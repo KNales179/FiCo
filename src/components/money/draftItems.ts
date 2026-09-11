@@ -11,14 +11,24 @@ export interface DraftItem {
   id: number
   name: string
   quantity: string
-  /** '' means blank/unset — flagged in the UI, never guessed. */
+  /** Price *per unit* — '' means blank/unset — flagged in the UI, never guessed. */
   price: string
   /** '' = no category. Suggested from a past purchase of the same item, never invented. */
   categoryId: string
 }
 
+/** A blank/unparseable quantity defaults to 1 — never zero, never negative. */
+export const parseItemQuantity = (quantity: string): number =>
+  Math.max(1, Math.round(Number(quantity)) || 1)
+
+/** This row's contribution to the trip's total: unit price × quantity, or null if the price is blank. */
+export const rowTotalMinor = (row: DraftItem): number | null => {
+  const unitMinor = parseAmountToMinor(row.price)
+  return unitMinor == null ? null : unitMinor * parseItemQuantity(row.quantity)
+}
+
 export const sumItemPricesMinor = (rows: DraftItem[]): number =>
-  rows.reduce((sum, r) => sum + (parseAmountToMinor(r.price) ?? 0), 0)
+  rows.reduce((sum, r) => sum + (rowTotalMinor(r) ?? 0), 0)
 
 export const newBlankItem = (rows: DraftItem[]): DraftItem => ({
   id: (rows.at(-1)?.id ?? -1) + 1,
@@ -28,7 +38,7 @@ export const newBlankItem = (rows: DraftItem[]): DraftItem => ({
   categoryId: '',
 })
 
-/** Rows with a name, ready to send to `recordScannedReceipt`. */
+/** Rows with a name, ready to send to `recordScannedReceipt` — `priceMinor` is the line's total (unit price × quantity), not the unit price itself. */
 export const toScannedReceiptItems = (
   rows: DraftItem[],
   categoryNameById: Map<string, string>,
@@ -37,8 +47,8 @@ export const toScannedReceiptItems = (
     .filter((row) => row.name.trim())
     .map((row) => ({
       name: row.name.trim(),
-      quantity: Math.max(1, Number(row.quantity) || 1),
-      priceMinor: parseAmountToMinor(row.price),
+      quantity: parseItemQuantity(row.quantity),
+      priceMinor: rowTotalMinor(row),
       categoryId: row.categoryId || null,
       categoryName: row.categoryId
         ? categoryNameById.get(row.categoryId) ?? null

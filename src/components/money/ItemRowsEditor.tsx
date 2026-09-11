@@ -1,4 +1,5 @@
-import type { DraftItem } from './draftItems'
+import { formatMoney } from '../../domain/money'
+import { rowTotalMinor, type DraftItem } from './draftItems'
 import CategoryPicker from './CategoryPicker'
 
 /** A field the scan/entry couldn't fill in gets a visible amber ring, never a guess. */
@@ -26,43 +27,53 @@ const ItemRowsEditor = ({
   <div>
     <span className="field-label">Items</span>
     <div className="space-y-1.5">
-      {items.map((row) => (
-        <div key={row.id} className="flex flex-wrap items-center gap-1.5">
-          <input
-            value={row.name}
-            onChange={(e) => onUpdate(row.id, { name: e.target.value })}
-            placeholder="Item"
-            className="input min-w-[7rem] flex-1"
-          />
-          <input
-            value={row.quantity}
-            onChange={(e) => onUpdate(row.id, { quantity: e.target.value })}
-            inputMode="numeric"
-            className="input w-14 text-center"
-            title="Quantity"
-          />
-          <input
-            value={row.price}
-            onChange={(e) => onUpdate(row.id, { price: e.target.value })}
-            inputMode="decimal"
-            placeholder="Price"
-            className={`input w-24 ${flagged(row.price)}`}
-          />
-          <CategoryPicker
-            kind="EXPENSE"
-            value={row.categoryId}
-            onChange={(categoryId) => onUpdate(row.id, { categoryId })}
-            className="select w-auto"
-          />
-          <button
-            type="button"
-            onClick={() => onRemove(row.id)}
-            className="text-xs text-muted underline hover:text-ink"
-          >
-            remove
-          </button>
-        </div>
-      ))}
+      {items.map((row) => {
+        const total = rowTotalMinor(row)
+        const qty = Number(row.quantity) || 1
+        return (
+          <div key={row.id} className="flex flex-wrap items-center gap-1.5">
+            <input
+              value={row.name}
+              onChange={(e) => onUpdate(row.id, { name: e.target.value })}
+              placeholder="Item"
+              className="input min-w-[7rem] flex-1"
+            />
+            <input
+              value={row.quantity}
+              onChange={(e) => onUpdate(row.id, { quantity: e.target.value })}
+              inputMode="numeric"
+              className="input w-14 text-center"
+              title="Quantity"
+            />
+            <input
+              value={row.price}
+              onChange={(e) => onUpdate(row.id, { price: e.target.value })}
+              inputMode="decimal"
+              placeholder="Price each"
+              title="Price per unit"
+              className={`input w-24 ${flagged(row.price)}`}
+            />
+            {total != null && qty > 1 && (
+              <span className="text-xs text-muted" title="Quantity × price each">
+                = {formatMoney(total)}
+              </span>
+            )}
+            <CategoryPicker
+              kind="EXPENSE"
+              value={row.categoryId}
+              onChange={(categoryId) => onUpdate(row.id, { categoryId })}
+              className="select w-auto"
+            />
+            <button
+              type="button"
+              onClick={() => onRemove(row.id)}
+              className="text-xs text-muted underline hover:text-ink"
+            >
+              remove
+            </button>
+          </div>
+        )
+      })}
     </div>
     <button
       type="button"

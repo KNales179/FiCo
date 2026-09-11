@@ -121,11 +121,20 @@ const ScanReceipt = () => {
     Promise.all(
       parsedItems.map(async (item, i) => {
         const suggestion = await suggestForName(spaceId, item.name)
+        // The receipt prints this line's total, not a per-unit price — the
+        // item row now edits a unit price (quantity × price is what gets
+        // recorded), so back it out here. Exact whenever the total divides
+        // evenly by the quantity, which real per-unit pricing almost always
+        // does; reviewable and editable either way before saving.
+        const unitMinor =
+          item.priceMinor != null
+            ? Math.round(item.priceMinor / item.quantity)
+            : null
         return {
           id: i,
           name: item.name,
           quantity: String(item.quantity),
-          price: item.priceMinor != null ? (item.priceMinor / 100).toFixed(2) : '',
+          price: unitMinor != null ? (unitMinor / 100).toFixed(2) : '',
           categoryId: suggestion?.categoryId ?? '',
         }
       }),
