@@ -95,16 +95,41 @@ const PayRow = ({ bill }: { bill: Bill }) => {
   )
 }
 
-const History = ({ billId }: { billId: string }) => {
-  const { paymentsFor } = useBills()
+const History = ({ billId, canEdit }: { billId: string; canEdit: boolean }) => {
+  const { paymentsFor, deletePayment } = useBills()
   const [open, setOpen] = useState(false)
   const [rows, setRows] = useState<BillPayment[] | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [error, setError] = useState('')
+
+  const refresh = async () => setRows(await paymentsFor(billId))
 
   const toggle = async () => {
     const next = !open
     setOpen(next)
-    if (next && rows === null) setRows(await paymentsFor(billId))
+    if (next && rows === null) await refresh()
   }
+
+  const remove = async (paymentId: string) => {
+    if (
+      !window.confirm(
+        'Delete this payment? This also removes the linked expense and rolls the due date back.',
+      )
+    )
+      return
+    setError('')
+    setBusyId(paymentId)
+    try {
+      await deletePayment(paymentId)
+      await refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not delete payment')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const visible = (rows ?? []).filter((p) => !p.deletedAt)
 
   return (
     <div className="mt-1">
@@ -116,15 +141,30 @@ const History = ({ billId }: { billId: string }) => {
         {open ? 'hide history' : 'payment history'}
       </button>
       {open && rows && (
-        <ul className="mt-1 text-xs text-muted">
-          {rows.length === 0 && <li>No payments yet.</li>}
-          {rows.map((p) => (
-            <li key={p.id}>
-              {new Date(p.paidAt).toLocaleDateString()} —{' '}
-              {formatMoney(p.amountMinor)} ({p.periodKey})
-            </li>
-          ))}
-        </ul>
+        <>
+          {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+          <ul className="mt-1 text-xs text-muted">
+            {visible.length === 0 && <li>No payments yet.</li>}
+            {visible.map((p) => (
+              <li key={p.id} className="flex items-center justify-between gap-2 py-0.5">
+                <span>
+                  {new Date(p.paidAt).toLocaleDateString()} —{' '}
+                  {formatMoney(p.amountMinor)} ({p.periodKey})
+                </span>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => void remove(p.id)}
+                    disabled={busyId === p.id}
+                    className="underline hover:text-danger disabled:opacity-50"
+                  >
+                    {busyId === p.id ? 'deleting…' : 'delete'}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </div>
   )
@@ -237,7 +277,7 @@ const Bills = () => {
                   </button>
                 )}
               </div>
-              <History billId={bill.id} />
+              <History billId={bill.id} canEdit={canEdit} />
             </li>
           ))}
           {active.length === 0 && (

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { balanceEffect, validateTransactionInput } from './transactions'
-import { advanceDueDate, periodKey } from './bills'
+import { advanceDueDate, periodKey, retreatDueDate } from './bills'
 import { resolveRange, summarize } from './analytics'
 import { pickTripCategory } from './shopping'
 import type { Account, Transaction } from '../types/models'
@@ -117,6 +117,14 @@ describe('bill recurrence', () => {
   it('periodKey dedupes an occurrence', () => {
     expect(periodKey('2026-03-01T00:00:00.000Z', 'MONTHLY')).toBe('2026-03')
     expect(periodKey('2026-03-01T00:00:00.000Z', 'YEARLY')).toBe('2026')
+  })
+  it('retreatDueDate undoes advanceDueDate, one step back', () => {
+    expect(
+      retreatDueDate('2026-02-15T00:00:00.000Z', 'MONTHLY').slice(0, 10),
+    ).toBe('2026-01-15')
+    expect(
+      retreatDueDate('2027-01-15T00:00:00.000Z', 'YEARLY').slice(0, 10),
+    ).toBe('2026-01-15')
   })
 })
 

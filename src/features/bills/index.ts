@@ -2,11 +2,12 @@ import {
   billPaymentRepository,
   billRepository,
   electricityRecordRepository,
+  transactionRepository,
 } from '../../repositories'
 import { recordTransaction } from '../money'
 import { enqueueMutation } from '../sync/enqueue'
 import type { MutationContext } from '../sync/context'
-import { advanceDueDate, periodKey } from '../../domain/bills'
+import { advanceDueDate, periodKey, retreatDueDate } from '../../domain/bills'
 import type {
   Bill,
   BillPayment,
@@ -210,6 +211,67 @@ export const payBill = async (
   await enqueueMutation(ctx, 'bill', billId, 'UPDATE', updatedBill)
 
   return { bill: updatedBill, payment }
+}
+
+/**
+ * Undoes a payment: soft-deletes it (and its linked expense and, if any,
+ * electricity record), then rolls the bill's due date back to what it was
+ * before that payment — so a mis-paid bill (wrong amount, or a due date
+ * that was simply set wrong to begin with) can be corrected and re-paid,
+ * instead of leaving a permanent, un-fixable record behind.
+ *
+ * Only the *most recent* payment can be undone — deleting an older one out
+ * of order would leave the due-date cursor pointing at neither the deleted
+ * occurrence nor a real unpaid one. `payBill`'s own periodKey guard already
+ * refuses to re-pay the rolled-back occurrence if something's inconsistent.
+ */
+export const deleteBillPayment = async (
+  ctx: MutationContext,
+  paymentId: string,
+): Promise<Bill> => {
+  const payment = await billPaymentRepository.get(paymentId)
+  if (!payment || payment.deletedAt) {
+    throw new Error('Payment not found')
+  }
+  const bill = await billRepository.get(payment.billId)
+  if (!bill) {
+    throw new Error('Bill not found')
+  }
+
+  const rolledBackDueDate = retreatDueDate(bill.nextDueDate, bill.recurrence)
+  if (periodKey(rolledBackDueDate, bill.recurrence) !== payment.periodKey) {
+    throw new Error(
+      'Only the most recent payment on this bill can be undone',
+    )
+  }
+
+  if (payment.transactionId) {
+    await transactionRepository.softDelete(payment.transactionId)
+    await enqueueMutation(ctx, 'transaction', payment.transactionId, 'DELETE', {
+      id: payment.transactionId,
+    })
+  }
+
+  const electricityRecord = await electricityRecordRepository.getByBillPayment(
+    paymentId,
+  )
+  if (electricityRecord) {
+    await electricityRecordRepository.softDelete(electricityRecord.id)
+    await enqueueMutation(ctx, 'electricityRecord', electricityRecord.id, 'DELETE', {
+      id: electricityRecord.id,
+    })
+  }
+
+  await billPaymentRepository.softDelete(paymentId)
+  await enqueueMutation(ctx, 'billPayment', paymentId, 'DELETE', { id: paymentId })
+
+  const updatedBill = await billRepository.update(bill.id, {
+    nextDueDate: rolledBackDueDate,
+    syncStatus: 'PENDING',
+  })
+  await enqueueMutation(ctx, 'bill', bill.id, 'UPDATE', updatedBill)
+
+  return updatedBill
 }
 
 export { advanceDueDate, periodKey } from '../../domain/bills'

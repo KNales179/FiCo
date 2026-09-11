@@ -9,6 +9,7 @@ import { ensureDeviceId } from '../features/auth/localAuth'
 import {
   createBill as createBillFeature,
   deleteBill as deleteBillFeature,
+  deleteBillPayment as deleteBillPaymentFeature,
   listBillPayments,
   listBills,
   listElectricity,
@@ -117,6 +118,11 @@ export const BillsProvider = ({ children }: { children: ReactNode }) => {
       await refreshMoney()
     },
     paymentsFor: (billId: string) => listBillPayments(billId),
+    deletePayment: async (paymentId: string) => {
+      await deleteBillPaymentFeature(requireCtx(), paymentId)
+      await load()
+      await refreshMoney()
+    },
   }
 
   return (

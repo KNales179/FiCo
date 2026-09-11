@@ -24,6 +24,7 @@ export interface BillsContextValue {
     input: PayBillInput,
   ) => Promise<void>
   paymentsFor: (billId: string) => Promise<BillPayment[]>
+  deletePayment: (paymentId: string) => Promise<void>
 }
 
 export const BillsContext = createContext<BillsContextValue | undefined>(
