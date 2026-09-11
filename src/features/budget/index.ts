@@ -17,6 +17,7 @@ import {
   rankWeeklyCategories,
   recommendBillAmount,
   type OverdueBill,
+  type PaidAheadBill,
   type ProjectedBill,
   type Trend,
   type WeeklyCategorySpend,
@@ -36,6 +37,8 @@ export interface BudgetRecommendation {
   incomeMinor: number
   projectedBills: ProjectedBill[]
   overdueBills: OverdueBill[]
+  /** A monthly bill already paid ahead of `period` — nothing left to pay it for this month, and here's why it's not in `projectedBills`. */
+  paidAheadBills: PaidAheadBill[]
   /** Per bill id, how its recent payments have been trending. */
   billTrends: Record<string, Trend | null>
   /** Groceries/Food/etc., ranked weekly-habit first, rare-purchase last (medians of ₱0 already excluded). */
@@ -86,7 +89,7 @@ export const recommendBudget = async (
   // real, still-unpaid one. Overdue bills only belong in `overdueBills`
   // until they're actually paid.
   const overdueBillIds = new Set(overdueBills.map((b) => b.billId))
-  const projectedBills = projectBillsForPeriod(
+  const { due: projectedBills, paidAhead: paidAheadBills } = projectBillsForPeriod(
     bills.filter((bill) => !overdueBillIds.has(bill.id)),
     period,
     recommendedAmountByBillId,
@@ -136,6 +139,7 @@ export const recommendBudget = async (
     incomeMinor: medianMinor(monthlyIncome),
     projectedBills,
     overdueBills,
+    paidAheadBills,
     billTrends,
     weeklyCategories,
   }

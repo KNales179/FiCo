@@ -335,10 +335,25 @@ const Budget = () => {
                     </li>
                   )
                 })}
-                {recommendation.projectedBills.length === 0 && (
-                  <li className="py-1.5 text-sm text-muted">No bills due {periodLabel(period)}.</li>
-                )}
+                {recommendation.projectedBills.length === 0 &&
+                  recommendation.paidAheadBills.length === 0 && (
+                    <li className="py-1.5 text-sm text-muted">No bills due {periodLabel(period)}.</li>
+                  )}
               </ul>
+
+              {recommendation.paidAheadBills.length > 0 && (
+                <ul className="mt-1 divide-y divide-line">
+                  {recommendation.paidAheadBills.map((bill) => (
+                    <li key={bill.billId} className="flex items-center justify-between py-1.5 text-sm">
+                      <span>{bill.name}</span>
+                      <span className="text-xs text-muted">
+                        already paid ahead — next due{' '}
+                        {new Date(bill.nextDueDate).toLocaleDateString()}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
               {recommendation.overdueBills.length > 0 && (
                 <>

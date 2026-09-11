@@ -15,6 +15,26 @@ export interface ProjectedBill {
 }
 
 /**
+ * A monthly bill whose *next* obligation already falls after `period` —
+ * meaning some earlier payment (made ahead of its actual due date) already
+ * settled `period`'s occurrence. Without this, such a bill just silently
+ * disappears from the plan for that one month with no explanation, which
+ * reads as a bug even though it's correct: there's genuinely nothing left
+ * to pay this bill for that month. Surfacing it instead says so plainly.
+ */
+export interface PaidAheadBill {
+  billId: string
+  name: string
+  /** When the next actual occurrence is due. */
+  nextDueDate: string
+}
+
+export interface BillProjection {
+  due: ProjectedBill[]
+  paidAhead: PaidAheadBill[]
+}
+
+/**
  * Which of a space's active bills fall due within `period` (`"YYYY-MM"`),
  * projected forward from each bill's own next occurrence — a monthly bill
  * lands most months, a yearly one only in its month. `amountMinor` prefers a
@@ -31,35 +51,49 @@ export const projectBillsForPeriod = (
   >,
   period: string,
   recommendedAmountByBillId: Record<string, number> = {},
-): ProjectedBill[] => {
-  const results: ProjectedBill[] = []
+): BillProjection => {
+  const due: ProjectedBill[] = []
+  const paidAhead: PaidAheadBill[] = []
 
   for (const bill of bills) {
     if (!bill.active) continue
 
-    let due = bill.nextDueDate
+    let cursor = bill.nextDueDate
     // Walk forward at most two years — plenty for any recurrence this app
     // supports, and a hard stop so bad data can't loop forever.
     for (let i = 0; i < 24; i += 1) {
-      const duePeriod = due.slice(0, 7)
+      const duePeriod = cursor.slice(0, 7)
       if (duePeriod === period) {
-        results.push({
+        due.push({
           billId: bill.id,
           name: bill.name,
           amountMinor:
             recommendedAmountByBillId[bill.id] ?? bill.expectedAmountMinor ?? 0,
-          dueDate: due,
+          dueDate: cursor,
         })
         break
       }
-      // Walked past the target month without landing in it (a yearly bill
-      // due a different month) — nothing to project for this period.
-      if (duePeriod > period) break
-      due = advanceDueDate(due, bill.recurrence)
+      if (duePeriod > period) {
+        // Walked past the target month without landing in it. For a
+        // monthly bill, its very next obligation (the first step of this
+        // walk) already being beyond `period` means it was paid ahead of
+        // schedule and `period`'s occurrence is already settled — worth
+        // saying so. A yearly bill simply isn't due this particular month,
+        // which is normal and not worth flagging every time.
+        if (i === 0 && bill.recurrence === 'MONTHLY') {
+          paidAhead.push({
+            billId: bill.id,
+            name: bill.name,
+            nextDueDate: cursor,
+          })
+        }
+        break
+      }
+      cursor = advanceDueDate(cursor, bill.recurrence)
     }
   }
 
-  return results
+  return { due, paidAhead }
 }
 
 export interface OverdueBill {

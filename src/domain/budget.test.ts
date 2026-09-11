@@ -37,46 +37,61 @@ const bill = (over: Partial<Bill>): Bill =>
 
 describe('projectBillsForPeriod', () => {
   it('projects a monthly bill into the target period', () => {
-    const rows = projectBillsForPeriod([bill({})], '2026-10')
-    expect(rows).toEqual([
+    const { due } = projectBillsForPeriod([bill({})], '2026-10')
+    expect(due).toEqual([
       { billId: 'b1', name: 'Bill', amountMinor: 10000, dueDate: '2026-10-15T00:00:00.000Z' },
     ])
   })
 
   it('walks a monthly bill forward to reach a later period', () => {
-    const rows = projectBillsForPeriod(
+    const { due } = projectBillsForPeriod(
       [bill({ nextDueDate: '2026-08-15T00:00:00.000Z' })],
       '2026-10',
     )
-    expect(rows).toHaveLength(1)
-    expect(rows[0].dueDate.slice(0, 7)).toBe('2026-10')
+    expect(due).toHaveLength(1)
+    expect(due[0].dueDate.slice(0, 7)).toBe('2026-10')
   })
 
   it('a yearly bill only lands in its own month', () => {
-    const rows = projectBillsForPeriod(
+    const { due, paidAhead } = projectBillsForPeriod(
       [bill({ recurrence: 'YEARLY', nextDueDate: '2026-03-01T00:00:00.000Z' })],
       '2026-10',
     )
-    expect(rows).toHaveLength(0)
+    expect(due).toHaveLength(0)
+    // Not due this month is normal for a yearly bill — not worth flagging.
+    expect(paidAhead).toHaveLength(0)
   })
 
   it('skips an inactive bill', () => {
-    expect(projectBillsForPeriod([bill({ active: false })], '2026-10')).toHaveLength(0)
+    expect(projectBillsForPeriod([bill({ active: false })], '2026-10').due).toHaveLength(0)
   })
 
   it('contributes 0, not a guess, when a bill has no expected amount yet', () => {
-    const rows = projectBillsForPeriod(
+    const { due } = projectBillsForPeriod(
       [bill({ expectedAmountMinor: null })],
       '2026-10',
     )
-    expect(rows[0].amountMinor).toBe(0)
+    expect(due[0].amountMinor).toBe(0)
   })
 
   it('prefers a recommended amount (from payment history) over the static expected amount', () => {
-    const rows = projectBillsForPeriod([bill({ expectedAmountMinor: 10000 })], '2026-10', {
+    const { due } = projectBillsForPeriod([bill({ expectedAmountMinor: 10000 })], '2026-10', {
       b1: 12500,
     })
-    expect(rows[0].amountMinor).toBe(12500)
+    expect(due[0].amountMinor).toBe(12500)
+  })
+
+  it('flags a monthly bill already paid ahead of the target period, instead of silently dropping it', () => {
+    // Its very next obligation is already in November — October's occurrence
+    // must have already been settled by an earlier, ahead-of-schedule payment.
+    const { due, paidAhead } = projectBillsForPeriod(
+      [bill({ nextDueDate: '2026-11-05T00:00:00.000Z' })],
+      '2026-10',
+    )
+    expect(due).toHaveLength(0)
+    expect(paidAhead).toEqual([
+      { billId: 'b1', name: 'Bill', nextDueDate: '2026-11-05T00:00:00.000Z' },
+    ])
   })
 })
 

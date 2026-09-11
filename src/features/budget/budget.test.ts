@@ -109,6 +109,38 @@ describe('budget planning (Roadmap Phase 26 feedback)', () => {
     expect(rec.projectedBills).toHaveLength(0)
   })
 
+  it('flags a bill already paid ahead of the target period instead of just leaving it out', async () => {
+    // Due Nov 1 already — some earlier, ahead-of-schedule payment settled
+    // October's occurrence, so October's plan has nothing left to pay it for.
+    const bill = await createBill(c, {
+      name: 'Electric',
+      recurrence: 'MONTHLY',
+      billType: 'VARIABLE',
+      nextDueDate: '2026-11-01T00:00:00.000Z',
+    })
+
+    const rec = await recommendBudget(
+      c.spaceId,
+      '2026-10',
+      new Date('2026-09-11T00:00:00.000Z'),
+    )
+    expect(rec.projectedBills).toHaveLength(0)
+    expect(rec.overdueBills).toHaveLength(0)
+    expect(rec.paidAheadBills).toEqual([
+      { billId: bill.id, name: 'Electric', nextDueDate: '2026-11-01T00:00:00.000Z' },
+    ])
+
+    // ...and shows up normally once November is the period being planned.
+    const nov = await recommendBudget(
+      c.spaceId,
+      '2026-11',
+      new Date('2026-09-11T00:00:00.000Z'),
+    )
+    expect(nov.projectedBills).toHaveLength(1)
+    expect(nov.projectedBills[0].name).toBe('Electric')
+    expect(nov.paidAheadBills).toHaveLength(0)
+  })
+
   it('ranks a real weekly habit above the rest, from ordinary recorded transactions', async () => {
     const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
 
