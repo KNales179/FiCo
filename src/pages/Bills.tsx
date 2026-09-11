@@ -171,8 +171,38 @@ const History = ({ billId, canEdit }: { billId: string; canEdit: boolean }) => {
 }
 
 const Bills = () => {
-  const { bills, electricity, loading, error, canEdit, createBill, deleteBill } =
-    useBills()
+  const {
+    bills,
+    electricity,
+    loading,
+    error,
+    canEdit,
+    createBill,
+    deleteBill,
+    deletePayment,
+  } = useBills()
+  const [electricityBusyId, setElectricityBusyId] = useState<string | null>(null)
+  const [electricityError, setElectricityError] = useState('')
+
+  const removeElectricityRecord = async (billPaymentId: string) => {
+    if (
+      !window.confirm(
+        'Delete this payment? This also removes the linked expense and rolls the due date back.',
+      )
+    )
+      return
+    setElectricityError('')
+    setElectricityBusyId(billPaymentId)
+    try {
+      await deletePayment(billPaymentId)
+    } catch (err) {
+      setElectricityError(
+        err instanceof Error ? err.message : 'Could not delete payment',
+      )
+    } finally {
+      setElectricityBusyId(null)
+    }
+  }
 
   const [name, setName] = useState('')
   const [recurrence, setRecurrence] = useState<BillRecurrence>('MONTHLY')
@@ -289,6 +319,11 @@ const Bills = () => {
       {electricity.length > 0 && (
         <section className="card">
           <h2 className="text-lg font-semibold">Electricity</h2>
+          {electricityError && (
+            <p role="alert" className="mt-1 text-xs text-danger">
+              {electricityError}
+            </p>
+          )}
           <table className="mt-2 w-full text-sm">
             <thead className="text-left text-xs text-muted">
               <tr>
@@ -296,6 +331,7 @@ const Bills = () => {
                 <th className="py-1 text-right">Amount</th>
                 <th className="py-1 text-right">kWh</th>
                 <th className="py-1 text-right">₱/kWh</th>
+                {canEdit && <th className="py-1" />}
               </tr>
             </thead>
             <tbody>
@@ -316,6 +352,18 @@ const Bills = () => {
                     <td className="py-1 text-right">
                       {perKwh != null ? formatMoney(perKwh) : '—'}
                     </td>
+                    {canEdit && (
+                      <td className="py-1 text-right">
+                        <button
+                          type="button"
+                          onClick={() => void removeElectricityRecord(r.billPaymentId)}
+                          disabled={electricityBusyId === r.billPaymentId}
+                          className="text-xs text-muted underline hover:text-danger disabled:opacity-50"
+                        >
+                          {electricityBusyId === r.billPaymentId ? 'deleting…' : 'delete'}
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 )
               })}
