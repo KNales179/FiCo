@@ -70,3 +70,18 @@ export const deleteMe = (password: string) => {
     },
   )
 }
+
+/**
+ * TEMPORARY — calls the dev-only recovery endpoint. Remove alongside
+ * `DevResetPassword.tsx`, its route in `App.tsx`, and the backend route once
+ * real password reset ships.
+ */
+export const devResetPassword = (identifier: string, newPassword: string) => {
+  return api<{ success: boolean; message: string }>(
+    '/auth/dev-reset-password',
+    {
+      method: 'POST',
+      body: { identifier, newPassword },
+    },
+  )
+}
