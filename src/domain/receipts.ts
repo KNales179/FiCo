@@ -27,6 +27,10 @@ export interface ReceiptParseResult {
   taxMinor: number | null
   /** Positive magnitude already reflected in `totalMinor` — shown for reference, not subtracted again. */
   discountMinor: number | null
+  /** The receipt's own printed item count (e.g. "ITEM/S PURCHASED : 8"), for
+   *  cross-checking against how many rows actually got parsed below — not
+   *  the same thing, and never used as a price. */
+  itemCount: number | null
   items: ReceiptLineItem[]
   /** The OCR text this was parsed from, kept so a person can sanity-check it. */
   rawText: string
@@ -62,6 +66,24 @@ const TAX_KEYWORDS = /\b(vat|gst|tax)\b/i
 // alongside the real "VAT (12%)" line — none of those are the tax amount.
 const TAX_EXCLUDE = /\b(exempt|zero[\s-]?rated|vatable)\b/i
 const DISCOUNT_KEYWORDS = /\b(discount|promo)\b/i
+const ITEM_COUNT_KEYWORDS = /\bitem.?s?\b/i
+
+/** Trailing whole number — no decimal required, since a count is never money. */
+const trailingInteger = (line: string): number | null => {
+  const match = /(\d+)\s*$/.exec(line.trim())
+  return match ? Number(match[1]) : null
+}
+
+/** The receipt's own printed item count, e.g. "ITEM/S PURCHASED : 8". */
+const findItemCount = (lines: string[]): number | null => {
+  for (const line of lines) {
+    if (ITEM_COUNT_KEYWORDS.test(line) && !TOTAL_KEYWORDS.test(line)) {
+      const count = trailingInteger(line)
+      if (count !== null) return count
+    }
+  }
+  return null
+}
 
 const findLastMatch = (
   lines: string[],
@@ -170,10 +192,19 @@ const findMerchant = (lines: string[]): string | null => {
 const SKIP_LINE =
   /\b(total|subtotal|sub-total|tax|vat|gst|discount|promo|change|cash|card|balance|thank you|receipt|invoice|cashier|qty|quantity|purchased|item.?s|date|time|payment|amount due|approved|reference|terminal|vatable|exempt|zero.rated|tin|permit|accredtn|invoice no)\b/i
 
-// The price group requires an explicit 2-digit cents suffix, same reasoning
-// as `MONEY` above — otherwise a bare reference number reads as an item.
+// A serial/TIN/reference number is a long run of digits with no separators —
+// six or more in a row is never a printed price (those break into groups of
+// three with a comma, or carry two decimal places at most). Checked
+// separately from SKIP_LINE's keyword list because these numbers show up
+// next to labels this parser has never seen before.
+const LOOKS_LIKE_A_CODE = /\d{6,}/
+
+// Decimals are optional here (unlike `MONEY` above) — OCR noise sometimes
+// drops a trailing digit or the decimal point itself, and losing a real
+// item is worse than the rare reference number this doesn't otherwise catch
+// (guarded against separately via `LOOKS_LIKE_A_CODE`).
 const ITEM_LINE =
-  /^(?:(\d+(?:\.\d+)?)\s*[xX]\s*)?(.{2,40}?)\s{1,}(\d{1,3}(?:[,\s]\d{3})*[.,]\d{2})\s*$/
+  /^(?:(\d+(?:\.\d+)?)\s*[xX]\s*)?(.{2,40}?)\s{1,}(\d{1,3}(?:[,\s]\d{3})*(?:[.,]\d{2})?)\s*$/
 
 /** A standalone "qty*unitPrice" line, printed above the item's name on some
  *  receipts (e.g. Philippine retail format: "3*15.000" then "EMBORG… 105.00"). */
@@ -200,7 +231,7 @@ const findItems = (lines: string[]): ReceiptLineItem[] => {
       continue
     }
 
-    if (SKIP_LINE.test(line)) {
+    if (SKIP_LINE.test(line) || LOOKS_LIKE_A_CODE.test(line)) {
       pendingQuantity = null
       continue
     }
@@ -234,6 +265,7 @@ export const parseReceiptText = (rawText: string): ReceiptParseResult => {
     totalMinor: findLastMatch(lines, TOTAL_KEYWORDS, SUBTOTAL_KEYWORD),
     taxMinor: findLastMatch(lines, TAX_KEYWORDS, TAX_EXCLUDE),
     discountMinor: sumMatches(lines, DISCOUNT_KEYWORDS),
+    itemCount: findItemCount(lines),
     items: findItems(lines),
     rawText,
   }

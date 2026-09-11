@@ -130,6 +130,14 @@ Zero Rated Sale                     0.00
     // The real tax amount, not the "Vat Exempt" / "Vatable Sale" breakdown lines.
     expect(r.taxMinor).toBe(4128)
     expect(r.discountMinor).toBe(2200)
+    // The receipt's own count, kept separate from the parsed item rows below
+    // (6 line entries covering 8 units, once the 3x line is counted) so a
+    // mismatch is visible rather than silently reconciled either way.
+    expect(r.itemCount).toBe(8)
+    // Nowhere near the TIN (17 digits) / MIN (17 digits) / invoice number
+    // (6 digits) that sit right above the items -- none of those became a
+    // fake item or a fake amount.
+    expect(r.items.some((i) => i.priceMinor != null && i.priceMinor > 100000)).toBe(false)
 
     // Neither "Change", "Cash" nor the item-count line became a fake item.
     expect(r.items).toEqual([
@@ -148,5 +156,25 @@ Zero Rated Sale                     0.00
   it('never treats a TIN / reference number as an amount', () => {
     const r = parseReceiptText('VAT-REG TIN 008-685-624-02530\nTOTAL 10.00')
     expect(r.taxMinor).toBeNull()
+  })
+
+  it('never turns a long serial/reference number into a fake item', () => {
+    const r = parseReceiptText(
+      'MIN 26061712311649678\nSN# 0093202512122\nMilk 45.00\nTOTAL 45.00',
+    )
+    expect(r.items).toEqual([{ name: 'Milk', quantity: 1, priceMinor: 4500 }])
+  })
+
+  it('still reads an item whose price has no decimal point (OCR noise)', () => {
+    // A real item must not be dropped just because the cents got misread or
+    // dropped -- only reference numbers (6+ run-on digits) are excluded.
+    const r = parseReceiptText('Soda 45\nTOTAL 45.00')
+    expect(r.items).toEqual([{ name: 'Soda', quantity: 1, priceMinor: 4500 }])
+  })
+
+  it('the receipt\'s printed item count is separate from the parsed rows', () => {
+    const r = parseReceiptText('Milk 45.00\nITEM/S PURCHASED : 3\nTOTAL 45.00')
+    expect(r.itemCount).toBe(3)
+    expect(r.items).toHaveLength(1)
   })
 })

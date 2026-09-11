@@ -51,6 +51,11 @@ const ScanReceipt = () => {
   const [error, setError] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
   const [discountMinor, setDiscountMinor] = useState<number | null>(null)
+  /** The receipt's own printed count — informational, cross-checked against
+   *  the item rows below, never used to compute the amount. */
+  const [printedItemCount, setPrintedItemCount] = useState<number | null>(
+    null,
+  )
 
   const [title, setTitle] = useState('')
   const [date, setDate] = useState('')
@@ -75,6 +80,7 @@ const ScanReceipt = () => {
     setError('')
     setPhoto(null)
     setDiscountMinor(null)
+    setPrintedItemCount(null)
     setTitle('')
     setDate('')
     setAmount('')
@@ -116,6 +122,7 @@ const ScanReceipt = () => {
         parsed.totalMinor != null ? (parsed.totalMinor / 100).toFixed(2) : '',
       )
       setDiscountMinor(parsed.discountMinor)
+      setPrintedItemCount(parsed.itemCount)
       setItems(await toDraftItems(ctx.spaceId, parsed.items))
       setAccountId(defaultAccount?.id ?? activeAccounts[0].id)
       setStage('review')
@@ -299,6 +306,21 @@ const ScanReceipt = () => {
             <p className="text-xs text-muted">
               Includes a discount of {formatMoney(discountMinor)} already
               reflected in the total above.
+            </p>
+          )}
+
+          {printedItemCount != null && (
+            <p className="text-xs text-muted">
+              Item count (per receipt): {printedItemCount}
+              {printedItemCount !==
+                items.reduce((n, r) => n + (Number(r.quantity) || 0), 0) && (
+                <span className="text-warning">
+                  {' '}
+                  — doesn't match the {items.length} row
+                  {items.length === 1 ? '' : 's'} below; some items may be
+                  missing.
+                </span>
+              )}
             </p>
           )}
 
