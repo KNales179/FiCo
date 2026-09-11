@@ -331,6 +331,10 @@ export interface BudgetPlan extends SyncableEntity {
   /** null until the person confirms one — the UI shows a recommendation until then. */
   expectedIncomeMinor: number | null
   plannedItems: BudgetPlanItem[]
+  /** Weekly-habit categories (Groceries, etc.) with a confirmed weekly amount each. */
+  weeklyStaples: BudgetPlanItem[]
+  /** Overdue bills the person chose to roll into this period's plan. */
+  includedOverdueBillIds: string[]
   createdBy: string
 }
 

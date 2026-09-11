@@ -17,9 +17,10 @@ export interface ProjectedBill {
 /**
  * Which of a space's active bills fall due within `period` (`"YYYY-MM"`),
  * projected forward from each bill's own next occurrence — a monthly bill
- * lands most months, a yearly one only in its month. A bill with no
- * expected amount yet contributes 0 rather than a guess; the caller decides
- * whether to flag that.
+ * lands most months, a yearly one only in its month. `amountMinor` prefers a
+ * recent-payments-based recommendation (`recommendBillAmount`) passed in by
+ * the caller over the bill's static "expected amount", since a bill like
+ * electricity actually varies month to month.
  */
 export const projectBillsForPeriod = (
   bills: Array<
@@ -29,6 +30,7 @@ export const projectBillsForPeriod = (
     >
   >,
   period: string,
+  recommendedAmountByBillId: Record<string, number> = {},
 ): ProjectedBill[] => {
   const results: ProjectedBill[] = []
 
@@ -44,7 +46,8 @@ export const projectBillsForPeriod = (
         results.push({
           billId: bill.id,
           name: bill.name,
-          amountMinor: bill.expectedAmountMinor ?? 0,
+          amountMinor:
+            recommendedAmountByBillId[bill.id] ?? bill.expectedAmountMinor ?? 0,
           dueDate: due,
         })
         break
@@ -59,10 +62,59 @@ export const projectBillsForPeriod = (
   return results
 }
 
+export interface OverdueBill {
+  billId: string
+  name: string
+  dueDate: string
+  amountMinor: number
+}
+
+/** Active bills whose due date has already passed without being paid. */
+export const findOverdueBills = (
+  bills: Array<
+    Pick<Bill, 'id' | 'name' | 'active' | 'nextDueDate' | 'expectedAmountMinor'>
+  >,
+  todayIso: string,
+  recommendedAmountByBillId: Record<string, number> = {},
+): OverdueBill[] =>
+  bills
+    .filter((bill) => bill.active && bill.nextDueDate < todayIso)
+    .map((bill) => ({
+      billId: bill.id,
+      name: bill.name,
+      dueDate: bill.nextDueDate,
+      amountMinor:
+        recommendedAmountByBillId[bill.id] ?? bill.expectedAmountMinor ?? 0,
+    }))
+
 export const averageMinor = (values: number[]): number =>
   values.length === 0
     ? 0
     : Math.round(values.reduce((sum, v) => sum + v, 0) / values.length)
+
+/** The middle value — unlike an average, one unusually large or small entry can't drag it around. */
+export const medianMinor = (values: number[]): number => {
+  if (values.length === 0) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 === 0
+    ? Math.round((sorted[mid - 1] + sorted[mid]) / 2)
+    : sorted[mid]
+}
+
+/**
+ * A bill's recommended amount from its own recent payments (most recent
+ * last) — an average of up to the last 3, so a real month-to-month bill like
+ * electricity is projected from what it's actually been costing lately.
+ * Falls back to nothing (caller decides, usually the bill's own "expected
+ * amount") when there's no payment history yet.
+ */
+export const recommendBillAmount = (
+  recentPaymentAmounts: number[],
+): number | null =>
+  recentPaymentAmounts.length === 0
+    ? null
+    : averageMinor(recentPaymentAmounts.slice(-3))
 
 export type Trend = 'up' | 'down' | 'flat'
 
@@ -84,6 +136,63 @@ export const detectTrend = (
   if (changePct >= thresholdPct) return 'up'
   if (changePct <= -thresholdPct) return 'down'
   return 'flat'
+}
+
+export interface WeeklyCategorySpend {
+  categoryName: string
+  /** Median of this category's per-week totals over the sampled weeks. */
+  weeklyMedianMinor: number
+}
+
+/**
+ * Ranks categories by how much of a weekly habit they actually are, from a
+ * space's own transaction history — "important/frequent" down to "rarely
+ * bought", per the owner's ask, without a separate frequency calculation.
+ *
+ * Buckets each non-bill expense into which 7-day window (from `weekStartIso`)
+ * it fell in, sums per category per week, then takes the *median* across
+ * `weekCount` weeks. A category bought almost every week gets a median close
+ * to a typical week's spend; one bought only occasionally has more zero
+ * weeks than not, so its median comes out at or near 0 — which is exactly
+ * "not a routine weekly cost", with no separate rule needed. Categories
+ * whose median is 0 are dropped: nothing to recommend weekly for them.
+ */
+export const rankWeeklyCategories = (
+  transactions: Array<{
+    occurredAt: string
+    amountMinor: number
+    categoryName?: string | null
+    type: string
+    sourceType: string
+  }>,
+  weekStartIso: string,
+  weekCount: number,
+): WeeklyCategorySpend[] => {
+  const weekStartMs = new Date(weekStartIso).getTime()
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000
+  const byCategory = new Map<string, number[]>()
+
+  for (const txn of transactions) {
+    if (txn.type !== 'EXPENSE' || txn.sourceType === 'BILL_PAYMENT') continue
+
+    const weekIndex = Math.floor(
+      (new Date(txn.occurredAt).getTime() - weekStartMs) / WEEK_MS,
+    )
+    if (weekIndex < 0 || weekIndex >= weekCount) continue
+
+    const name = txn.categoryName?.trim() || 'Uncategorized'
+    const weeks = byCategory.get(name) ?? new Array(weekCount).fill(0)
+    weeks[weekIndex] += txn.amountMinor
+    byCategory.set(name, weeks)
+  }
+
+  return [...byCategory.entries()]
+    .map(([categoryName, weeks]) => ({
+      categoryName,
+      weeklyMedianMinor: medianMinor(weeks),
+    }))
+    .filter((c) => c.weeklyMedianMinor > 0)
+    .sort((a, b) => b.weeklyMedianMinor - a.weeklyMedianMinor)
 }
 
 /** How many weekly chunks a calendar month splits into. */
@@ -131,22 +240,30 @@ export interface BudgetAllocation {
   incomeMinor: number
   billsTotalMinor: number
   plannedTotalMinor: number
-  /** Income minus bills minus planned one-off items — what's left for the weeks. */
-  remainingMinor: number
-  weeklyBudgetMinor: number
+  /** Per-week total of the weekly-staple categories (Groceries, etc.), not a monthly figure. */
+  weeklyStaplesTotalMinor: number
   weeks: number
-  /** True when the bills + planned items alone exceed the expected income. */
+  /** Income minus bills minus planned minus (staples × weeks) — what's left to split as pure discretionary. */
+  remainingMinor: number
+  /** remainingMinor ÷ weeks — the part of the weekly figure that isn't already spoken for by staples. */
+  weeklyDiscretionaryMinor: number
+  /** Staples + discretionary — the full "how much can I spend this week" figure. */
+  weeklyBudgetMinor: number
+  /** True when bills + planned + staples alone exceed the expected income. */
   overBudget: boolean
 }
 
 /**
- * Bills come out first (they're the least optional), then the planned
- * one-off items, and whatever's left splits evenly across the month's weeks.
+ * Bills come out first (least optional), then one-off planned items, then
+ * the weekly staples (converted to a monthly figure via the week count) —
+ * whatever's left splits evenly across the month's weeks as discretionary
+ * spending money, on top of what the staples already cover.
  */
 export const allocateBudget = (input: {
   incomeMinor: number
   projectedBills: Array<Pick<ProjectedBill, 'amountMinor'>>
   plannedItems: PlannedItem[]
+  weeklyStaples: PlannedItem[]
   period: string
 }): BudgetAllocation => {
   const billsTotalMinor = input.projectedBills.reduce(
@@ -157,16 +274,28 @@ export const allocateBudget = (input: {
     (sum, p) => sum + p.amountMinor,
     0,
   )
-  const remainingMinor = input.incomeMinor - billsTotalMinor - plannedTotalMinor
+  const weeklyStaplesTotalMinor = input.weeklyStaples.reduce(
+    (sum, s) => sum + s.amountMinor,
+    0,
+  )
   const weeks = weeksInPeriod(input.period)
+  const remainingMinor =
+    input.incomeMinor -
+    billsTotalMinor -
+    plannedTotalMinor -
+    weeklyStaplesTotalMinor * weeks
+  const weeklyDiscretionaryMinor =
+    weeks > 0 ? Math.floor(remainingMinor / weeks) : remainingMinor
 
   return {
     incomeMinor: input.incomeMinor,
     billsTotalMinor,
     plannedTotalMinor,
-    remainingMinor,
-    weeklyBudgetMinor: weeks > 0 ? Math.floor(remainingMinor / weeks) : remainingMinor,
+    weeklyStaplesTotalMinor,
     weeks,
+    remainingMinor,
+    weeklyDiscretionaryMinor,
+    weeklyBudgetMinor: weeklyStaplesTotalMinor + weeklyDiscretionaryMinor,
     overBudget: remainingMinor < 0,
   }
 }

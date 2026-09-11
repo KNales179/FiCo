@@ -8,13 +8,18 @@ import { enqueueMutation } from '../sync/enqueue'
 import type { MutationContext } from '../sync/context'
 import type { BudgetPlan, BudgetPlanItem } from '../../types/models'
 import {
-  averageMinor,
   detectTrend,
+  findOverdueBills,
+  medianMinor,
   periodRangeIso,
   priorPeriods,
   projectBillsForPeriod,
+  rankWeeklyCategories,
+  recommendBillAmount,
+  type OverdueBill,
   type ProjectedBill,
   type Trend,
+  type WeeklyCategorySpend,
 } from '../../domain/budget'
 
 export const getBudgetPlan = (
@@ -27,33 +32,70 @@ export const listBudgetPlans = (spaceId: string): Promise<BudgetPlan[]> =>
   budgetPlanRepository.listBySpace(spaceId)
 
 export interface BudgetRecommendation {
-  /** Average of the last few months' actual income — a starting point, not a guess forced on the person. */
+  /** Median of the last few months' actual income — a starting point, not a guess forced on the person. */
   incomeMinor: number
   projectedBills: ProjectedBill[]
+  overdueBills: OverdueBill[]
   /** Per bill id, how its recent payments have been trending. */
   billTrends: Record<string, Trend | null>
-  /** Average of the last few months' non-bill expenses — the baseline the weekly figure is really covering. */
-  averageVariableSpendingMinor: number
+  /** Groceries/Food/etc., ranked weekly-habit first, rare-purchase last (medians of ₱0 already excluded). */
+  weeklyCategories: WeeklyCategorySpend[]
 }
 
-const LOOKBACK_MONTHS = 3
+const INCOME_LOOKBACK_MONTHS = 3
 const TREND_SAMPLE = 4
+const WEEKLY_LOOKBACK_WEEKS = 10
 
 /**
- * Everything "smart" about the budget planner: plain averages and trend
- * checks over this space's own history, computed on this device (§ budget
- * planning — no cloud AI, same rule as receipt scanning).
+ * Everything "smart" about the budget planner: plain medians/averages and
+ * trend checks over this space's own history, computed on this device (§
+ * budget planning — no cloud AI, same rule as receipt scanning).
  */
 export const recommendBudget = async (
   spaceId: string,
   period: string,
+  now = new Date(),
 ): Promise<BudgetRecommendation> => {
   const bills = await billRepository.listBySpace(spaceId)
-  const projectedBills = projectBillsForPeriod(bills, period)
 
-  const months = priorPeriods(period, LOOKBACK_MONTHS)
+  // Each bill's own recent payments recommend its projected amount — a real
+  // bill like electricity varies month to month more than a flat "expected
+  // amount" typed in once can capture.
+  const recommendedAmountByBillId: Record<string, number> = {}
+  const billTrends: Record<string, Trend | null> = {}
+  for (const bill of bills) {
+    if (!bill.active) continue
+    const payments = await billPaymentRepository.listByBill(bill.id)
+    const amounts = payments
+      .filter((p) => !p.deletedAt)
+      .sort((a, b) => a.paidAt.localeCompare(b.paidAt))
+      .map((p) => p.amountMinor)
+    const recommended = recommendBillAmount(amounts)
+    if (recommended !== null) recommendedAmountByBillId[bill.id] = recommended
+    billTrends[bill.id] = detectTrend(amounts.slice(-TREND_SAMPLE))
+  }
+
+  const projectedBills = projectBillsForPeriod(
+    bills,
+    period,
+    recommendedAmountByBillId,
+  )
+  const overdueBills = findOverdueBills(
+    bills,
+    now.toISOString(),
+    recommendedAmountByBillId,
+  )
+
+  // Income: median of the last few months' actual income.
+  const months = priorPeriods(period, INCOME_LOOKBACK_MONTHS)
   const monthlyIncome: number[] = []
-  const monthlyVariableSpend: number[] = []
+  const allTransactionsInWindow: Array<{
+    occurredAt: string
+    amountMinor: number
+    categoryName?: string | null
+    type: string
+    sourceType: string
+  }> = []
 
   for (const month of months) {
     const [fromIso, toIso] = periodRangeIso(month)
@@ -63,34 +105,33 @@ export const recommendBudget = async (
       toIso,
     )
     let income = 0
-    let variable = 0
     for (const txn of rows) {
       if (txn.deletedAt) continue
       if (txn.type === 'INCOME') income += txn.amountMinor
-      else if (txn.type === 'EXPENSE' && txn.sourceType !== 'BILL_PAYMENT') {
-        variable += txn.amountMinor
-      }
+      allTransactionsInWindow.push(txn)
     }
     monthlyIncome.push(income)
-    monthlyVariableSpend.push(variable)
   }
 
-  const billTrends: Record<string, Trend | null> = {}
-  for (const projected of projectedBills) {
-    const payments = await billPaymentRepository.listByBill(projected.billId)
-    const amounts = payments
-      .filter((p) => !p.deletedAt)
-      .sort((a, b) => a.paidAt.localeCompare(b.paidAt))
-      .slice(-TREND_SAMPLE)
-      .map((p) => p.amountMinor)
-    billTrends[projected.billId] = detectTrend(amounts)
-  }
+  // Weekly staples: sampled over the weeks leading up to the target period,
+  // not calendar months, so the "which weeks actually had a purchase" signal
+  // isn't blurred by month boundaries.
+  const weekStart = new Date(
+    new Date(periodRangeIso(period)[0]).getTime() -
+      WEEKLY_LOOKBACK_WEEKS * 7 * 24 * 60 * 60 * 1000,
+  ).toISOString()
+  const weeklyCategories = rankWeeklyCategories(
+    allTransactionsInWindow,
+    weekStart,
+    WEEKLY_LOOKBACK_WEEKS,
+  )
 
   return {
-    incomeMinor: averageMinor(monthlyIncome),
+    incomeMinor: medianMinor(monthlyIncome),
     projectedBills,
+    overdueBills,
     billTrends,
-    averageVariableSpendingMinor: averageMinor(monthlyVariableSpend),
+    weeklyCategories,
   }
 }
 
@@ -101,6 +142,8 @@ export const saveBudgetPlan = async (
   patch: {
     expectedIncomeMinor?: number | null
     plannedItems?: BudgetPlanItem[]
+    weeklyStaples?: BudgetPlanItem[]
+    includedOverdueBillIds?: string[]
   },
 ): Promise<BudgetPlan> => {
   const existing = await budgetPlanRepository.getByPeriod(
@@ -108,14 +151,24 @@ export const saveBudgetPlan = async (
     period,
   )
 
+  const fields = {
+    ...(patch.expectedIncomeMinor !== undefined
+      ? { expectedIncomeMinor: patch.expectedIncomeMinor }
+      : {}),
+    ...(patch.plannedItems !== undefined
+      ? { plannedItems: patch.plannedItems }
+      : {}),
+    ...(patch.weeklyStaples !== undefined
+      ? { weeklyStaples: patch.weeklyStaples }
+      : {}),
+    ...(patch.includedOverdueBillIds !== undefined
+      ? { includedOverdueBillIds: patch.includedOverdueBillIds }
+      : {}),
+  }
+
   if (existing) {
     const next = await budgetPlanRepository.update(existing.id, {
-      ...(patch.expectedIncomeMinor !== undefined
-        ? { expectedIncomeMinor: patch.expectedIncomeMinor }
-        : {}),
-      ...(patch.plannedItems !== undefined
-        ? { plannedItems: patch.plannedItems }
-        : {}),
+      ...fields,
       syncStatus: 'PENDING',
     })
     await enqueueMutation(ctx, 'budgetPlan', next.id, 'UPDATE', next)
@@ -127,6 +180,8 @@ export const saveBudgetPlan = async (
     period,
     expectedIncomeMinor: patch.expectedIncomeMinor ?? null,
     plannedItems: patch.plannedItems ?? [],
+    weeklyStaples: patch.weeklyStaples ?? [],
+    includedOverdueBillIds: patch.includedOverdueBillIds ?? [],
     createdBy: ctx.userId,
     syncStatus: 'PENDING',
     version: 1,
