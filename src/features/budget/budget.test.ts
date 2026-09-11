@@ -181,6 +181,7 @@ describe('budget planning (Roadmap Phase 26 feedback)', () => {
       plannedItems: [{ id: 'p1', name: 'School', amountMinor: 500000 }],
       weeklyStaples: [{ id: 'w1', name: 'Groceries', amountMinor: 30000 }],
       includedOverdueBillIds: ['bill-1'],
+      billAmountOverrides: { 'bill-2': 401500 },
     })
 
     const second = await saveBudgetPlan(c, '2026-10', {
@@ -195,9 +196,20 @@ describe('budget planning (Roadmap Phase 26 feedback)', () => {
     expect(second.plannedItems).toHaveLength(2)
     expect(second.weeklyStaples).toHaveLength(1) // also untouched
     expect(second.includedOverdueBillIds).toEqual(['bill-1'])
+    expect(second.billAmountOverrides).toEqual({ 'bill-2': 401500 }) // also untouched
 
     const stored = await getBudgetPlan(c.spaceId, '2026-10')
     expect(stored?.id).toBe(first.id)
     expect(stored?.plannedItems).toHaveLength(2)
+  })
+
+  it('a bill amount override for one period never leaks into another', async () => {
+    await saveBudgetPlan(c, '2026-10', {
+      billAmountOverrides: { 'bill-2': 401500 },
+    })
+    const nov = await saveBudgetPlan(c, '2026-11', {
+      expectedIncomeMinor: 3000000,
+    })
+    expect(nov.billAmountOverrides).toEqual({})
   })
 })

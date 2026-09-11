@@ -154,6 +154,7 @@ export const saveBudgetPlan = async (
     plannedItems?: BudgetPlanItem[]
     weeklyStaples?: BudgetPlanItem[]
     includedOverdueBillIds?: string[]
+    billAmountOverrides?: Record<string, number>
   },
 ): Promise<BudgetPlan> => {
   const existing = await budgetPlanRepository.getByPeriod(
@@ -174,6 +175,9 @@ export const saveBudgetPlan = async (
     ...(patch.includedOverdueBillIds !== undefined
       ? { includedOverdueBillIds: patch.includedOverdueBillIds }
       : {}),
+    ...(patch.billAmountOverrides !== undefined
+      ? { billAmountOverrides: patch.billAmountOverrides }
+      : {}),
   }
 
   if (existing) {
@@ -192,6 +196,7 @@ export const saveBudgetPlan = async (
     plannedItems: patch.plannedItems ?? [],
     weeklyStaples: patch.weeklyStaples ?? [],
     includedOverdueBillIds: patch.includedOverdueBillIds ?? [],
+    billAmountOverrides: patch.billAmountOverrides ?? {},
     createdBy: ctx.userId,
     syncStatus: 'PENDING',
     version: 1,

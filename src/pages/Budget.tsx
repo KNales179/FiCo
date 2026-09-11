@@ -118,6 +118,61 @@ const EditableAmountList = ({
   )
 }
 
+/**
+ * A bill's amount in the plan — editable in place. Recommended/projected by
+ * default; typing a different figure and leaving the field overrides it for
+ * this one bill, this one period (e.g. the real electric bill once it's in
+ * hand, instead of the payment-history estimate).
+ */
+const BillAmountInput = ({
+  amountMinor,
+  overridden,
+  disabled,
+  onCommit,
+  onReset,
+}: {
+  amountMinor: number
+  overridden: boolean
+  disabled: boolean
+  onCommit: (amountMinor: number) => void
+  onReset: () => void
+}) => {
+  // Keyed by amountMinor at the call site (below) — a fresh amount (a
+  // period switch, an outside reset) remounts this with the right starting
+  // value instead of needing an effect to resync it mid-life.
+  const [value, setValue] = useState(
+    amountMinor > 0 ? (amountMinor / 100).toFixed(2) : '',
+  )
+
+  const commit = () => {
+    const minor = parseAmountToMinor(value)
+    if (minor != null && minor > 0 && minor !== amountMinor) onCommit(minor)
+  }
+
+  return (
+    <span className="flex items-center gap-1.5">
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={commit}
+        inputMode="decimal"
+        placeholder={amountMinor > 0 ? undefined : 'not yet known'}
+        disabled={disabled}
+        className="input w-24 text-right tabular-nums"
+      />
+      {overridden && !disabled && (
+        <button
+          type="button"
+          onClick={onReset}
+          className="text-xs text-muted underline hover:text-ink"
+        >
+          reset
+        </button>
+      )}
+    </span>
+  )
+}
+
 const Budget = () => {
   const { activeSpaceId } = useSpace()
   const { ctx, canEdit } = useMutationContext()
@@ -136,6 +191,12 @@ const Budget = () => {
   const [includedOverdueBillIds, setIncludedOverdueBillIds] = useState<
     Set<string>
   >(new Set())
+  // A VARIABLE bill's recommendation is an estimate from payment history —
+  // once the real bill is in hand (electricity's actual amount for next
+  // month, say), it can be typed in here instead, per bill per period.
+  const [billAmountOverrides, setBillAmountOverrides] = useState<
+    Record<string, number>
+  >({})
 
   const load = useCallback(async () => {
     if (!activeSpaceId) {
@@ -184,6 +245,8 @@ const Budget = () => {
             rec.overdueBills.map((b) => b.billId),
         ),
       )
+
+      setBillAmountOverrides(plan?.billAmountOverrides ?? {})
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load')
     } finally {
@@ -200,24 +263,42 @@ const Budget = () => {
     ? recommendation?.incomeMinor ?? 0
     : parseAmountToMinor(incomeInput) ?? 0
 
-  const includedOverdueBills = useMemo(
+  // The recommendation is a starting estimate from payment history — once
+  // the real amount for a bill is known (this month's actual electric
+  // bill, say), an override for that bill takes over here instead.
+  const projectedBills = useMemo(
     () =>
-      (recommendation?.overdueBills ?? []).filter((b) =>
-        includedOverdueBillIds.has(b.billId),
-      ),
-    [recommendation, includedOverdueBillIds],
+      (recommendation?.projectedBills ?? []).map((bill) => ({
+        ...bill,
+        amountMinor: billAmountOverrides[bill.billId] ?? bill.amountMinor,
+      })),
+    [recommendation, billAmountOverrides],
+  )
+
+  const overdueBills = useMemo(
+    () =>
+      (recommendation?.overdueBills ?? []).map((bill) => ({
+        ...bill,
+        amountMinor: billAmountOverrides[bill.billId] ?? bill.amountMinor,
+      })),
+    [recommendation, billAmountOverrides],
+  )
+
+  const includedOverdueBills = useMemo(
+    () => overdueBills.filter((b) => includedOverdueBillIds.has(b.billId)),
+    [overdueBills, includedOverdueBillIds],
   )
 
   const allocation = useMemo(() => {
     if (!recommendation) return null
     return allocateBudget({
       incomeMinor,
-      projectedBills: [...recommendation.projectedBills, ...includedOverdueBills],
+      projectedBills: [...projectedBills, ...includedOverdueBills],
       plannedItems,
       weeklyStaples,
       period,
     })
-  }, [recommendation, incomeMinor, includedOverdueBills, plannedItems, weeklyStaples, period])
+  }, [recommendation, incomeMinor, projectedBills, includedOverdueBills, plannedItems, weeklyStaples, period])
 
   // Bills + planned + staples×weeks — what income would need to be for
   // remainingMinor to land at exactly 0, i.e. the "close the gap" figure.
@@ -225,38 +306,99 @@ const Budget = () => {
     ? allocation.incomeMinor - allocation.remainingMinor
     : 0
 
+  // Every change below saves itself right away — adding a planned item or a
+  // staple, checking an overdue bill, switching the income source — instead
+  // of only living in memory until someone remembers to hit "Save plan".
+  // Losing an unsaved add by navigating away (or the plan reloading for any
+  // other reason) was exactly the "it's suddenly gone" complaint this fixes.
+  const persist = async (
+    patch: Partial<{
+      expectedIncomeMinor: number | null
+      plannedItems: BudgetPlanItem[]
+      weeklyStaples: BudgetPlanItem[]
+      includedOverdueBillIds: string[]
+      billAmountOverrides: Record<string, number>
+    }>,
+  ) => {
+    if (!ctx) return
+    setError('')
+    try {
+      await saveBudgetPlan(ctx, period, patch)
+      setSaved(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save')
+    }
+  }
+
   const toggleOverdueBill = (billId: string) =>
     setIncludedOverdueBillIds((prev) => {
       const next = new Set(prev)
       if (next.has(billId)) next.delete(billId)
       else next.add(billId)
+      void persist({ includedOverdueBillIds: [...next] })
       return next
     })
 
   const addPlannedItem = (name: string, amountMinor: number) =>
-    setPlannedItems((rows) => [...rows, { id: crypto.randomUUID(), name, amountMinor }])
+    setPlannedItems((rows) => {
+      const next = [...rows, { id: crypto.randomUUID(), name, amountMinor }]
+      void persist({ plannedItems: next })
+      return next
+    })
   const removePlannedItem = (id: string) =>
-    setPlannedItems((rows) => rows.filter((r) => r.id !== id))
+    setPlannedItems((rows) => {
+      const next = rows.filter((r) => r.id !== id)
+      void persist({ plannedItems: next })
+      return next
+    })
 
   const addStaple = (name: string, amountMinor: number) =>
-    setWeeklyStaples((rows) => [...rows, { id: crypto.randomUUID(), name, amountMinor }])
+    setWeeklyStaples((rows) => {
+      const next = [...rows, { id: crypto.randomUUID(), name, amountMinor }]
+      void persist({ weeklyStaples: next })
+      return next
+    })
   const removeStaple = (id: string) =>
-    setWeeklyStaples((rows) => rows.filter((r) => r.id !== id))
+    setWeeklyStaples((rows) => {
+      const next = rows.filter((r) => r.id !== id)
+      void persist({ weeklyStaples: next })
+      return next
+    })
+
+  const setBillOverride = (billId: string, amountMinor: number) =>
+    setBillAmountOverrides((prev) => {
+      const next = { ...prev, [billId]: amountMinor }
+      void persist({ billAmountOverrides: next })
+      return next
+    })
+
+  const resetBillOverride = (billId: string) =>
+    setBillAmountOverrides((prev) => {
+      if (!(billId in prev)) return prev
+      const next = { ...prev }
+      delete next[billId]
+      void persist({ billAmountOverrides: next })
+      return next
+    })
+
+  const useRecommendedIncome = () => {
+    setIncomeAuto(true)
+    void persist({ expectedIncomeMinor: null })
+  }
+
+  const commitIncomeInput = () => {
+    if (incomeAuto) return
+    void persist({ expectedIncomeMinor: parseAmountToMinor(incomeInput) })
+  }
 
   const save = async () => {
-    if (!ctx) return
-    setError('')
-    try {
-      await saveBudgetPlan(ctx, period, {
-        expectedIncomeMinor: incomeAuto ? null : parseAmountToMinor(incomeInput),
-        plannedItems,
-        weeklyStaples,
-        includedOverdueBillIds: [...includedOverdueBillIds],
-      })
-      setSaved(true)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save')
-    }
+    await persist({
+      expectedIncomeMinor: incomeAuto ? null : parseAmountToMinor(incomeInput),
+      plannedItems,
+      weeklyStaples,
+      includedOverdueBillIds: [...includedOverdueBillIds],
+      billAmountOverrides,
+    })
   }
 
   return (
@@ -292,7 +434,7 @@ const Budget = () => {
                 {!incomeAuto && (
                   <button
                     type="button"
-                    onClick={() => setIncomeAuto(true)}
+                    onClick={useRecommendedIncome}
                     className="text-xs text-muted underline hover:text-ink"
                   >
                     use recommended
@@ -310,6 +452,7 @@ const Budget = () => {
                   setIncomeInput(e.target.value)
                   setIncomeAuto(false)
                 }}
+                onBlur={commitIncomeInput}
                 inputMode="decimal"
                 placeholder="Expected income"
                 className="mt-2"
@@ -321,7 +464,7 @@ const Budget = () => {
             <div className="border-t border-line pt-4">
               <h2 className="section-title">Bills</h2>
               <ul className="mt-2 divide-y divide-line">
-                {recommendation.projectedBills.map((bill) => {
+                {projectedBills.map((bill) => {
                   const trend = recommendation.billTrends[bill.billId]
                   return (
                     <li key={bill.billId} className="flex items-center justify-between py-1.5 text-sm">
@@ -333,15 +476,18 @@ const Budget = () => {
                           </span>
                         )}
                       </span>
-                      <span className="tabular-nums">
-                        {bill.amountMinor > 0 ? formatMoney(bill.amountMinor) : (
-                          <span className="text-warning">not yet known</span>
-                        )}
-                      </span>
+                      <BillAmountInput
+                        key={`${bill.billId}-${bill.amountMinor}`}
+                        amountMinor={bill.amountMinor}
+                        overridden={bill.billId in billAmountOverrides}
+                        disabled={!canEdit}
+                        onCommit={(minor) => setBillOverride(bill.billId, minor)}
+                        onReset={() => resetBillOverride(bill.billId)}
+                      />
                     </li>
                   )
                 })}
-                {recommendation.projectedBills.length === 0 &&
+                {projectedBills.length === 0 &&
                   recommendation.paidAheadBills.length === 0 && (
                     <li className="py-1.5 text-sm text-muted">No bills due {periodLabel(period)}.</li>
                   )}
@@ -361,11 +507,11 @@ const Budget = () => {
                 </ul>
               )}
 
-              {recommendation.overdueBills.length > 0 && (
+              {overdueBills.length > 0 && (
                 <>
                   <p className="mt-3 text-xs font-medium text-warning">Overdue — include in this plan?</p>
                   <ul className="mt-1 divide-y divide-line">
-                    {recommendation.overdueBills.map((bill) => (
+                    {overdueBills.map((bill) => (
                       <li key={bill.billId} className="flex items-center justify-between py-1.5 text-sm">
                         <label className="flex items-center gap-2">
                           <input
@@ -378,7 +524,14 @@ const Budget = () => {
                             (was due {new Date(bill.dueDate).toLocaleDateString()})
                           </span>
                         </label>
-                        <span className="tabular-nums">{formatMoney(bill.amountMinor)}</span>
+                        <BillAmountInput
+                          key={`${bill.billId}-${bill.amountMinor}`}
+                          amountMinor={bill.amountMinor}
+                          overridden={bill.billId in billAmountOverrides}
+                          disabled={!canEdit}
+                          onCommit={(minor) => setBillOverride(bill.billId, minor)}
+                          onReset={() => resetBillOverride(bill.billId)}
+                        />
                       </li>
                     ))}
                   </ul>

@@ -335,6 +335,12 @@ export interface BudgetPlan extends SyncableEntity {
   weeklyStaples: BudgetPlanItem[]
   /** Overdue bills the person chose to roll into this period's plan. */
   includedOverdueBillIds: string[]
+  /**
+   * Per-bill override, by bill id, for this one period only — e.g. the
+   * actual amount on hand for a VARIABLE bill like electricity, once it's
+   * known, instead of the recommended figure from payment history.
+   */
+  billAmountOverrides: Record<string, number>
   createdBy: string
 }
 
