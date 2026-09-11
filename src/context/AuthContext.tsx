@@ -7,6 +7,7 @@ import {
   login as loginRequest,
   logout as logoutRequest,
   register as registerRequest,
+  verifyTwoFactorLogin as verifyTwoFactorRequest,
 } from '../services/authService'
 import {
   clearLocalAuth,
@@ -23,6 +24,8 @@ const toUser = (user: User): User => ({
   username: user.username,
   email: user.email,
   displayName: user.displayName ?? null,
+  role: user.role,
+  totpEnabled: user.totpEnabled,
 })
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -123,6 +126,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (identifier: string, password: string) => {
     const deviceId = await ensureDeviceId().catch(() => undefined)
     const response = await loginRequest(identifier, password, deviceId)
+    if (!('user' in response)) {
+      return { requiresTwoFactor: true as const, pendingToken: response.pendingToken }
+    }
+    await applyServerAuth(response.user, response.session)
+  }
+
+  const verifyTwoFactor = async (pendingToken: string, code: string) => {
+    const deviceId = await ensureDeviceId().catch(() => undefined)
+    const response = await verifyTwoFactorRequest(pendingToken, code, deviceId)
+    await applyServerAuth(response.user, response.session)
+  }
+
+  const refreshUser = async () => {
+    const response = await getMe()
     await applyServerAuth(response.user, response.session)
   }
 
@@ -159,8 +176,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAuthenticated: !!user,
         offline,
         login,
+        verifyTwoFactor,
         register,
         logout,
+        refreshUser,
       }}
     >
       {children}

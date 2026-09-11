@@ -5,14 +5,18 @@ import { useAuth } from '../hooks/useAuth'
 
 const Login = () => {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, verifyTwoFactor } = useAuth()
 
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async (
+  // Set only once the password checks out and the account still needs a code.
+  const [pendingToken, setPendingToken] = useState<string | null>(null)
+  const [code, setCode] = useState('')
+
+  const handlePasswordSubmit = async (
     event: FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault()
@@ -21,13 +25,38 @@ const Login = () => {
     setLoading(true)
 
     try {
-      await login(identifier, password)
-      navigate('/', { replace: true })
+      const result = await login(identifier, password)
+      if (result?.requiresTwoFactor) {
+        setPendingToken(result.pendingToken)
+      } else {
+        navigate('/', { replace: true })
+      }
     } catch (error) {
       setError(
         error instanceof Error
           ? error.message
           : 'Unable to log in',
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCodeSubmit = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault()
+    if (!pendingToken) return
+
+    setError('')
+    setLoading(true)
+
+    try {
+      await verifyTwoFactor(pendingToken, code)
+      navigate('/', { replace: true })
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : 'Invalid code',
       )
     } finally {
       setLoading(false)
@@ -47,47 +76,96 @@ const Login = () => {
           <p className="mt-2 text-muted">Your Daily Financial Companion</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="card space-y-4">
-          <label className="block">
-            <span className="field-label">Username or email</span>
-            <input
-              id="identifier"
-              type="text"
-              value={identifier}
-              onChange={(event) => setIdentifier(event.target.value)}
-              autoComplete="username"
-              required
-              className="input"
-            />
-          </label>
+        {pendingToken ? (
+          <form onSubmit={handleCodeSubmit} className="card space-y-4">
+            <div>
+              <span className="field-label">Authenticator code</span>
+              <p className="mt-1 text-xs text-muted">
+                Enter the 6-digit code from your authenticator app, or one of
+                your backup codes.
+              </p>
+              <input
+                id="code"
+                type="text"
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+                inputMode="text"
+                autoComplete="one-time-code"
+                autoFocus
+                required
+                className="input mt-2"
+              />
+            </div>
 
-          <label className="block">
-            <span className="field-label">Password</span>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="current-password"
-              required
-              className="input"
-            />
-          </label>
+            {error && (
+              <p role="alert" className="text-sm text-danger">
+                {error}
+              </p>
+            )}
 
-          {error && (
-            <p role="alert" className="text-sm text-danger">
-              {error}
-            </p>
-          )}
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary w-full py-2.5"
+            >
+              {loading ? 'Verifying…' : 'Verify'}
+            </button>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn btn-primary w-full py-2.5"
-          >
-            {loading ? 'Signing in…' : 'Sign in'}
-          </button>
-        </form>
+            <button
+              type="button"
+              onClick={() => {
+                setPendingToken(null)
+                setCode('')
+                setError('')
+              }}
+              className="w-full text-center text-sm text-muted underline"
+            >
+              Back to sign in
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handlePasswordSubmit} className="card space-y-4">
+            <label className="block">
+              <span className="field-label">Username or email</span>
+              <input
+                id="identifier"
+                type="text"
+                value={identifier}
+                onChange={(event) => setIdentifier(event.target.value)}
+                autoComplete="username"
+                required
+                className="input"
+              />
+            </label>
+
+            <label className="block">
+              <span className="field-label">Password</span>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
+                required
+                className="input"
+              />
+            </label>
+
+            {error && (
+              <p role="alert" className="text-sm text-danger">
+                {error}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary w-full py-2.5"
+            >
+              {loading ? 'Signing in…' : 'Sign in'}
+            </button>
+          </form>
+        )}
 
         <p className="mt-6 text-sm text-muted">
           Don't have an account?{' '}

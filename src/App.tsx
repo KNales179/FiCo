@@ -23,6 +23,8 @@ const Analytics = lazy(() => import('./pages/Analytics'))
 const Categories = lazy(() => import('./pages/Categories'))
 const Members = lazy(() => import('./pages/Members'))
 const Activity = lazy(() => import('./pages/Activity'))
+const Account = lazy(() => import('./pages/Account'))
+const Admin = lazy(() => import('./pages/Admin'))
 
 const RouteFallback = () => (
   <p className="muted mx-auto max-w-4xl px-4 py-5">Loading…</p>
@@ -54,6 +56,8 @@ const App = () => {
                           <Route path="/categories" element={<Categories />} />
                           <Route path="/members" element={<Members />} />
                           <Route path="/activity" element={<Activity />} />
+                          <Route path="/account" element={<Account />} />
+                          <Route path="/admin" element={<Admin />} />
                         </Route>
                       </Route>
 

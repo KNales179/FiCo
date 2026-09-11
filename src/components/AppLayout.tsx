@@ -18,7 +18,11 @@ const SECONDARY = [
   { to: '/categories', label: 'Categories' },
   { to: '/members', label: 'Members' },
   { to: '/activity', label: 'Activity' },
+  { to: '/account', label: 'Account' },
 ] as const
+
+/** Only shown to a system-wide admin — separate from a Finance's own owner. */
+const ADMIN_ITEM = { to: '/admin', label: 'Admin' } as const
 
 const primaryLink = ({ isActive }: { isActive: boolean }) =>
   `rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors ${
@@ -78,7 +82,7 @@ const AppLayout = () => {
                     role="menu"
                     className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-lg border border-line bg-panel py-1 shadow-lg"
                   >
-                    {SECONDARY.map((item) => (
+                    {(user?.role === 'ADMIN' ? [...SECONDARY, ADMIN_ITEM] : SECONDARY).map((item) => (
                       <NavLink
                         key={item.to}
                         to={item.to}

@@ -1,7 +1,9 @@
 import { api } from '../lib/api'
 import type {
   AuthResponse,
+  DeviceSession,
   MeResponse,
+  TwoFactorRequired,
   User,
 } from '../types/auth'
 
@@ -27,13 +29,25 @@ export const login = (
   password: string,
   deviceId?: string,
 ) => {
-  return api<AuthResponse>('/auth/login', {
+  return api<AuthResponse | TwoFactorRequired>('/auth/login', {
     method: 'POST',
     body: {
       identifier,
       password,
       deviceId,
     },
+  })
+}
+
+/** Second step of login for an account with 2FA on — a 6-digit code or a backup code. */
+export const verifyTwoFactorLogin = (
+  pendingToken: string,
+  code: string,
+  deviceId?: string,
+) => {
+  return api<AuthResponse>('/auth/login/verify-2fa', {
+    method: 'POST',
+    body: { pendingToken, code, deviceId },
   })
 }
 
@@ -70,3 +84,38 @@ export const deleteMe = (password: string) => {
     },
   )
 }
+
+/** Change your own password while signed in — needs the current one, not email. */
+export const changePassword = (currentPassword: string, newPassword: string) => {
+  return api<{ success: boolean; message: string }>('/auth/change-password', {
+    method: 'POST',
+    body: { currentPassword, newPassword },
+  })
+}
+
+/** Device recognition: every device your own account is currently logged into. */
+export const listMySessions = () =>
+  api<{ success: boolean; sessions: DeviceSession[] }>('/auth/sessions')
+
+export const revokeMySession = (sessionId: string) =>
+  api<{ success: boolean; message: string }>(
+    `/auth/sessions/${sessionId}/revoke`,
+    { method: 'POST' },
+  )
+
+export const startTwoFactorSetup = () =>
+  api<{ success: boolean; secret: string; uri: string }>('/auth/2fa/setup', {
+    method: 'POST',
+  })
+
+export const confirmTwoFactorSetup = (code: string) =>
+  api<{ success: boolean; message: string; backupCodes: string[] }>(
+    '/auth/2fa/confirm',
+    { method: 'POST', body: { code } },
+  )
+
+export const disableTwoFactor = (password: string, code: string) =>
+  api<{ success: boolean; message: string }>('/auth/2fa/disable', {
+    method: 'POST',
+    body: { password, code },
+  })
