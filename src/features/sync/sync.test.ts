@@ -5,6 +5,7 @@ import { createAccount } from '../money'
 import {
   countFailedForSpace,
   countPendingForSpace,
+  discardFailed,
   pull,
   pushPending,
   retryFailed,
@@ -72,6 +73,30 @@ describe('sync engine (Phase 18/19)', () => {
     const requeued = await retryFailed(c.spaceId)
     expect(requeued).toBe(1)
     expect(await countPendingForSpace(c.spaceId)).toBe(1)
+  })
+
+  it('discardFailed drops rejected changes and clears the local flag', async () => {
+    const acc = await createAccount(c, { name: 'Cash', type: 'CASH' })
+
+    const restore = mockFetch((_url, init) => ({
+      success: true,
+      results: parseEvents(init).map((e) => ({
+        eventId: e.id,
+        status: 'rejected',
+        message: 'nope',
+      })),
+    }))
+    await pushPending(c)
+    restore()
+
+    expect(await countFailedForSpace(c.spaceId)).toBe(1)
+    expect((await accountRepository.get(acc.id))?.syncStatus).toBe('FAILED')
+
+    const discarded = await discardFailed(c.spaceId)
+    expect(discarded).toBe(1)
+    expect(await countFailedForSpace(c.spaceId)).toBe(0)
+    expect(await syncEventRepository.listByStatus('FAILED')).toHaveLength(0)
+    expect((await accountRepository.get(acc.id))?.syncStatus).toBe('SYNCED')
   })
 
   it('pull applies a remote record into the local store', async () => {

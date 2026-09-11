@@ -85,3 +85,21 @@ export const markLocalSyncStatus = async (
     await db.put(store, { ...existing, syncStatus: status } as never)
   }
 }
+
+/**
+ * Stop tracking a change locally when the user discards it — clears the FAILED
+ * flag so the row isn't stuck; the next pull brings the server's version.
+ */
+export const clearFailedFlag = async (
+  entityType: string,
+  id: string,
+): Promise<void> => {
+  const store = STORE_FOR[entityType]
+  if (!store) return
+  const db = await getDB()
+  const existing = (await db.get(store, id)) as
+    | Record<string, unknown>
+    | undefined
+  if (!existing || existing.syncStatus !== 'FAILED') return
+  await db.put(store, { ...existing, syncStatus: 'SYNCED' } as never)
+}

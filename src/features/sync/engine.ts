@@ -8,6 +8,7 @@ import type { SyncEvent } from '../../types/models'
 import type { MutationContext } from './context'
 import {
   applyRemoteRecord,
+  clearFailedFlag,
   isApplicableEntity,
   isLocallyPending,
   markLocalSyncStatus,
@@ -217,6 +218,24 @@ export const retryFailed = async (spaceId: string): Promise<number> => {
       event.entityId,
       'PENDING',
     ).catch(() => undefined)
+  }
+  return failed.length
+}
+
+/**
+ * Give up on every permanently-rejected change: drop the queued events and
+ * clear the local FAILED flag. The next pull reconciles those rows with the
+ * server's version.
+ */
+export const discardFailed = async (spaceId: string): Promise<number> => {
+  const failed = (await syncEventRepository.listByStatus('FAILED')).filter(
+    forSpace(spaceId),
+  )
+  for (const event of failed) {
+    await syncEventRepository.remove(event.id)
+    await clearFailedFlag(event.entityType, event.entityId).catch(
+      () => undefined,
+    )
   }
   return failed.length
 }

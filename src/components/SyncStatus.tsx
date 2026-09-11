@@ -18,23 +18,38 @@ const DOT: Record<string, string> = {
 
 /** Persistent, unobtrusive synchronization indicator (Architecture §54). */
 const SyncStatus = () => {
-  const { phase, pendingCount, failedCount, syncNow, retryFailed } =
+  const { phase, pendingCount, failedCount, syncNow, retryFailed, discardFailed } =
     useSync()
 
   if (failedCount > 0) {
     return (
-      <button
-        type="button"
-        onClick={() => void retryFailed()}
-        title="Retry failed changes"
-        className="inline-flex items-center gap-2 text-xs text-danger"
-      >
-        <span
-          aria-hidden="true"
-          className="h-2 w-2 rounded-full bg-red-500"
-        />
-        {failedCount} change{failedCount === 1 ? '' : 's'} failed — retry
-      </button>
+      <span className="inline-flex items-center gap-2 text-xs text-danger">
+        <span aria-hidden="true" className="h-2 w-2 rounded-full bg-red-500" />
+        {failedCount} change{failedCount === 1 ? '' : 's'} rejected
+        <button
+          type="button"
+          onClick={() => void retryFailed()}
+          className="underline hover:no-underline"
+        >
+          retry
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (
+              window.confirm(
+                `Discard ${failedCount} rejected change${
+                  failedCount === 1 ? '' : 's'
+                }? This can't be undone.`,
+              )
+            )
+              void discardFailed()
+          }}
+          className="underline hover:no-underline"
+        >
+          discard
+        </button>
+      </span>
     )
   }
 

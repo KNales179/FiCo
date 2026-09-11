@@ -26,6 +26,8 @@ export interface SyncContextValue {
   syncNow: () => Promise<void>
   /** Re-queue every failed change and sync. */
   retryFailed: () => Promise<void>
+  /** Give up on every failed change (drop it locally; next pull reconciles). */
+  discardFailed: () => Promise<void>
 }
 
 export const SyncContext = createContext<SyncContextValue | undefined>(

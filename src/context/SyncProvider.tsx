@@ -12,6 +12,7 @@ import { MetadataKeys, metadataRepository } from '../repositories'
 import {
   countFailedForSpace,
   countPendingForSpace,
+  discardFailed,
   retryFailed,
   runSync,
 } from '../features/sync/engine'
@@ -108,6 +109,14 @@ export const SyncProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [activeSpaceId, syncNow])
 
+  const discardNow = useCallback(async () => {
+    if (activeSpaceId) {
+      await discardFailed(activeSpaceId)
+      await refreshCounts()
+      emitDataChanged()
+    }
+  }, [activeSpaceId, refreshCounts])
+
   // Initial sync + on space / connectivity change.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -164,6 +173,7 @@ export const SyncProvider = ({ children }: { children: ReactNode }) => {
         lastError,
         syncNow,
         retryFailed: retryNow,
+        discardFailed: discardNow,
       }}
     >
       {children}
