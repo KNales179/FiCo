@@ -1,6 +1,10 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useSpace } from '../hooks/useSpace'
+import { useUnseenBadge } from '../hooks/useUnseenBadge'
+import { listShoppingLists } from '../features/shopping'
+import { listBills } from '../features/bills'
 import SpaceSwitcher from './SpaceSwitcher'
 import SyncStatus from './SyncStatus'
 import BillReminders from './BillReminders'
@@ -20,6 +24,7 @@ const SECONDARY = [
   { to: '/members', label: 'Members' },
   { to: '/activity', label: 'Activity' },
   { to: '/account', label: 'Account' },
+  { to: '/feedback', label: 'Report & feedback' },
 ] as const
 
 /** Only shown to a system-wide admin — separate from a Finance's own owner. */
@@ -34,7 +39,31 @@ const primaryLink = ({ isActive }: { isActive: boolean }) =>
 
 const AppLayout = () => {
   const { user, logout } = useAuth()
+  const { activeSpaceId } = useSpace()
   const [menuOpen, setMenuOpen] = useState(false)
+
+  const fetchShoppingLists = useCallback(
+    () => (activeSpaceId ? listShoppingLists(activeSpaceId) : Promise.resolve([])),
+    [activeSpaceId],
+  )
+  const shoppingUnseen = useUnseenBadge(
+    'shopping',
+    activeSpaceId,
+    user?.id,
+    fetchShoppingLists,
+  )
+
+  const fetchBills = useCallback(
+    () => (activeSpaceId ? listBills(activeSpaceId) : Promise.resolve([])),
+    [activeSpaceId],
+  )
+  const billsUnseen = useUnseenBadge('bills', activeSpaceId, user?.id, fetchBills)
+
+  // Which primary nav destinations get the little "something new" dot.
+  const badges: Partial<Record<(typeof PRIMARY)[number]['to'], boolean>> = {
+    '/shopping': shoppingUnseen,
+    '/bills': billsUnseen,
+  }
 
   return (
     <div className="min-h-screen">
@@ -54,7 +83,15 @@ const AppLayout = () => {
                 end={'end' in item ? item.end : undefined}
                 className={primaryLink}
               >
-                {item.label}
+                <span className="relative">
+                  {item.label}
+                  {badges[item.to] && (
+                    <span
+                      aria-label="New, not yet seen"
+                      className="absolute -right-2 -top-0.5 h-1.5 w-1.5 rounded-full bg-danger"
+                    />
+                  )}
+                </span>
               </NavLink>
             ))}
           </nav>
@@ -139,8 +176,14 @@ const AppLayout = () => {
               }`
             }
           >
-            <span aria-hidden="true" className="text-base leading-none">
+            <span aria-hidden="true" className="relative text-base leading-none">
               {item.icon}
+              {badges[item.to] && (
+                <span
+                  aria-label="New, not yet seen"
+                  className="absolute -right-1 -top-0.5 h-1.5 w-1.5 rounded-full bg-danger"
+                />
+              )}
             </span>
             {item.label}
           </NavLink>

@@ -29,6 +29,8 @@ const Members = lazy(() => import('./pages/Members'))
 const Activity = lazy(() => import('./pages/Activity'))
 const Account = lazy(() => import('./pages/Account'))
 const Admin = lazy(() => import('./pages/Admin'))
+const Feedback = lazy(() => import('./pages/Feedback'))
+const AdminFeedback = lazy(() => import('./pages/AdminFeedback'))
 
 const RouteFallback = () => (
   <p className="muted mx-auto max-w-4xl px-4 py-5">Loading…</p>
@@ -65,7 +67,9 @@ const App = () => {
                           <Route path="/members" element={<Members />} />
                           <Route path="/activity" element={<Activity />} />
                           <Route path="/account" element={<Account />} />
+                          <Route path="/feedback" element={<Feedback />} />
                           <Route path="/admin" element={<Admin />} />
+                          <Route path="/admin/feedback" element={<AdminFeedback />} />
                         </Route>
                       </Route>
 

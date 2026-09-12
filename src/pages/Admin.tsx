@@ -7,6 +7,7 @@ import {
   setUserRole,
   type AdminUser,
 } from '../services/adminService'
+import { Link } from 'react-router-dom'
 import type { DeviceSession } from '../types/auth'
 import { PageHeader, Card, Button, Input, Alert } from '../components/ui'
 
@@ -200,6 +201,10 @@ const Admin = () => {
         title="Admin"
         description="Manage every account — not to be confused with a shared Finance's own owner."
       />
+
+      <Link to="/admin/feedback" className="text-sm text-brand underline">
+        Report & feedback →
+      </Link>
 
       {error && <Alert>{error}</Alert>}
       {users === null && !error && <p className="text-sm text-muted">Loading…</p>}
