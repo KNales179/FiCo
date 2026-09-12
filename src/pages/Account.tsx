@@ -8,6 +8,13 @@ import {
   revokeMySession,
   startTwoFactorSetup,
 } from '../services/authService'
+import {
+  disablePush,
+  enablePush,
+  getCurrentPushSubscription,
+  isPushSupported,
+} from '../features/push'
+import { ensureDeviceId } from '../features/auth/localAuth'
 import { isNetworkError } from '../lib/api'
 import type { DeviceSession } from '../types/auth'
 import { PageHeader, Card, Button, Input, Alert } from '../components/ui'
@@ -338,6 +345,102 @@ const TwoFactorSection = () => {
   )
 }
 
+type PushStatus = 'checking' | 'unsupported' | 'off' | 'on' | 'blocked'
+
+const PushNotificationsSection = () => {
+  const [status, setStatus] = useState<PushStatus>('checking')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const check = useCallback(async () => {
+    if (!isPushSupported()) {
+      setStatus('unsupported')
+      return
+    }
+    if (Notification.permission === 'denied') {
+      setStatus('blocked')
+      return
+    }
+    const subscription = await getCurrentPushSubscription()
+    setStatus(subscription ? 'on' : 'off')
+  }, [])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void check()
+  }, [check])
+
+  const turnOn = async () => {
+    setError('')
+    setBusy(true)
+    try {
+      const deviceId = await ensureDeviceId().catch(() => undefined)
+      const result = await enablePush(deviceId)
+      if (!result.ok) {
+        setError(
+          result.reason === 'permission-denied'
+            ? "Notifications are blocked for Fico in your browser's settings"
+            : result.reason === 'not-configured'
+              ? 'The server has not set up push notifications yet'
+              : "This browser doesn't support push notifications",
+        )
+      }
+      await check()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not turn on notifications')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const turnOff = async () => {
+    setError('')
+    setBusy(true)
+    try {
+      await disablePush()
+      await check()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not turn off notifications')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (status === 'unsupported') return null
+
+  return (
+    <Card>
+      <h2 className="section-title">Push notifications</h2>
+      <p className="mt-1 text-xs text-muted">
+        A real notification for a bill that's due soon or overdue — even
+        while Fico isn't open, on this device.
+      </p>
+      {error && <Alert>{error}</Alert>}
+      <div className="mt-3">
+        {status === 'checking' && <p className="text-sm text-muted">Checking…</p>}
+        {status === 'blocked' && (
+          <p className="text-sm text-warning">
+            Blocked in your browser — allow notifications for this site to turn it on.
+          </p>
+        )}
+        {status === 'on' && (
+          <>
+            <p className="text-sm text-success">On for this device.</p>
+            <Button className="mt-2" onClick={() => void turnOff()} disabled={busy}>
+              {busy ? 'Turning off…' : 'Turn off'}
+            </Button>
+          </>
+        )}
+        {status === 'off' && (
+          <Button variant="primary" onClick={() => void turnOn()} disabled={busy}>
+            {busy ? 'Turning on…' : 'Turn on for this device'}
+          </Button>
+        )}
+      </div>
+    </Card>
+  )
+}
+
 const Account = () => {
   const { user } = useAuth()
 
@@ -349,6 +452,7 @@ const Account = () => {
       />
       <PasswordSection />
       <DevicesSection />
+      <PushNotificationsSection />
       <TwoFactorSection />
     </div>
   )

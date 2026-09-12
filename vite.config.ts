@@ -11,6 +11,17 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
 
+      // A hand-written service worker (src/sw.ts) instead of the fully
+      // generated one — needed to add push/notificationclick handling;
+      // it still does its own precaching + the same offline-shell fallback
+      // the generated one did.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+      },
+
       includeAssets: [
         'favicon-48.png',
         'apple-touch-icon.png',
@@ -51,12 +62,6 @@ export default defineConfig({
             purpose: 'maskable',
           },
         ],
-      },
-
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        navigateFallback: '/index.html',
-        cleanupOutdatedCaches: true,
       },
     }),
   ],
