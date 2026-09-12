@@ -9,7 +9,7 @@ import {
 } from '../services/adminService'
 import { Link } from 'react-router-dom'
 import type { DeviceSession } from '../types/auth'
-import { PageHeader, Card, Button, Input, Alert } from '../components/ui'
+import { PageHeader, Card, Button, Input, Alert, SkeletonRow } from '../components/ui'
 
 const formatDate = (iso: string) => new Date(iso).toLocaleString()
 
@@ -144,7 +144,7 @@ const ManagePanel = ({ user, onChanged }: { user: AdminUser; onChanged: () => vo
 
       <div>
         <h3 className="text-sm font-medium">Devices</h3>
-        {sessions === null && <p className="mt-1 text-xs text-muted">Loading…</p>}
+        {sessions === null && <SkeletonRow />}
         {sessions && (
           <ul className="mt-1 divide-y divide-line text-sm">
             {sessions.length === 0 && (
@@ -207,7 +207,13 @@ const Admin = () => {
       </Link>
 
       {error && <Alert>{error}</Alert>}
-      {users === null && !error && <p className="text-sm text-muted">Loading…</p>}
+      {users === null && !error && (
+        <Card>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </Card>
+      )}
 
       {users && (
         <Card>

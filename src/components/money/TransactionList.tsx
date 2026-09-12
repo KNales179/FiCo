@@ -7,6 +7,7 @@ import { listPurchasesForTransaction, type ItemPurchaseDetail } from '../../feat
 import { listTransactions } from '../../features/money'
 import { getLastSeenAt, isUnseen, markSeenNow } from '../../features/seen'
 import { onDataChanged } from '../../features/sync/events'
+import { SkeletonRow } from '../ui'
 import Attachments from '../Attachments'
 import CategoryPicker from './CategoryPicker'
 import type { Transaction } from '../../types/models'
@@ -535,7 +536,13 @@ const TransactionList = () => {
   )
 
   if (all === null) {
-    return <section className="card text-sm text-muted">Loading…</section>
+    return (
+      <section className="card divide-y">
+        <SkeletonRow />
+        <SkeletonRow />
+        <SkeletonRow />
+      </section>
+    )
   }
 
   return (

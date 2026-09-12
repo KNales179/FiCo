@@ -13,7 +13,7 @@ import {
   type BudgetRecommendation,
 } from '../features/budget'
 import { formatMoney, parseAmountToMinor } from '../domain/money'
-import { PageHeader, Card, Button, Input, Alert } from '../components/ui'
+import { PageHeader, Card, Button, Input, Alert, SkeletonCard } from '../components/ui'
 import type { BudgetPlanItem } from '../types/models'
 
 const periodLabel = (period: string): string => {
@@ -422,7 +422,12 @@ const Budget = () => {
       />
 
       {error && <Alert>{error}</Alert>}
-      {loading && <p className="muted">Loading…</p>}
+      {loading && (
+        <div className="space-y-4">
+          <SkeletonCard lines={3} />
+          <SkeletonCard lines={5} />
+        </div>
+      )}
 
       {!loading && recommendation && allocation && (
         <>

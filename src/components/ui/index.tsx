@@ -116,6 +116,66 @@ export const Alert = ({ children }: { children: ReactNode }) => (
   </p>
 )
 
+/**
+ * Loading placeholders shaped like the content they stand in for (Roadmap:
+ * design skill — "skeletons recommended when structure is known"), instead
+ * of a plain "Loading…" that tells you nothing about what's coming.
+ * `motion-safe:` keeps the pulse off for anyone who's asked for less motion.
+ */
+export const Skeleton = ({
+  className,
+}: {
+  className?: string
+}) => (
+  <div
+    aria-hidden="true"
+    className={cx('rounded-md bg-panel-2 motion-safe:animate-pulse', className)}
+  />
+)
+
+/** A handful of skeleton text lines, the last one shorter so it doesn't look like a solid bar. */
+export const SkeletonLines = ({
+  count = 3,
+  className,
+}: {
+  count?: number
+  className?: string
+}) => (
+  <div className={cx('space-y-2', className)}>
+    {Array.from({ length: count }).map((_, i) => (
+      <Skeleton
+        key={i}
+        className={i === count - 1 ? 'h-3.5 w-2/3' : 'h-3.5 w-full'}
+      />
+    ))}
+  </div>
+)
+
+/** A card-shaped skeleton — a title-width line plus a few body lines. */
+export const SkeletonCard = ({
+  lines = 3,
+  className,
+}: {
+  lines?: number
+  className?: string
+}) => (
+  <div className={cx('card', className)}>
+    <Skeleton className="h-4 w-1/3" />
+    <SkeletonLines count={lines} className="mt-3" />
+  </div>
+)
+
+/** A row shaped like a list item — an avatar-or-icon spot plus two lines of text. */
+export const SkeletonRow = () => (
+  <div className="flex items-center gap-3 py-2">
+    <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+    <div className="flex-1 space-y-1.5">
+      <Skeleton className="h-3.5 w-1/2" />
+      <Skeleton className="h-3 w-1/4" />
+    </div>
+  </div>
+)
+
 /** A centered dialog over a dimmed backdrop — click the backdrop, or the ✕, to close. */
 export const Modal = ({
   title,

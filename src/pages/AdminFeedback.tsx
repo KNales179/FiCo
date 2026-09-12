@@ -4,7 +4,7 @@ import {
   setFeedbackStatus,
   type FeedbackEntry,
 } from '../services/feedbackService'
-import { PageHeader, Card, Alert } from '../components/ui'
+import { PageHeader, Card, Alert, SkeletonLines } from '../components/ui'
 
 const formatDate = (iso: string) => new Date(iso).toLocaleString()
 
@@ -54,7 +54,11 @@ const AdminFeedback = () => {
       />
 
       {error && <Alert>{error}</Alert>}
-      {rows === null && !error && <p className="text-sm text-muted">Loading…</p>}
+      {rows === null && !error && (
+        <Card>
+          <SkeletonLines count={4} />
+        </Card>
+      )}
 
       {rows && (
         <Card>

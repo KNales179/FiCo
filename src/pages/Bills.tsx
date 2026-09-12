@@ -7,6 +7,7 @@ import { formatMoney, parseAmountToMinor } from '../domain/money'
 import { costPerKwhMinor } from '../domain/electricity'
 import { billPayableFrom, isBillPayable } from '../features/bills'
 import { getLastSeenAt, isUnseen, markSeenNow } from '../features/seen'
+import { SkeletonCard } from '../components/ui'
 import CategoryPicker from '../components/money/CategoryPicker'
 import type { Bill, BillPayment, BillRecurrence, BillType } from '../types/models'
 
@@ -393,7 +394,14 @@ const Bills = () => {
     }
   }
 
-  if (loading) return <p className="text-sm text-muted">Loading…</p>
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        <SkeletonCard lines={2} />
+        <SkeletonCard lines={3} />
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">

@@ -7,6 +7,7 @@ import { computeListTotals } from '../features/shopping'
 import { suggestForName, type ItemSuggestion } from '../features/items'
 import { getLastSeenAt, isUnseen, markSeenNow } from '../features/seen'
 import { formatMoney, parseAmountToMinor } from '../domain/money'
+import { SkeletonCard } from '../components/ui'
 import CategoryPicker from '../components/money/CategoryPicker'
 import type { ShoppingItem } from '../types/models'
 
@@ -250,7 +251,12 @@ const Shopping = () => {
   }
 
   if (loading) {
-    return <p className="text-sm text-muted">Loading…</p>
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        <SkeletonCard lines={1} />
+        <SkeletonCard lines={4} />
+      </div>
+    )
   }
 
   return (

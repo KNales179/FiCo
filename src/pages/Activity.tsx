@@ -5,6 +5,7 @@ import {
   fetchActionLogs,
   type ActionLogEntry,
 } from '../services/actionLogService'
+import { SkeletonLines } from '../components/ui'
 
 const timeAgo = (iso: string) => {
   const diff = Date.now() - new Date(iso).getTime()
@@ -76,8 +77,13 @@ const Activity = () => {
           {error}
         </p>
       )}
-      {loading && <p className="text-sm text-muted">Loading…</p>}
+      {loading && (
+        <div className="divide-y rounded border p-4">
+          <SkeletonLines count={5} />
+        </div>
+      )}
 
+      {!loading && (
       <ul className="divide-y rounded border">
         {logs.map((log) => (
           <li key={log.id} className="px-4 py-2 text-sm">
@@ -90,12 +96,13 @@ const Activity = () => {
             </span>
           </li>
         ))}
-        {!loading && logs.length === 0 && (
+        {logs.length === 0 && (
           <li className="px-4 py-2 text-sm text-muted">
             Nothing here yet.
           </li>
         )}
       </ul>
+      )}
 
       {nextBefore && (
         <button

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useSpace } from '../hooks/useSpace'
 import { useMoney } from '../hooks/useMoney'
-import { PageHeader, Alert, Modal } from '../components/ui'
+import { PageHeader, Alert, Modal, SkeletonCard } from '../components/ui'
 import QuickAdd from '../components/money/QuickAdd'
 import ScanReceipt from '../components/money/ScanReceipt'
 import AccountsCard from '../components/money/AccountsCard'
@@ -45,7 +45,11 @@ const Home = () => {
       {(spaceError || moneyError) && <Alert>{spaceError ?? moneyError}</Alert>}
 
       {loading ? (
-        <p className="muted">Loading…</p>
+        <div className="space-y-4">
+          <SkeletonCard lines={1} />
+          <SkeletonCard lines={2} />
+          <SkeletonCard lines={4} />
+        </div>
       ) : (
         <>
           <QuickAdd />
