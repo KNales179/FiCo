@@ -17,6 +17,7 @@ import {
   IconUserCircle,
   IconSettings,
   IconMessage,
+  IconInfo,
   IconShield,
   IconChevronDown,
   IconLogOut,
@@ -44,6 +45,7 @@ const SECONDARY: { to: string; label: string; icon: IconComponent }[] = [
   { to: '/activity', label: 'Activity', icon: IconClock },
   { to: '/account', label: 'Account', icon: IconUserCircle },
   { to: '/settings', label: 'Settings', icon: IconSettings },
+  { to: '/credits', label: 'Credits', icon: IconInfo },
   { to: '/feedback', label: 'Report & feedback', icon: IconMessage },
 ]
 
@@ -118,7 +120,11 @@ const AppLayout = () => {
             })}
           </nav>
 
-          <div className="ml-auto flex items-center gap-2.5">
+          {/* On mobile (nav hidden, bottom nav used instead) this still sits at
+              the far right — ml-auto. At md+, cancelling that (md:ml-0) drops
+              it straight into the row right after Analytics, next to the
+              primary nav instead of stretched off to the opposite edge. */}
+          <div className="ml-auto flex items-center gap-2.5 md:ml-0">
             <SyncStatus />
             <div className="relative">
               <button
@@ -201,7 +207,11 @@ const AppLayout = () => {
       <main className="mx-auto max-w-5xl px-3 py-5 pb-24 sm:px-4 md:pb-5">
         <Outlet />
 
-        <footer className="mt-10 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
+        <footer className="mt-10 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+          <span>© {new Date().getFullYear()} IBell. All rights reserved.</span>
+          <Link to="/credits" className="underline">
+            Credits
+          </Link>
           <Link to="/terms" className="underline">
             Terms
           </Link>

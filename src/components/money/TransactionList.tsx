@@ -111,13 +111,10 @@ const ItemizedPurchase = ({ transactionId }: { transactionId: string }) => {
  * history, the shopping item) won't follow the edit — said plainly rather
  * than silently drifting out of sync.
  */
-const EditTransactionForm = ({
-  txn,
-  onDone,
-}: {
-  txn: Transaction
-  onDone: () => void
-}) => {
+const useEditTransactionFields = (
+  txn: Transaction,
+  onDone: () => void,
+) => {
   const { accounts, editTransaction } = useMoney()
   const activeAccounts = accounts.filter((a) => a.status === 'ACTIVE')
 
@@ -169,9 +166,7 @@ const EditTransactionForm = ({
     }
   }
 
-  return (
-    <tr className="bg-panel-2/40">
-      <td colSpan={4} className="px-3 py-3">
+  const fields = (
       <form onSubmit={submit} className="space-y-2">
         {txn.sourceType !== 'MANUAL' && (
           <p className="text-xs text-warning">
@@ -254,30 +249,189 @@ const EditTransactionForm = ({
           </Button>
         </div>
       </form>
+  )
+
+  return fields
+}
+
+/** The edit form as a table row (desktop/tablet — sm and up). */
+const EditTransactionFormRow = ({
+  txn,
+  onDone,
+}: {
+  txn: Transaction
+  onDone: () => void
+}) => {
+  const fields = useEditTransactionFields(txn, onDone)
+  return (
+    <tr className="bg-panel-2/40">
+      <td colSpan={4} className="px-3 py-3">
+        {fields}
       </td>
     </tr>
   )
 }
 
-const Row = ({
+/** The same edit form as a plain card (mobile — below sm). */
+const EditTransactionFormCard = ({
   txn,
-  accountName,
-  unseen,
-  onOpen,
+  onDone,
 }: {
+  txn: Transaction
+  onDone: () => void
+}) => {
+  const fields = useEditTransactionFields(txn, onDone)
+  return <li className="bg-panel-2/40 px-1 py-3">{fields}</li>
+}
+
+interface RowProps {
   txn: Transaction
   accountName: (id: string | null | undefined) => string
   unseen: boolean
   onOpen: () => void
-}) => {
+}
+
+/** State and handlers shared by both the table row and the mobile card —
+ * one source of truth per transaction, even though which markup renders
+ * (table vs. card) is decided purely by a CSS breakpoint, not by mounting
+ * two independent copies of this state. */
+const useRowState = (txn: Transaction) => {
   const { canEdit, removeTransaction, setTransactionVisibility } = useMoney()
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const isMine = txn.createdBy === user?.id
+  return {
+    canEdit,
+    removeTransaction,
+    setTransactionVisibility,
+    open,
+    setOpen,
+    editing,
+    setEditing,
+    isMine,
+  }
+}
+
+const metaLine = (
+  txn: Transaction,
+  accountName: (id: string | null | undefined) => string,
+) => (
+  <p className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-muted">
+    <span>{new Date(txn.occurredAt).toLocaleDateString()}</span>
+    <span aria-hidden="true">·</span>
+    <span>
+      {txn.type === 'TRANSFER'
+        ? `${accountName(txn.accountId)} → ${accountName(txn.destinationAccountId)}`
+        : accountName(txn.accountId)}
+    </span>
+    {txn.categoryName && (
+      <>
+        <span aria-hidden="true">·</span>
+        <span>{txn.categoryName}</span>
+      </>
+    )}
+    {txn.visibility === 'PRIVATE' && (
+      <span className="inline-flex items-center gap-0.5 text-warning">
+        <IconLock size={12} /> private
+      </span>
+    )}
+  </p>
+)
+
+const amountText = (txn: Transaction) => (
+  <span
+    className={`whitespace-nowrap font-medium tabular-nums ${
+      txn.type === 'INCOME'
+        ? 'text-success'
+        : txn.type === 'EXPENSE'
+          ? 'text-danger'
+          : 'text-ink'
+    }`}
+  >
+    {formatMoney(txn.amountMinor, txn.currency)}
+  </span>
+)
+
+const detailContent = (
+  txn: Transaction,
+  isMine: boolean,
+  setTransactionVisibility: ReturnType<typeof useMoney>['setTransactionVisibility'],
+) => (
+  <>
+    {txn.type === 'EXPENSE' && <ItemizedPurchase transactionId={txn.id} />}
+    {isMine && (
+      <button
+        type="button"
+        onClick={() =>
+          void setTransactionVisibility(
+            txn.id,
+            txn.visibility === 'PRIVATE' ? 'SPACE' : 'PRIVATE',
+          )
+        }
+        className="mt-2 text-xs text-muted underline"
+      >
+        {txn.visibility === 'PRIVATE' ? 'share with the space' : 'make private'}
+      </button>
+    )}
+    <Attachments entityType="TRANSACTION" entityId={txn.id} />
+  </>
+)
+
+/** The actions row — icon-only buttons, shared by both layouts. */
+const RowActions = ({
+  open,
+  onToggleOpen,
+  canEdit,
+  onEdit,
+  onDelete,
+}: {
+  open: boolean
+  onToggleOpen: () => void
+  canEdit: boolean
+  onEdit: () => void
+  onDelete: () => void
+}) => (
+  <span className="flex items-center gap-1">
+    <Button
+      variant="ghost"
+      size="sm"
+      iconOnly
+      aria-label={open ? 'Close details' : 'Details'}
+      title={open ? 'Close details' : 'Details'}
+      onClick={onToggleOpen}
+    >
+      {open ? <IconEyeOff size={16} /> : <IconEye size={16} />}
+    </Button>
+    {canEdit && (
+      <Button variant="ghost" size="sm" iconOnly aria-label="Edit" title="Edit" onClick={onEdit}>
+        <IconEdit size={16} />
+      </Button>
+    )}
+    {canEdit && (
+      <Button
+        variant="ghost"
+        size="sm"
+        iconOnly
+        aria-label="Delete"
+        title="Delete"
+        className="hover:text-danger"
+        onClick={onDelete}
+      >
+        <IconTrash size={16} />
+      </Button>
+    )}
+  </span>
+)
+
+/** Desktop/tablet (sm and up) — an aligned table row. */
+const TableRow = ({ txn, accountName, unseen, onOpen }: RowProps) => {
+  const state = useRowState(txn)
+  const { canEdit, removeTransaction, setTransactionVisibility, open, setOpen, editing, setEditing, isMine } =
+    state
 
   if (editing) {
-    return <EditTransactionForm txn={txn} onDone={() => setEditing(false)} />
+    return <EditTransactionFormRow txn={txn} onDone={() => setEditing(false)} />
   }
 
   return (
@@ -297,109 +451,84 @@ const Row = ({
         </td>
         <td>
           <p className="font-medium text-ink">{txn.title}</p>
-          <p className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-muted">
-            <span>{new Date(txn.occurredAt).toLocaleDateString()}</span>
-            <span aria-hidden="true">·</span>
-            <span>
-              {txn.type === 'TRANSFER'
-                ? `${accountName(txn.accountId)} → ${accountName(txn.destinationAccountId)}`
-                : accountName(txn.accountId)}
-            </span>
-            {txn.categoryName && (
-              <>
-                <span aria-hidden="true">·</span>
-                <span>{txn.categoryName}</span>
-              </>
-            )}
-            {txn.visibility === 'PRIVATE' && (
-              <span className="inline-flex items-center gap-0.5 text-warning">
-                <IconLock size={12} /> private
-              </span>
-            )}
-          </p>
+          {metaLine(txn, accountName)}
         </td>
+        <td className="text-right">{amountText(txn)}</td>
         <td className="text-right">
-          <span
-            className={`whitespace-nowrap font-medium tabular-nums ${
-              txn.type === 'INCOME'
-                ? 'text-success'
-                : txn.type === 'EXPENSE'
-                  ? 'text-danger'
-                  : 'text-ink'
-            }`}
-          >
-            {formatMoney(txn.amountMinor, txn.currency)}
-          </span>
-        </td>
-        <td className="text-right">
-          <span className="flex items-center justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              iconOnly
-              aria-label={open ? 'Close details' : 'Details'}
-              title={open ? 'Close details' : 'Details'}
-              onClick={() => {
-                setOpen((v) => !v)
-                if (!open) onOpen()
-              }}
-            >
-              {open ? <IconEyeOff size={16} /> : <IconEye size={16} />}
-            </Button>
-            {canEdit && (
-              <Button
-                variant="ghost"
-                size="sm"
-                iconOnly
-                aria-label="Edit"
-                title="Edit"
-                onClick={() => setEditing(true)}
-              >
-                <IconEdit size={16} />
-              </Button>
-            )}
-            {canEdit && (
-              <Button
-                variant="ghost"
-                size="sm"
-                iconOnly
-                aria-label="Delete"
-                title="Delete"
-                className="hover:text-danger"
-                onClick={() => void removeTransaction(txn.id)}
-              >
-                <IconTrash size={16} />
-              </Button>
-            )}
-          </span>
+          <RowActions
+            open={open}
+            onToggleOpen={() => {
+              setOpen((v) => !v)
+              if (!open) onOpen()
+            }}
+            canEdit={canEdit}
+            onEdit={() => setEditing(true)}
+            onDelete={() => void removeTransaction(txn.id)}
+          />
         </td>
       </tr>
 
       {open && (
         <tr>
           <td colSpan={4} className="bg-panel-2/40 px-3 py-3">
-            {txn.type === 'EXPENSE' && <ItemizedPurchase transactionId={txn.id} />}
-            {isMine && (
-              <button
-                type="button"
-                onClick={() =>
-                  void setTransactionVisibility(
-                    txn.id,
-                    txn.visibility === 'PRIVATE' ? 'SPACE' : 'PRIVATE',
-                  )
-                }
-                className="mt-2 text-xs text-muted underline"
-              >
-                {txn.visibility === 'PRIVATE'
-                  ? 'share with the space'
-                  : 'make private'}
-              </button>
-            )}
-            <Attachments entityType="TRANSACTION" entityId={txn.id} />
+            {detailContent(txn, isMine, setTransactionVisibility)}
           </td>
         </tr>
       )}
     </>
+  )
+}
+
+/** Mobile (below sm) — a stacked card, no horizontal scrolling ever. */
+const CardRow = ({ txn, accountName, unseen, onOpen }: RowProps) => {
+  const state = useRowState(txn)
+  const { canEdit, removeTransaction, setTransactionVisibility, open, setOpen, editing, setEditing, isMine } =
+    state
+
+  if (editing) {
+    return <EditTransactionFormCard txn={txn} onDone={() => setEditing(false)} />
+  }
+
+  return (
+    <li className={`py-3 ${unseen ? 'bg-brand/5' : ''}`}>
+      <div className="flex items-start gap-3">
+        <span className="relative mt-0.5 inline-flex">
+          <TypeBadge type={txn.type} />
+          {unseen && (
+            <span
+              aria-label="New, not yet seen"
+              title="Added by someone else since you last checked"
+              className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-2 border-panel bg-brand"
+            />
+          )}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <p className="min-w-0 truncate font-medium text-ink">{txn.title}</p>
+            {amountText(txn)}
+          </div>
+          {metaLine(txn, accountName)}
+          <div className="mt-1.5">
+            <RowActions
+              open={open}
+              onToggleOpen={() => {
+                setOpen((v) => !v)
+                if (!open) onOpen()
+              }}
+              canEdit={canEdit}
+              onEdit={() => setEditing(true)}
+              onDelete={() => void removeTransaction(txn.id)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {open && (
+        <div className="mt-2 rounded-lg bg-panel-2/40 p-2.5">
+          {detailContent(txn, isMine, setTransactionVisibility)}
+        </div>
+      )}
+    </li>
   )
 }
 
@@ -745,32 +874,51 @@ const TransactionList = () => {
           {all.length === 0 ? 'No transactions yet.' : 'Nothing matches those filters.'}
         </p>
       ) : (
-        <div className="table-wrap mt-3">
-          <table className="table">
-            <thead>
-              <tr>
-                <th aria-hidden="true"></th>
-                <th>Description</th>
-                <th className="text-right">Amount</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((txn) => (
-                <Row
-                  key={txn.id}
-                  txn={txn}
-                  accountName={accountName}
-                  unseen={
-                    !openedIds.has(txn.id) &&
-                    isUnseen(txn.createdAt, txn.createdBy, lastSeenAt, user?.id)
-                  }
-                  onOpen={() => markOpened(txn.id)}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {/* Below sm: a stacked card list — never scrolls sideways. */}
+          <ul className="mt-1 divide-y sm:hidden">
+            {pageRows.map((txn) => (
+              <CardRow
+                key={txn.id}
+                txn={txn}
+                accountName={accountName}
+                unseen={
+                  !openedIds.has(txn.id) &&
+                  isUnseen(txn.createdAt, txn.createdBy, lastSeenAt, user?.id)
+                }
+                onOpen={() => markOpened(txn.id)}
+              />
+            ))}
+          </ul>
+
+          {/* sm and up: there's room for real columns. */}
+          <div className="table-wrap mt-3 hidden sm:block">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th aria-hidden="true"></th>
+                  <th>Description</th>
+                  <th className="text-right">Amount</th>
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageRows.map((txn) => (
+                  <TableRow
+                    key={txn.id}
+                    txn={txn}
+                    accountName={accountName}
+                    unseen={
+                      !openedIds.has(txn.id) &&
+                      isUnseen(txn.createdAt, txn.createdBy, lastSeenAt, user?.id)
+                    }
+                    onOpen={() => markOpened(txn.id)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       <Pagination page={clampedPage} totalPages={totalPages} onChange={setPage} />
