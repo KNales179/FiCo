@@ -29,10 +29,12 @@ import {
   setAccountStatus,
   setDefaultAccount,
   setTransactionVisibility,
+  updateTransaction,
   type AccountWithBalance,
   type MoneyContext as MoneyCtx,
   type NewAccountInput,
   type RecordTransactionInput,
+  type UpdateTransactionInput,
 } from '../features/money'
 import type {
   Category,
@@ -197,9 +199,10 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
   )
 
   const addCategory = useCallback(
-    async (input: { name: string; kind: CategoryKind }) => {
-      await createCategoryFeature(requireCtx(), input)
+    async (input: { name: string; kind: CategoryKind; tracksItems?: boolean }) => {
+      const created = await createCategoryFeature(requireCtx(), input)
       await load()
+      return created
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [ctx, canEdit, load],
@@ -232,6 +235,25 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
     [ctx, canEdit, load],
   )
 
+  const editTransaction = useCallback(
+    async (id: string, patch: UpdateTransactionInput) => {
+      const c = requireCtx()
+      const next = { ...patch }
+      // A category picked by id (the normal case, from CategoryPicker)
+      // still needs its name resolved into the snapshot the rest of the
+      // app reads (analytics, the transaction list itself).
+      if (next.categoryId !== undefined && next.categoryName === undefined) {
+        next.categoryName = next.categoryId
+          ? categories.find((cat) => cat.id === next.categoryId)?.name ?? null
+          : null
+      }
+      await updateTransaction(c, id, next)
+      await load()
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ctx, canEdit, load, categories],
+  )
+
   const setVisibility = useCallback(
     async (id: string, visibility: 'SPACE' | 'PRIVATE') => {
       await setTransactionVisibility(requireCtx(), id, visibility)
@@ -260,6 +282,7 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
         removeAccount,
         makeDefaultAccount,
         addTransaction,
+        editTransaction,
         removeTransaction,
         setTransactionVisibility: setVisibility,
         addCategory,

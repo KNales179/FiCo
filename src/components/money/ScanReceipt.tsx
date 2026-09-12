@@ -134,6 +134,7 @@ const ScanReceipt = () => {
           id: i,
           name: item.name,
           quantity: String(item.quantity),
+          unit: 'pcs' as const, // OCR reads a piece count, never a weight
           price: unitMinor != null ? (unitMinor / 100).toFixed(2) : '',
           categoryId: suggestion?.categoryId ?? '',
         }

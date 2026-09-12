@@ -75,6 +75,34 @@ export const suggestForName = async (
   }
 }
 
+export interface ItemPurchaseDetail {
+  name: string
+  amountMinor: number
+}
+
+/**
+ * The itemized lines behind one transaction, when there are any — this is
+ * how a dashboard batch entry (Quick Add's itemized mode) shows its item
+ * breakdown, since unlike a scanned receipt it has no shopping list to
+ * read that from (Roadmap feedback: deliberately never creates one).
+ * Price history rows are linked to the transaction that recorded them
+ * regardless of which path created them, so this works the same either way.
+ */
+export const listPurchasesForTransaction = async (
+  transactionId: string,
+): Promise<ItemPurchaseDetail[]> => {
+  const rows = (await priceHistoryRepository.getAll()).filter(
+    (row) => row.transactionId === transactionId,
+  )
+  const profiles = await Promise.all(
+    rows.map((row) => itemProfileRepository.get(row.itemProfileId)),
+  )
+  return rows.map((row, i) => ({
+    name: profiles[i]?.displayName ?? 'Item',
+    amountMinor: row.amountMinor,
+  }))
+}
+
 export const recordPurchasePrice = async (
   ctx: MutationContext,
   params: {

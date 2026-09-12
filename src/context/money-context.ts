@@ -8,6 +8,7 @@ import type {
   AccountWithBalance,
   NewAccountInput,
   RecordTransactionInput,
+  UpdateTransactionInput,
 } from '../features/money'
 
 export interface MoneyContextValue {
@@ -29,6 +30,7 @@ export interface MoneyContextValue {
   removeAccount: (id: string) => Promise<void>
   makeDefaultAccount: (id: string) => Promise<void>
   addTransaction: (input: RecordTransactionInput) => Promise<void>
+  editTransaction: (id: string, patch: UpdateTransactionInput) => Promise<void>
   removeTransaction: (id: string) => Promise<void>
   setTransactionVisibility: (
     id: string,
@@ -38,7 +40,7 @@ export interface MoneyContextValue {
     name: string
     kind: CategoryKind
     tracksItems?: boolean
-  }) => Promise<void>
+  }) => Promise<Category>
   editCategory: (
     id: string,
     patch: { name?: string; archived?: boolean; tracksItems?: boolean },

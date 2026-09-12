@@ -12,6 +12,7 @@ const row = (over: Partial<DraftItem>): DraftItem => ({
   id: 0,
   name: '',
   quantity: '1',
+  unit: 'pcs',
   price: '',
   categoryId: '',
   ...over,
@@ -22,11 +23,24 @@ describe('parseItemQuantity', () => {
     expect(parseItemQuantity('3')).toBe(3)
   })
 
-  it('defaults a blank or unparseable quantity to 1, never 0', () => {
+  it('defaults a blank or unparseable "pcs" quantity to 1, never 0', () => {
     expect(parseItemQuantity('')).toBe(1)
     expect(parseItemQuantity('not-a-number')).toBe(1)
     expect(parseItemQuantity('0')).toBe(1)
     expect(parseItemQuantity('-2')).toBe(1)
+  })
+
+  it('rounds a fractional "pcs" quantity — a piece count is always whole', () => {
+    expect(parseItemQuantity('2.7', 'pcs')).toBe(3)
+  })
+
+  it('keeps decimal precision for a "kg" quantity — a real weight, not a piece count', () => {
+    expect(parseItemQuantity('0.756', 'kg')).toBe(0.756)
+  })
+
+  it('defaults a blank or unparseable "kg" quantity to 1 too', () => {
+    expect(parseItemQuantity('', 'kg')).toBe(1)
+    expect(parseItemQuantity('-1', 'kg')).toBe(1)
   })
 })
 
@@ -37,6 +51,13 @@ describe('rowTotalMinor', () => {
 
   it('is null when the price is blank, regardless of quantity', () => {
     expect(rowTotalMinor(row({ price: '', quantity: '3' }))).toBeNull()
+  })
+
+  it('handles a kg-weighed item, rounded to the nearest centavo', () => {
+    // ₱150.00/kg × 0.756kg of pork = ₱113.40
+    expect(
+      rowTotalMinor(row({ price: '150.00', quantity: '0.756', unit: 'kg' })),
+    ).toBe(11340)
   })
 })
 

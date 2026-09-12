@@ -5,6 +5,7 @@ import { createAccount } from '../money'
 import { createShoppingList, addItem, setItemChecked, updateItem } from '../shopping'
 import { completeListWithExpenses } from '../shopping/complete'
 import {
+  listPurchasesForTransaction,
   resolveItemProfile,
   setItemNameCategory,
   suggestForName,
@@ -71,5 +72,44 @@ describe('item profiles (§10)', () => {
     const suggestion = await suggestForName(c.spaceId, 'RICE')
     expect(suggestion?.lastPriceMinor).toBe(24000)
     expect(suggestion?.priceCount).toBe(1)
+  })
+
+  it('listPurchasesForTransaction reconstructs the item breakdown for a dashboard batch entry', async () => {
+    // A Quick Add batch entry (Roadmap feedback) has no shopping list to
+    // read items from — this is what the dashboard's "details" view falls
+    // back to instead.
+    const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+    const { recordItemizedExpense } = await import('../receipts')
+    const { transaction } = await recordItemizedExpense(c, {
+      accountId: cash.id,
+      title: 'Sari-sari store',
+      occurredAt: '2026-05-01',
+      amountMinor: 15000,
+      items: [
+        { name: 'Rice', quantity: 2, priceMinor: 10000 },
+        { name: 'Eggs', quantity: 1, priceMinor: 5000 },
+      ],
+    })
+
+    const purchases = await listPurchasesForTransaction(transaction.id)
+    expect(purchases).toEqual(
+      expect.arrayContaining([
+        { name: 'Rice', amountMinor: 10000 },
+        { name: 'Eggs', amountMinor: 5000 },
+      ]),
+    )
+    expect(purchases).toHaveLength(2)
+  })
+
+  it("listPurchasesForTransaction is empty for a plain, non-itemized transaction", async () => {
+    const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+    const { recordTransaction } = await import('../money')
+    const txn = await recordTransaction(c, {
+      type: 'EXPENSE',
+      amountMinor: 5000,
+      title: 'Coffee',
+      accountId: cash.id,
+    })
+    expect(await listPurchasesForTransaction(txn.id)).toHaveLength(0)
   })
 })

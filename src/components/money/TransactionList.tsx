@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useMoney } from '../../hooks/useMoney'
 import { useAuth } from '../../hooks/useAuth'
-import { formatMoney } from '../../domain/money'
+import { formatMoney, parseAmountToMinor } from '../../domain/money'
 import { listItems } from '../../features/shopping/items'
+import { listPurchasesForTransaction, type ItemPurchaseDetail } from '../../features/items'
 import Attachments from '../Attachments'
-import type { ShoppingItem, Transaction } from '../../types/models'
+import CategoryPicker from './CategoryPicker'
+import type { Transaction, ShoppingItem } from '../../types/models'
 
 const SIGN: Record<string, string> = {
   INCOME: '+',
@@ -38,8 +40,13 @@ const ReceiptItems = ({ listId }: { listId: string }) => {
         >
           <span>
             {item.name}
-            {item.quantity > 1 && (
-              <span className="text-muted"> × {item.quantity}</span>
+            {item.quantity !== 1 && (
+              <span className="text-muted">
+                {' '}
+                {Number.isInteger(item.quantity)
+                  ? `× ${item.quantity}`
+                  : `${item.quantity}kg`}
+              </span>
             )}
           </span>
           <span className="tabular-nums text-muted">
@@ -53,6 +60,175 @@ const ReceiptItems = ({ listId }: { listId: string }) => {
   )
 }
 
+/** The itemized detail behind a dashboard batch entry (Quick Add's itemized
+ *  mode) — unlike a scanned receipt, it has no shopping list to read items
+ *  from, so this reads the same price-history rows back by transaction. */
+const ItemizedPurchase = ({ transactionId }: { transactionId: string }) => {
+  const [items, setItems] = useState<ItemPurchaseDetail[] | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void listPurchasesForTransaction(transactionId).then((rows) => {
+      if (!cancelled) setItems(rows)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [transactionId])
+
+  if (items === null) return <p className="mt-2 text-xs text-muted">Loading items…</p>
+  if (items.length === 0) return null
+
+  return (
+    <ul className="mt-2 divide-y divide-line rounded-lg border border-line">
+      {items.map((item, i) => (
+        <li
+          key={i}
+          className="flex items-center justify-between px-2.5 py-1.5 text-xs"
+        >
+          <span>{item.name}</span>
+          <span className="tabular-nums text-muted">
+            {formatMoney(item.amountMinor)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/**
+ * Fixing a mistake on an already-recorded transaction — the wrong account,
+ * a typo, the wrong amount, the wrong category (Roadmap feedback). A
+ * transaction that came from a bill payment or a shopping trip can still
+ * be corrected here, but the linked record (the bill's own payment
+ * history, the shopping item) won't follow the edit — said plainly rather
+ * than silently drifting out of sync.
+ */
+const EditTransactionForm = ({
+  txn,
+  onDone,
+}: {
+  txn: Transaction
+  onDone: () => void
+}) => {
+  const { accounts, editTransaction } = useMoney()
+  const activeAccounts = accounts.filter((a) => a.status === 'ACTIVE')
+
+  const [title, setTitle] = useState(txn.title)
+  const [amount, setAmount] = useState((txn.amountMinor / 100).toFixed(2))
+  const [accountId, setAccountId] = useState(txn.accountId)
+  const [destinationAccountId, setDestinationAccountId] = useState(
+    txn.destinationAccountId ?? '',
+  )
+  const [categoryId, setCategoryId] = useState(txn.categoryId ?? '')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const amountMinor = parseAmountToMinor(amount)
+    if (amountMinor === null || amountMinor <= 0) {
+      setError('Enter an amount greater than zero')
+      return
+    }
+    setError('')
+    setBusy(true)
+    try {
+      await editTransaction(txn.id, {
+        title,
+        amountMinor,
+        accountId,
+        ...(txn.type === 'TRANSFER'
+          ? { destinationAccountId: destinationAccountId || null }
+          : {}),
+        categoryId: categoryId || null,
+      })
+      onDone()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <li className="py-2 text-sm">
+      <form onSubmit={submit} className="space-y-2">
+        {txn.sourceType !== 'MANUAL' && (
+          <p className="text-xs text-warning">
+            This came from{' '}
+            {txn.sourceType === 'BILL_PAYMENT' ? 'a bill payment' : 'a shopping trip'}
+            — that record won't follow this edit.
+          </p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="What for?"
+            required
+            className="input min-w-[8rem] flex-1"
+          />
+          <input
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            inputMode="decimal"
+            placeholder="Amount"
+            className="input w-24"
+          />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={accountId}
+            onChange={(e) => setAccountId(e.target.value)}
+            className="select w-auto"
+          >
+            {activeAccounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+          {txn.type === 'TRANSFER' && (
+            <select
+              value={destinationAccountId}
+              onChange={(e) => setDestinationAccountId(e.target.value)}
+              className="select w-auto"
+            >
+              <option value="">To…</option>
+              {activeAccounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {txn.type !== 'TRANSFER' && (
+            <CategoryPicker
+              kind={txn.type === 'INCOME' ? 'INCOME' : 'EXPENSE'}
+              value={categoryId}
+              onChange={setCategoryId}
+            />
+          )}
+        </div>
+        {error && <p className="text-xs text-danger">{error}</p>}
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            disabled={busy}
+            className="text-xs text-brand underline disabled:opacity-50"
+          >
+            {busy ? 'Saving…' : 'Save'}
+          </button>
+          <button type="button" onClick={onDone} className="text-xs text-muted underline">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </li>
+  )
+}
+
 const Row = ({
   txn,
   accountName,
@@ -63,8 +239,13 @@ const Row = ({
   const { canEdit, removeTransaction, setTransactionVisibility } = useMoney()
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
   const isMine = txn.createdBy === user?.id
   const isShoppingTrip = txn.sourceType === 'SHOPPING_LIST' && txn.sourceId
+
+  if (editing) {
+    return <EditTransactionForm txn={txn} onDone={() => setEditing(false)} />
+  }
 
   return (
     <li className="py-2 text-sm">
@@ -102,8 +283,17 @@ const Row = ({
             onClick={() => setOpen((v) => !v)}
             className="text-xs text-muted underline"
           >
-            {open ? 'close' : isShoppingTrip ? 'items' : 'receipt'}
+            {open ? 'close' : 'details'}
           </button>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="text-xs text-muted underline"
+            >
+              edit
+            </button>
+          )}
           {canEdit && (
             <button
               type="button"
@@ -119,6 +309,9 @@ const Row = ({
       {open && (
         <>
           {isShoppingTrip && <ReceiptItems listId={txn.sourceId!} />}
+          {!isShoppingTrip && txn.type === 'EXPENSE' && (
+            <ItemizedPurchase transactionId={txn.id} />
+          )}
           {isMine && (
             <button
               type="button"

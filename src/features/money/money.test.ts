@@ -10,6 +10,7 @@ import {
   recordTransaction,
   resolveDefaultAccount,
   setDefaultAccount,
+  updateTransaction,
 } from './index'
 
 const c = ctx()
@@ -152,6 +153,79 @@ describe('money engine (Roadmap Phase 6 integrity)', () => {
     await deleteTransaction(c, txn.id)
     bal = await computeSpaceBalances(c.spaceId)
     expect(bal.accounts[0].balanceMinor).toBe(100000)
+  })
+
+  it('editing a transaction corrects the name, amount, and category — balance follows the new amount', async () => {
+    const cash = await createAccount(c, {
+      name: 'Cash',
+      type: 'CASH',
+      openingBalanceMinor: 100000,
+    })
+    const txn = await recordTransaction(c, {
+      type: 'EXPENSE',
+      amountMinor: 5000,
+      title: 'Coffee',
+      accountId: cash.id,
+    })
+
+    const edited = await updateTransaction(c, txn.id, {
+      title: 'Coffee and pastry',
+      amountMinor: 8000,
+      categoryId: 'cat-1',
+      categoryName: 'Food',
+    })
+    expect(edited).toMatchObject({
+      title: 'Coffee and pastry',
+      amountMinor: 8000,
+      categoryId: 'cat-1',
+      categoryName: 'Food',
+    })
+
+    const bal = await computeSpaceBalances(c.spaceId)
+    expect(bal.accounts[0].balanceMinor).toBe(92000) // 100,000 − 8,000, not the original 5,000
+  })
+
+  it('editing a transaction to a different account moves its balance effect there', async () => {
+    const cash = await createAccount(c, {
+      name: 'Cash',
+      type: 'CASH',
+      openingBalanceMinor: 100000,
+    })
+    const bank = await createAccount(c, {
+      name: 'Bank',
+      type: 'BANK',
+      openingBalanceMinor: 200000,
+    })
+    const txn = await recordTransaction(c, {
+      type: 'EXPENSE',
+      amountMinor: 10000,
+      title: 'Groceries',
+      accountId: cash.id,
+    })
+
+    await updateTransaction(c, txn.id, { accountId: bank.id })
+
+    const bal = await computeSpaceBalances(c.spaceId)
+    const byId = Object.fromEntries(bal.accounts.map((a) => [a.id, a.balanceMinor]))
+    expect(byId[cash.id]).toBe(100000) // no longer charged here
+    expect(byId[bank.id]).toBe(190000) // charged here instead
+  })
+
+  it('refuses an edit that would make the transaction invalid', async () => {
+    const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+    const txn = await recordTransaction(c, {
+      type: 'EXPENSE',
+      amountMinor: 5000,
+      title: 'Coffee',
+      accountId: cash.id,
+    })
+
+    await expect(
+      updateTransaction(c, txn.id, { amountMinor: 0 }),
+    ).rejects.toThrow(/greater than zero/i)
+    await expect(
+      updateTransaction(c, txn.id, { accountId: 'nope' }),
+    ).rejects.toThrow(/choose an account/i)
   })
 
   it('every mutation queues a sync event', async () => {

@@ -126,6 +126,82 @@ export const deleteTransaction = async (
   await enqueueMutation(ctx, 'transaction', id, 'DELETE', { id })
 }
 
+export interface UpdateTransactionInput {
+  title?: string
+  amountMinor?: number
+  accountId?: string
+  destinationAccountId?: string | null
+  categoryId?: string | null
+  categoryName?: string | null
+  occurredAt?: string
+}
+
+/**
+ * Corrects a mistake on a transaction that's already been recorded — the
+ * wrong account, a typo in the name, the wrong amount, or the wrong
+ * category. This is a different thing from the §10 rule ("a category
+ * name is a snapshot, never rewritten") — that rule is about *automatic*
+ * cascades (renaming a category, changing an item's default category)
+ * never silently reaching back into old records; a person directly fixing
+ * a specific mistake on their own transaction is the normal, expected way
+ * to correct it.
+ *
+ * The transaction's `type` (income/expense/transfer) is deliberately not
+ * editable here — that changes what the record fundamentally means, not
+ * just a detail of it; delete and re-add instead.
+ */
+export const updateTransaction = async (
+  ctx: MoneyContext,
+  id: string,
+  patch: UpdateTransactionInput,
+): Promise<Transaction> => {
+  const existing = await transactionRepository.get(id)
+  if (!existing || existing.deletedAt) {
+    throw new Error('Transaction not found')
+  }
+
+  const accounts = await accountRepository.getAllByIndex(
+    'by-spaceId',
+    ctx.spaceId,
+  )
+  const accountsById = new Map<string, Account>(
+    accounts.map((account) => [account.id, account]),
+  )
+
+  const merged: TransactionInput = {
+    type: existing.type,
+    amountMinor: patch.amountMinor ?? existing.amountMinor,
+    title: patch.title ?? existing.title,
+    accountId: patch.accountId ?? existing.accountId,
+    destinationAccountId:
+      patch.destinationAccountId !== undefined
+        ? patch.destinationAccountId
+        : existing.destinationAccountId,
+  }
+
+  const error = validateTransactionInput(merged, accountsById)
+  if (error) throw new Error(error)
+
+  const next = await transactionRepository.update(id, {
+    ...(patch.title !== undefined ? { title: patch.title.trim() } : {}),
+    ...(patch.amountMinor !== undefined
+      ? { amountMinor: patch.amountMinor }
+      : {}),
+    ...(patch.accountId !== undefined ? { accountId: patch.accountId } : {}),
+    ...(patch.destinationAccountId !== undefined
+      ? { destinationAccountId: patch.destinationAccountId }
+      : {}),
+    ...(patch.categoryId !== undefined ? { categoryId: patch.categoryId } : {}),
+    ...(patch.categoryName !== undefined
+      ? { categoryName: patch.categoryName }
+      : {}),
+    ...(patch.occurredAt !== undefined ? { occurredAt: patch.occurredAt } : {}),
+    syncStatus: 'PENDING',
+  })
+  await enqueueMutation(ctx, 'transaction', id, 'UPDATE', next)
+  return next
+}
+
 export const setTransactionVisibility = async (
   ctx: MoneyContext,
   id: string,
