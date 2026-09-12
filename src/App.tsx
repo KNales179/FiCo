@@ -31,6 +31,7 @@ const Members = lazy(() => import('./pages/Members'))
 const Activity = lazy(() => import('./pages/Activity'))
 const Account = lazy(() => import('./pages/Account'))
 const Settings = lazy(() => import('./pages/Settings'))
+const Credits = lazy(() => import('./pages/Credits'))
 const Admin = lazy(() => import('./pages/Admin'))
 const Feedback = lazy(() => import('./pages/Feedback'))
 const AdminFeedback = lazy(() => import('./pages/AdminFeedback'))
@@ -73,6 +74,7 @@ const App = () => {
                           <Route path="/activity" element={<Activity />} />
                           <Route path="/account" element={<Account />} />
                           <Route path="/settings" element={<Settings />} />
+                          <Route path="/credits" element={<Credits />} />
                           <Route path="/feedback" element={<Feedback />} />
                           <Route path="/admin" element={<Admin />} />
                           <Route path="/admin/feedback" element={<AdminFeedback />} />

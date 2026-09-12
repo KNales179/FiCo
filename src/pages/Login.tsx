@@ -180,7 +180,8 @@ const Login = () => {
           </Link>
         </p>
 
-        <p className="mt-4 flex gap-3 text-xs text-muted">
+        <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+          <span>© {new Date().getFullYear()} IBell. All rights reserved.</span>
           <Link to="/terms" className="underline">
             Terms
           </Link>

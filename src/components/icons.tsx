@@ -297,6 +297,14 @@ export const IconFilter = (props: IconProps) => (
   </Icon>
 )
 
+export const IconInfo = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 11v5.5" />
+    <circle cx="12" cy="8" r="0.9" fill="currentColor" stroke="none" />
+  </Icon>
+)
+
 export const IconSlidersHorizontal = (props: IconProps) => (
   <Icon {...props}>
     <path d="M4 6h7M15 6h5M4 12h11M19 12h1M4 18h4M12 18h8" />

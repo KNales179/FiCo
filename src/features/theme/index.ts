@@ -8,7 +8,22 @@
  */
 
 export type ThemeMode = 'system' | 'light' | 'dark'
-export type Palette = 'purple' | 'blue' | 'teal' | 'rose' | 'slate' | 'white'
+export type Palette =
+  | 'purple'
+  | 'blue'
+  | 'teal'
+  | 'rose'
+  | 'slate'
+  | 'white'
+  | 'indigo'
+  | 'green'
+  | 'gold'
+  | 'sky'
+  | 'pink'
+  | 'orange'
+  | 'lime'
+  | 'crimson'
+  | 'brown'
 export type FontSize = 'sm' | 'md' | 'lg'
 export type Density = 'comfortable' | 'compact'
 
@@ -31,12 +46,21 @@ export const DEFAULT_APPEARANCE: Appearance = {
 }
 
 export const PALETTES: { value: Palette; label: string; swatch: string }[] = [
-  { value: 'purple', label: 'Purple', swatch: '#7c3aed' },
+  { value: 'purple', label: 'Purple', swatch: '#9333ea' },
   { value: 'blue', label: 'Blue', swatch: '#2563eb' },
   { value: 'teal', label: 'Teal', swatch: '#0d9488' },
   { value: 'rose', label: 'Rose', swatch: '#e11d48' },
   { value: 'slate', label: 'Slate', swatch: '#475569' },
   { value: 'white', label: 'White', swatch: '#ffffff' },
+  { value: 'indigo', label: 'Indigo', swatch: '#4f46e5' },
+  { value: 'green', label: 'Green', swatch: '#15803d' },
+  { value: 'gold', label: 'Gold', swatch: '#a16207' },
+  { value: 'sky', label: 'Sky', swatch: '#0369a1' },
+  { value: 'pink', label: 'Pink', swatch: '#be185d' },
+  { value: 'orange', label: 'Orange', swatch: '#c2410c' },
+  { value: 'lime', label: 'Lime', swatch: '#4d7c0f' },
+  { value: 'crimson', label: 'Crimson', swatch: '#b91c1c' },
+  { value: 'brown', label: 'Brown', swatch: '#78350f' },
 ]
 
 const STORAGE_KEY = 'fico.appearance'
