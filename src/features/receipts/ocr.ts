@@ -1,4 +1,5 @@
-import { createWorker, type Worker } from 'tesseract.js'
+import { createWorker, PSM, type Worker } from 'tesseract.js'
+import { preprocessReceiptImage } from './preprocessImage'
 
 /**
  * Reads text off a receipt photo entirely on this device — Tesseract runs in
@@ -16,7 +17,15 @@ let workerPromise: Promise<Worker> | null = null
 
 const getWorker = (): Promise<Worker> => {
   if (!workerPromise) {
-    workerPromise = createWorker('eng')
+    workerPromise = createWorker('eng').then(async (worker) => {
+      // A receipt is a single narrow column of variable-size text (a big
+      // total, small item lines) — closer to what Tesseract's own docs mean
+      // by "single column" than its default "fully automatic" mode, which
+      // was mis-segmenting real receipts (Jollibee/SM Store, not just the
+      // one receipt shape this had been tried against).
+      await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_COLUMN })
+      return worker
+    })
   }
   return workerPromise
 }
@@ -25,7 +34,8 @@ export const recognizeReceiptText = async (
   image: Blob | File,
 ): Promise<string> => {
   const worker = await getWorker()
-  const { data } = await worker.recognize(image)
+  const cleaned = await preprocessReceiptImage(image)
+  const { data } = await worker.recognize(cleaned)
   return data.text
 }
 
