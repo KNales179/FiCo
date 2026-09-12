@@ -1,5 +1,5 @@
 import { useCallback, useState, type ComponentType } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useSpace } from '../hooks/useSpace'
 import { useUnseenBadge } from '../hooks/useUnseenBadge'
@@ -200,6 +200,15 @@ const AppLayout = () => {
 
       <main className="mx-auto max-w-5xl px-3 py-5 pb-24 sm:px-4 md:pb-5">
         <Outlet />
+
+        <footer className="mt-10 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
+          <Link to="/terms" className="underline">
+            Terms
+          </Link>
+          <Link to="/privacy" className="underline">
+            Privacy
+          </Link>
+        </footer>
       </main>
 
       {/* Mobile bottom navigation */}

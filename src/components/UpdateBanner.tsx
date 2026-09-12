@@ -1,13 +1,20 @@
 import { useEffect, useState } from 'react'
 import { applyPendingUpdate, SW_UPDATE_EVENT } from '../features/pwa/swUpdate'
+import { Modal, Button } from './ui'
+import { IconRotateCcw } from './icons'
 
 /**
  * Tells a person a new version is ready instead of silently reloading out
- * from under them — the reload only happens once they click "Refresh now"
- * (owner feedback: an unannounced reload was losing in-progress typing).
+ * from under them — the reload only happens once they click "Install
+ * update" (owner feedback: an unannounced reload was losing in-progress
+ * typing). Shown as a real dialog rather than a thin bar, so it reads as
+ * what it is — a downloaded update waiting to be installed — and is hard
+ * to miss on an installed PWA's launch (owner: "opening the app will say
+ * the new update and ask for installing the download").
  */
 const UpdateBanner = () => {
   const [available, setAvailable] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
   const [applying, setApplying] = useState(false)
 
   useEffect(() => {
@@ -16,26 +23,32 @@ const UpdateBanner = () => {
     return () => window.removeEventListener(SW_UPDATE_EVENT, onAvailable)
   }, [])
 
-  if (!available) return null
+  if (!available || dismissed) return null
 
   return (
-    <div
-      role="status"
-      className="flex w-full items-center justify-center gap-3 bg-brand px-4 py-1.5 text-center text-sm font-medium text-brand-ink"
-    >
-      <span>A new version of Fico is ready.</span>
-      <button
-        type="button"
-        disabled={applying}
-        onClick={() => {
-          setApplying(true)
-          void applyPendingUpdate()
-        }}
-        className="rounded-md bg-brand-ink/15 px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-brand-ink/25 disabled:opacity-50"
-      >
-        {applying ? 'Updating…' : 'Refresh now'}
-      </button>
-    </div>
+    <Modal title="Update available" onClose={() => setDismissed(true)}>
+      <p className="text-sm text-muted">
+        A new version of Fico has already downloaded in the background and
+        is ready to install. Installing restarts the app — save anything
+        you're in the middle of typing first.
+      </p>
+      <div className="mt-4 flex justify-end gap-2">
+        <Button onClick={() => setDismissed(true)} disabled={applying}>
+          Not now
+        </Button>
+        <Button
+          variant="primary"
+          disabled={applying}
+          onClick={() => {
+            setApplying(true)
+            void applyPendingUpdate()
+          }}
+        >
+          <IconRotateCcw size={15} />
+          {applying ? 'Installing…' : 'Install update'}
+        </Button>
+      </div>
+    </Modal>
   )
 }
 

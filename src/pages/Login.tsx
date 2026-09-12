@@ -179,6 +179,15 @@ const Login = () => {
             Create one
           </Link>
         </p>
+
+        <p className="mt-4 flex gap-3 text-xs text-muted">
+          <Link to="/terms" className="underline">
+            Terms
+          </Link>
+          <Link to="/privacy" className="underline">
+            Privacy
+          </Link>
+        </p>
       </div>
     </main>
   )

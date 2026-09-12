@@ -23,6 +23,7 @@ export interface AuthContextValue {
     username: string,
     email: string,
     password: string,
+    termsAccepted: boolean,
   ) => Promise<void>
   logout: () => Promise<void>
   /** Re-pulls the current user (role/2FA status can change from Account/Admin actions). */

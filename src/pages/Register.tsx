@@ -11,6 +11,7 @@ const Register = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [termsAccepted, setTermsAccepted] = useState(false)
 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -27,6 +28,11 @@ const Register = () => {
       return
     }
 
+    if (!termsAccepted) {
+      setError('You need to agree to the Terms & Conditions and Privacy Policy to create an account')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -34,6 +40,7 @@ const Register = () => {
         username,
         email,
         password,
+        termsAccepted,
       )
 
       navigate('/', { replace: true })
@@ -110,6 +117,34 @@ const Register = () => {
             />
           </label>
 
+          <p className="rounded-lg border border-line bg-panel-2 px-3 py-2 text-xs text-muted">
+            Fico is a personal record-keeping tool — it isn't connected to
+            GCash, your bank, or any other financial institution. Nothing
+            here reflects your real, live balance, and small mismatches
+            between what's recorded here and your actual accounts are
+            expected, not a bug.
+          </p>
+
+          <label className="flex items-start gap-2 text-sm text-muted">
+            <input
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              required
+              className="mt-0.5"
+            />
+            <span>
+              I agree to the{' '}
+              <Link to="/terms" target="_blank" className="font-medium text-brand underline">
+                Terms & Conditions
+              </Link>{' '}
+              and{' '}
+              <Link to="/privacy" target="_blank" className="font-medium text-brand underline">
+                Privacy Policy
+              </Link>
+            </span>
+          </label>
+
           {error && (
             <p role="alert" className="text-sm text-danger">
               {error}
@@ -118,7 +153,7 @@ const Register = () => {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !termsAccepted}
             className="btn btn-primary w-full py-2.5"
           >
             {loading ? 'Creating account…' : 'Create account'}

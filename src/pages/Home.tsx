@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useSpace } from '../hooks/useSpace'
 import { useMoney } from '../hooks/useMoney'
@@ -39,6 +40,14 @@ const Home = () => {
           ) : undefined
         }
       />
+
+      <p className="text-xs text-muted">
+        Fico is a manual record — not connected to any bank or e-wallet.
+        Numbers here may not exactly match your real balances.{' '}
+        <Link to="/terms" className="underline">
+          Learn more
+        </Link>
+      </p>
 
       {(spaceError || moneyError) && <Alert>{spaceError ?? moneyError}</Alert>}
 

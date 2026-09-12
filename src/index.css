@@ -40,25 +40,36 @@
 :root {
   color-scheme: light dark;
 
-  --surface: #f5f5f8;
+  --surface-base: #f5f5f8;
   --panel: #ffffff;
-  --panel-2: #fafafb;
+  --panel-2-base: #fafafb;
   --line: #e4e4ea;
   --ink: #1b1b22;
   --muted: #6a6a76;
   --danger: #dc2626;
-  --success: #059669;
-  --warning: #d97706;
+  /* Darker than the "usual" success/warning greens/ambers — at the more
+     common #059669/#d97706 shade, text-size use of these against a white
+     panel measures 3.8:1 and 3.2:1, both under WCAG AA's 4.5:1 for normal
+     text (they'd only pass at large/bold sizes). These shades hold ~5:1. */
+  --success: #047857;
+  --warning: #b45309;
 
   --brand: #7c3aed;
   --brand-ink: #ffffff;
+
+  /* The page background (not cards — those stay neutral on purpose, so the
+     brand color is used with restraint) picks up a slight tint of whichever
+     accent is active, via color-mix so it automatically follows both the
+     palette and the light/dark base without a copy per combination. */
+  --surface: color-mix(in srgb, var(--brand) 6%, var(--surface-base));
+  --panel-2: color-mix(in srgb, var(--brand) 3%, var(--panel-2-base));
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --surface: #0e0e12;
+    --surface-base: #0e0e12;
     --panel: #17171d;
-    --panel-2: #1d1d25;
+    --panel-2-base: #1d1d25;
     --line: #2b2b33;
     --ink: #ececf1;
     --muted: #9a9aa6;
@@ -68,13 +79,16 @@
 
     --brand: #a78bfa;
     --brand-ink: #16121f;
+
+    --surface: color-mix(in srgb, var(--brand) 10%, var(--surface-base));
+    --panel-2: color-mix(in srgb, var(--brand) 6%, var(--panel-2-base));
   }
 }
 
 :root[data-theme="dark"] {
-  --surface: #0e0e12;
+  --surface-base: #0e0e12;
   --panel: #17171d;
-  --panel-2: #1d1d25;
+  --panel-2-base: #1d1d25;
   --line: #2b2b33;
   --ink: #ececf1;
   --muted: #9a9aa6;
@@ -84,6 +98,9 @@
 
   --brand: #a78bfa;
   --brand-ink: #16121f;
+
+  --surface: color-mix(in srgb, var(--brand) 10%, var(--surface-base));
+  --panel-2: color-mix(in srgb, var(--brand) 6%, var(--panel-2-base));
 }
 
 /* Palette accents — light mode. Purple is the default and needs no attribute. */
@@ -101,6 +118,12 @@
 }
 :root[data-palette="slate"] {
   --brand: #475569;
+  --brand-ink: #ffffff;
+}
+/* A monochrome option — "the accent" is just ink itself, so buttons and
+   the active nav read as stark black-on-white instead of any hue. */
+:root[data-palette="white"] {
+  --brand: #18181b;
   --brand-ink: #ffffff;
 }
 
@@ -122,6 +145,10 @@
     --brand: #94a3b8;
     --brand-ink: #0f172a;
   }
+  :root:not([data-theme="light"])[data-palette="white"] {
+    --brand: #f4f4f5;
+    --brand-ink: #18181b;
+  }
 }
 :root[data-theme="dark"][data-palette="blue"] {
   --brand: #60a5fa;
@@ -138,6 +165,10 @@
 :root[data-theme="dark"][data-palette="slate"] {
   --brand: #94a3b8;
   --brand-ink: #0f172a;
+}
+:root[data-theme="dark"][data-palette="white"] {
+  --brand: #f4f4f5;
+  --brand-ink: #18181b;
 }
 
 html[data-font-size="sm"] {

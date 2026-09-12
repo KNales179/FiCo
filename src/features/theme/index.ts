@@ -8,7 +8,7 @@
  */
 
 export type ThemeMode = 'system' | 'light' | 'dark'
-export type Palette = 'purple' | 'blue' | 'teal' | 'rose' | 'slate'
+export type Palette = 'purple' | 'blue' | 'teal' | 'rose' | 'slate' | 'white'
 export type FontSize = 'sm' | 'md' | 'lg'
 export type Density = 'comfortable' | 'compact'
 
@@ -36,6 +36,7 @@ export const PALETTES: { value: Palette; label: string; swatch: string }[] = [
   { value: 'teal', label: 'Teal', swatch: '#0d9488' },
   { value: 'rose', label: 'Rose', swatch: '#e11d48' },
   { value: 'slate', label: 'Slate', swatch: '#475569' },
+  { value: 'white', label: 'White', swatch: '#ffffff' },
 ]
 
 const STORAGE_KEY = 'fico.appearance'

@@ -150,12 +150,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     username: string,
     email: string,
     password: string,
+    termsAccepted: boolean,
   ) => {
     const deviceId = await ensureDeviceId().catch(() => undefined)
     const response = await registerRequest(
       username,
       email,
       password,
+      termsAccepted,
       deviceId,
     )
     await applyServerAuth(response.user, response.session)

@@ -12,6 +12,7 @@ export const register = (
   username: string,
   email: string,
   password: string,
+  termsAccepted: boolean,
   deviceId?: string,
 ) => {
   return api<AuthResponse>('/auth/register', {
@@ -20,6 +21,7 @@ export const register = (
       username,
       email,
       password,
+      termsAccepted,
       deviceId,
     },
   })
