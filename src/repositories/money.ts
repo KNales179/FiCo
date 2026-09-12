@@ -81,6 +81,18 @@ export const transactionRepository = {
       cursor = await cursor.continue()
     }
 
+    // The index only orders by `occurredAt`; two transactions dated (but
+    // not timed) the same day tie there and would otherwise come back in
+    // whatever arbitrary order the index happens to store same-key rows
+    // in — which could look like the list randomly reshuffled itself.
+    // Breaking ties by `createdAt` (when it was actually entered, which
+    // never changes on an edit) keeps that order stable and meaningful.
+    out.sort(
+      (a, b) =>
+        b.occurredAt.localeCompare(a.occurredAt) ||
+        b.createdAt.localeCompare(a.createdAt),
+    )
+
     return out
   },
 

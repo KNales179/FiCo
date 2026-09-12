@@ -3,6 +3,7 @@ import {
   formatMoney,
   minorToDecimalString,
   parseAmountToMinor,
+  withUpdatedDate,
 } from './money'
 
 describe('parseAmountToMinor', () => {
@@ -39,5 +40,24 @@ describe('minorToDecimalString', () => {
     for (const n of [0, 5, 125050, 99, 1000000]) {
       expect(parseAmountToMinor(minorToDecimalString(n))).toBe(n)
     }
+  })
+})
+
+describe('withUpdatedDate', () => {
+  it('moves the calendar date but keeps the original time-of-day', () => {
+    // A bill payment recorded at a real moment, not midnight — editing
+    // the transaction (without deliberately changing the date) must not
+    // flatten this to midnight and silently reorder it among that day's
+    // other transactions (owner feedback: "it got rearranged... there
+    // was already a spending before [this] was recorded").
+    expect(
+      withUpdatedDate('2026-09-12T14:23:05.000Z', '2026-09-12'),
+    ).toBe('2026-09-12T14:23:05.000Z')
+  })
+
+  it('changing the date only shifts the day, not the time', () => {
+    expect(
+      withUpdatedDate('2026-09-12T14:23:05.000Z', '2026-09-20'),
+    ).toBe('2026-09-20T14:23:05.000Z')
   })
 })

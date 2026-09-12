@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useMoney } from '../../hooks/useMoney'
 import { useAuth } from '../../hooks/useAuth'
-import { formatMoney, parseAmountToMinor } from '../../domain/money'
+import { formatMoney, parseAmountToMinor, withUpdatedDate } from '../../domain/money'
 import { listPurchasesForTransaction, type ItemPurchaseDetail } from '../../features/items'
 import Attachments from '../Attachments'
 import CategoryPicker from './CategoryPicker'
@@ -118,7 +118,7 @@ const EditTransactionForm = ({
         title,
         amountMinor,
         accountId,
-        occurredAt: new Date(`${date}T00:00:00.000Z`).toISOString(),
+        occurredAt: withUpdatedDate(txn.occurredAt, date),
         ...(txn.type === 'TRANSFER'
           ? { destinationAccountId: destinationAccountId || null }
           : {}),

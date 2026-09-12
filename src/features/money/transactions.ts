@@ -66,7 +66,16 @@ export const listTransactions = async (
     rows = rows.filter((txn) => txn.occurredAt < options.before!)
   }
 
-  rows.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+  // Newest first by when it happened; ties (same `occurredAt`, e.g. two
+  // transactions dated but not timed the same day) break by `createdAt` —
+  // the order they were actually entered in — instead of whatever
+  // arbitrary order the store happens to return, which could otherwise
+  // look like it reshuffled for no reason.
+  rows.sort(
+    (a, b) =>
+      b.occurredAt.localeCompare(a.occurredAt) ||
+      b.createdAt.localeCompare(a.createdAt),
+  )
   return options.limit ? rows.slice(0, options.limit) : rows
 }
 

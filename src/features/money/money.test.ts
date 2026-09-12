@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ctx, withDB } from '../../test/helpers'
-import { accountRepository, syncEventRepository } from '../../repositories'
+import {
+  accountRepository,
+  syncEventRepository,
+  transactionRepository,
+} from '../../repositories'
 import {
   backfillOpeningBalances,
   computeSpaceBalances,
@@ -314,6 +318,49 @@ describe('money engine (Roadmap Phase 6 integrity)', () => {
     // Running it again must not create a second transaction.
     await backfillOpeningBalances(c)
     expect(await listTransactions(c.spaceId, { type: 'INCOME' })).toHaveLength(1)
+  })
+
+  it('same-day transactions tie-break by when they were actually entered, not arbitrarily', async () => {
+    // Both dated the same day (no time-of-day, as a manually-typed entry
+    // gets) — without a deterministic tiebreaker these could come back in
+    // whatever order the store happens to return, which looks like the
+    // list randomly reshuffled itself on an unrelated change (owner
+    // feedback).
+    const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+    const sameDay = '2026-09-12T00:00:00.000Z'
+    const first = await recordTransaction(c, {
+      type: 'EXPENSE',
+      amountMinor: 1000,
+      title: 'Entered first',
+      accountId: cash.id,
+      occurredAt: sameDay,
+    })
+    const second = await recordTransaction(c, {
+      type: 'EXPENSE',
+      amountMinor: 2000,
+      title: 'Entered second',
+      accountId: cash.id,
+      occurredAt: sameDay,
+    })
+    // Force a real, distinct createdAt on each — `update()` (rightly)
+    // refuses to change it, so write it directly.
+    await transactionRepository.put({
+      ...(await transactionRepository.get(first.id))!,
+      createdAt: '2026-09-12T08:00:00.000Z',
+    })
+    await transactionRepository.put({
+      ...(await transactionRepository.get(second.id))!,
+      createdAt: '2026-09-12T09:00:00.000Z',
+    })
+
+    const all = await listTransactions(c.spaceId, { type: 'EXPENSE' })
+    expect(all.map((t) => t.title)).toEqual(['Entered second', 'Entered first'])
+
+    const recent = await listTransactions(c.spaceId, {
+      type: 'EXPENSE',
+      limit: 10,
+    })
+    expect(recent.map((t) => t.title)).toEqual(['Entered second', 'Entered first'])
   })
 
   it('first account is default; setDefaultAccount is exclusive', async () => {

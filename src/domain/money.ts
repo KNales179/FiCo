@@ -63,6 +63,22 @@ export const parseAmountToMinor = (
   return Number.isFinite(minor) ? minor : null
 }
 
+/**
+ * Moves an existing ISO timestamp to a new calendar date (`"YYYY-MM-DD"`,
+ * as a `<input type="date">` gives it) without touching its time-of-day.
+ * Used when editing a transaction's date: a bill payment (or anything
+ * else recorded with a real time, not just a date) would otherwise get
+ * silently flattened to midnight on every edit — moving it earlier in the
+ * day and reordering it among that day's other transactions even though
+ * nothing about when it actually happened changed.
+ */
+export const withUpdatedDate = (originalIso: string, newDate: string): string => {
+  const [year, month, day] = newDate.split('-').map(Number)
+  const next = new Date(originalIso)
+  next.setUTCFullYear(year, month - 1, day)
+  return next.toISOString()
+}
+
 /** Minor units → a plain decimal string ("1250.50"), no symbol or grouping. */
 export const minorToDecimalString = (
   amountMinor: number,
