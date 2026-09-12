@@ -18,6 +18,7 @@ import { completeListWithExpenses } from './shopping/complete'
 import { createBill, listBills, payBill } from './bills'
 import {
   clearLocalAuth,
+  ensureDeviceId,
   loadLocalAuth,
   persistLocalAuth,
   wasSignedOut,
@@ -149,6 +150,33 @@ describe('offline operation (Phase 23)', () => {
     await clearLocalAuth({ markSignedOut: true })
     expect(await loadLocalAuth()).toBeNull()
     expect(await wasSignedOut()).toBe(true)
+  })
+
+  it('logging out wipes this device\'s cached financial data (shared-device safety), but keeps its own device id', async () => {
+    const deviceIdBefore = await ensureDeviceId()
+
+    // Data left behind by whoever was using this device — must not still
+    // be sitting in IndexedDB for the next person who signs into a
+    // different account on the same browser (frontend-data-performance:
+    // "clear user-specific cache on logout to prevent data leakage").
+    await createAccount(c, { name: 'Cash', type: 'CASH', openingBalanceMinor: 50000 })
+    await recordTransaction(c, {
+      type: 'EXPENSE',
+      amountMinor: 1000,
+      title: 'Coffee',
+      accountId: (await createAccount(c, { name: 'Bank', type: 'BANK' })).id,
+    })
+
+    await clearLocalAuth({ markSignedOut: true })
+
+    expect(await listTransactions(c.spaceId)).toHaveLength(0)
+    const { accounts } = await computeSpaceBalances(c.spaceId)
+    expect(accounts).toHaveLength(0)
+
+    // The device id is not personal data — losing it would make this
+    // device look "new" to the server next time, breaking device
+    // recognition for no reason.
+    expect(await ensureDeviceId()).toBe(deviceIdBefore)
   })
 
   it('a device that never authenticated has no local session', async () => {

@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useRef, useState, type FormEvent } from 'react'
 import { useShopping } from '../hooks/useShopping'
 import { useMoney } from '../hooks/useMoney'
 import { useSpace } from '../hooks/useSpace'
@@ -147,14 +147,30 @@ const Shopping = () => {
   const [payCategoryId, setPayCategoryId] = useState('')
   const [completion, setCompletion] = useState<string | null>(null)
 
-  const onItemNameChange = async (value: string) => {
+  // Debounced (Product Spec: frontend-data-performance) so the "last
+  // time" lookup doesn't fire on every single keystroke while typing an
+  // item name — and the timestamp guards against an out-of-order reply
+  // (a slower lookup for what was typed a moment ago) landing after a
+  // newer one and overwriting the right suggestion with a stale one.
+  const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const suggestRequestedAt = useRef(0)
+
+  const onItemNameChange = (value: string) => {
     setItemName(value)
+    if (suggestTimer.current) clearTimeout(suggestTimer.current)
+
     if (!activeSpaceId || value.trim().length < 2) {
       setSuggestion(null)
       return
     }
-    const s = await suggestForName(activeSpaceId, value)
-    setSuggestion(s)
+
+    suggestTimer.current = setTimeout(() => {
+      const requestedAt = Date.now()
+      suggestRequestedAt.current = requestedAt
+      void suggestForName(activeSpaceId, value).then((s) => {
+        if (suggestRequestedAt.current === requestedAt) setSuggestion(s)
+      })
+    }, 200)
   }
 
   const totals = useMemo(

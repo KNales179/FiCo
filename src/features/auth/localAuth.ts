@@ -1,4 +1,6 @@
 import { getDeviceId, initDB } from '../../db/bootstrap'
+import { deleteDatabase, getDB } from '../../db/database'
+import { DB_VERSION } from '../../db/schema'
 import {
   MetadataKeys,
   metadataRepository,
@@ -108,13 +110,38 @@ export async function touchLocalAuth(): Promise<void> {
   await sessionRepository.markValidated(deviceId)
 }
 
-/** Forget this device's local authentication (logout, or a rejected session). */
+/**
+ * Forget this device's local authentication (logout, or a rejected
+ * session) — and, since this device may be shared (a family computer,
+ * say), every other space's financial data cached locally for whoever
+ * was signed in goes with it (frontend-data-performance §"clear
+ * user-specific cache on logout to prevent data leakage"). The next
+ * login re-syncs from the server, which costs a one-time full re-pull —
+ * an acceptable trade for never leaving one person's transactions, bills,
+ * or shopping lists sitting in IndexedDB for the next person who signs
+ * into a *different* account on the same browser.
+ *
+ * The device id itself is deliberately preserved across the wipe — it's
+ * not personal data, and losing it would make this device look "new" to
+ * the server on next login, breaking device recognition (Fico's Sessions
+ * feature) for no reason.
+ */
 export async function clearLocalAuth({
   markSignedOut = false,
 }: { markSignedOut?: boolean } = {}): Promise<void> {
   await initDB()
-  await sessionRepository.clear()
-  await metadataRepository.remove(MetadataKeys.authUserId)
+  const deviceId = await getDeviceId()
+
+  await deleteDatabase()
+
+  // deleteDatabase() closes the connection; reopen a fresh one (this also
+  // re-runs every migration against the now-empty database) and restore
+  // just the device id and schema version initDB() would otherwise have
+  // set — initDB() itself only ever does that work once per app load, so
+  // it won't repeat it for us here.
+  await getDB()
+  await metadataRepository.set(MetadataKeys.deviceId, deviceId)
+  await metadataRepository.set('schema.version', DB_VERSION)
   if (markSignedOut) {
     await metadataRepository.set(SIGNED_OUT_KEY, true)
   }
