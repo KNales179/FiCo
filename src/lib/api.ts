@@ -72,6 +72,11 @@ export const api = async <T>(
   // cancel its own request (unmounted, superseded by a newer one) still can.
   signal?.addEventListener('abort', () => controller.abort())
 
+  // A FormData body (file upload) must go through as-is, with no
+  // Content-Type set — the browser fills in the multipart boundary itself.
+  // Everything else keeps going through as JSON, as before.
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
+
   try {
     response = await fetch(`${API_URL}${endpoint}`, {
       ...rest,
@@ -79,12 +84,18 @@ export const api = async <T>(
       credentials: 'include',
       signal: controller.signal,
 
-      headers: {
-        'Content-Type': 'application/json',
-        ...headers,
-      },
+      headers: isFormData
+        ? { ...headers }
+        : {
+            'Content-Type': 'application/json',
+            ...headers,
+          },
 
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: isFormData
+        ? (body as FormData)
+        : body !== undefined
+          ? JSON.stringify(body)
+          : undefined,
     })
   } catch (cause) {
     // fetch only rejects when the request could not be made at all (this

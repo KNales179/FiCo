@@ -15,6 +15,7 @@ export interface SpaceMember {
   userId: string
   username: string | null
   displayName: string | null
+  avatarUrl?: string | null
   role: MembershipRole
   joinedAt?: string
 }

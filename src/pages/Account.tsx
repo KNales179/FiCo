@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import {
   changePassword,
   confirmTwoFactorSetup,
+  deleteAvatar,
   disableTwoFactor,
   listMySessions,
   resendVerificationEmail,
   revokeMySession,
   startTwoFactorSetup,
+  uploadAvatar,
 } from '../services/authService'
 import {
   disablePush,
@@ -18,9 +20,102 @@ import {
 import { ensureDeviceId } from '../features/auth/localAuth'
 import { isNetworkError } from '../lib/api'
 import type { DeviceSession } from '../types/auth'
-import { PageHeader, Card, Button, Input, Alert } from '../components/ui'
+import { PageHeader, Card, Button, Input, Alert, SkeletonRow } from '../components/ui'
 
 const formatDate = (iso: string) => new Date(iso).toLocaleString()
+
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024
+
+/** A profile picture — shown here, and anywhere else in Fico a member is listed. */
+const AvatarSection = () => {
+  const { user, refreshUser } = useAuth()
+  const fileInput = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const initial = (user?.displayName || user?.username || '?').charAt(0).toUpperCase()
+
+  const pick = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (file.size > MAX_AVATAR_BYTES) {
+      setError('Image is larger than 5 MB')
+      return
+    }
+    void upload(file)
+  }
+
+  const upload = async (file: File) => {
+    setError('')
+    setBusy(true)
+    try {
+      await uploadAvatar(file)
+      await refreshUser()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not upload that image')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const remove = async () => {
+    setError('')
+    setBusy(true)
+    try {
+      await deleteAvatar()
+      await refreshUser()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not remove that image')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card>
+      <h2 className="section-title">Profile picture</h2>
+      <div className="mt-3 flex items-center gap-4">
+        {user?.avatarUrl ? (
+          <img
+            src={user.avatarUrl}
+            alt=""
+            className="h-16 w-16 shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand text-xl font-semibold text-brand-ink">
+            {initial}
+          </span>
+        )}
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <Button onClick={() => fileInput.current?.click()} disabled={busy}>
+              {busy ? 'Working…' : user?.avatarUrl ? 'Change photo' : 'Upload photo'}
+            </Button>
+            {user?.avatarUrl && (
+              <Button onClick={() => void remove()} disabled={busy}>
+                Remove
+              </Button>
+            )}
+          </div>
+          <span className="text-xs text-muted">JPEG, PNG, or WebP — up to 5 MB.</span>
+        </div>
+        <input
+          ref={fileInput}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          hidden
+          onChange={pick}
+        />
+      </div>
+      {error && (
+        <div className="mt-2">
+          <Alert>{error}</Alert>
+        </div>
+      )}
+    </Card>
+  )
+}
 
 /**
  * A dismissible nudge, not a gate — an unverified email never blocks
@@ -194,7 +289,7 @@ const DevicesSection = () => {
         Everywhere your account is currently signed in. Don't recognize one? Sign it out.
       </p>
       {error && <Alert>{error}</Alert>}
-      {sessions === null && !error && <p className="mt-2 text-sm text-muted">Loading…</p>}
+      {sessions === null && !error && <SkeletonRow />}
       {sessions && (
         <ul className="mt-2 divide-y divide-line">
           {sessions.length === 0 && (
@@ -516,6 +611,7 @@ const Account = () => {
         description={user ? `Signed in as ${user.username}` : undefined}
       />
       <EmailVerificationBanner />
+      <AvatarSection />
       <PasswordSection />
       <DevicesSection />
       <PushNotificationsSection />

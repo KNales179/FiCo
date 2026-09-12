@@ -1,5 +1,14 @@
 export type UserRole = 'ADMIN' | 'USER'
 
+export interface NotificationPreferences {
+  billReminders: boolean
+  shoppingUpdates: boolean
+  billUpdates: boolean
+  accountActivity: boolean
+  /** Only meaningful for an admin account, but harmless on every other one. */
+  feedbackReports: boolean
+}
+
 export interface User {
   id: string
   username: string
@@ -8,6 +17,8 @@ export interface User {
   role?: UserRole
   totpEnabled?: boolean
   emailVerified?: boolean
+  avatarUrl?: string | null
+  notificationPreferences?: NotificationPreferences
 }
 
 export interface SessionInfo {

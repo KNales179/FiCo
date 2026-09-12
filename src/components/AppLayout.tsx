@@ -24,6 +24,7 @@ const SECONDARY = [
   { to: '/members', label: 'Members' },
   { to: '/activity', label: 'Activity' },
   { to: '/account', label: 'Account' },
+  { to: '/settings', label: 'Settings' },
   { to: '/feedback', label: 'Report & feedback' },
 ] as const
 

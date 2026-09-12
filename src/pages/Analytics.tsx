@@ -7,9 +7,12 @@ import {
   computeAnalytics,
   type Analytics as AnalyticsData,
 } from '../features/analytics'
+import { computeEngagement, type MemberEngagement } from '../features/engagement'
 import type { AnalyticsPeriod } from '../domain/analytics'
 import { compareElectricityPeriods } from '../domain/electricity'
 import { formatMoney } from '../domain/money'
+import type { SpaceMember } from '../types/space'
+import { Skeleton, SkeletonCard } from '../components/ui'
 
 const PERIODS: { value: AnalyticsPeriod; label: string }[] = [
   { value: 'THIS_MONTH', label: 'This month' },
@@ -54,9 +57,8 @@ const Analytics = () => {
   const [period, setPeriod] = useState<AnalyticsPeriod>('THIS_MONTH')
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [memberNames, setMemberNames] = useState<Map<string, string>>(
-    new Map(),
-  )
+  const [members, setMembers] = useState<Map<string, SpaceMember>>(new Map())
+  const [engagement, setEngagement] = useState<MemberEngagement[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -83,19 +85,34 @@ const Analytics = () => {
     if (!activeSpaceId) return
     listMembers(activeSpaceId)
       .then((res) => {
-        setMemberNames(
-          new Map(
-            res.members.map((m) => [
-              m.userId,
-              m.displayName || m.username || 'Someone',
-            ]),
-          ),
-        )
+        setMembers(new Map(res.members.map((m) => [m.userId, m])))
       })
       // Names are a nice-to-have here — offline or a hiccup just falls
       // back to showing the raw id rather than breaking the page.
       .catch(() => {})
   }, [activeSpaceId])
+
+  useEffect(() => {
+    let cancelled = false
+    if (!activeSpaceId || !data) return
+
+    computeEngagement(activeSpaceId, data.range)
+      .then((result) => {
+        if (!cancelled) setEngagement(result)
+      })
+      .catch(() => {
+        if (!cancelled) setEngagement([])
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeSpaceId, data])
+
+  const memberName = (userId: string) =>
+    userId === user?.id
+      ? 'You'
+      : members.get(userId)?.displayName || members.get(userId)?.username || 'Someone'
 
   const maxMonth = useMemo(
     () =>
@@ -136,7 +153,16 @@ const Analytics = () => {
         </select>
       </div>
 
-      {loading && <p className="text-sm text-muted">Loading…</p>}
+      {loading && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-3">
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+          </div>
+          <SkeletonCard lines={4} />
+        </div>
+      )}
 
       {data && !loading && (
         <>
@@ -220,11 +246,7 @@ const Analytics = () => {
                 {data.byMember.map((m) => (
                   <li key={m.userId} className="text-sm">
                     <div className="flex justify-between">
-                      <span>
-                        {m.userId === user?.id
-                          ? 'You'
-                          : memberNames.get(m.userId) ?? 'Someone'}
-                      </span>
+                      <span>{memberName(m.userId)}</span>
                       <span className="text-muted">
                         {formatMoney(m.amountMinor, data.currency)} ·{' '}
                         {Math.round(m.pct)}%
@@ -233,6 +255,62 @@ const Analytics = () => {
                     <Bar pct={m.pct} />
                   </li>
                 ))}
+              </ul>
+            </section>
+          )}
+
+          {engagement.length > 1 && (
+            <section className="card">
+              <h2 className="text-sm font-semibold">Active points</h2>
+              <p className="mt-1 text-xs text-muted">
+                Not just being active — how much each of you actually used
+                Fico this period: recording transactions, starting shopping
+                trips, adding and paying bills.
+              </p>
+              <ul className="mt-3 space-y-3">
+                {engagement.map((e) => {
+                  const member = members.get(e.userId)
+                  const initial = (
+                    member?.displayName ||
+                    member?.username ||
+                    '?'
+                  )
+                    .charAt(0)
+                    .toUpperCase()
+                  const max = Math.max(1, engagement[0].points)
+                  return (
+                    <li key={e.userId} className="flex items-center gap-3">
+                      {member?.avatarUrl ? (
+                        <img
+                          src={member.avatarUrl}
+                          alt=""
+                          className="h-9 w-9 shrink-0 rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-ink">
+                          {initial}
+                        </span>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex justify-between text-sm">
+                          <span>{memberName(e.userId)}</span>
+                          <span className="font-semibold text-ink">
+                            {e.points} pts
+                          </span>
+                        </div>
+                        <Bar pct={(e.points / max) * 100} className="bg-brand" />
+                        <p className="mt-1 text-xs text-muted">
+                          {e.transactionsRecorded} transaction
+                          {e.transactionsRecorded === 1 ? '' : 's'} ·{' '}
+                          {e.shoppingListsStarted} shopping trip
+                          {e.shoppingListsStarted === 1 ? '' : 's'} ·{' '}
+                          {e.billsAdded + e.billsPaid} bill action
+                          {e.billsAdded + e.billsPaid === 1 ? '' : 's'}
+                        </p>
+                      </div>
+                    </li>
+                  )
+                })}
               </ul>
             </section>
           )}

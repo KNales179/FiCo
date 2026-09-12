@@ -10,6 +10,25 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Fico" />
     <title>Fico — Your Daily Financial Companion</title>
+    <script>
+      // Applied before anything paints, so a saved theme/palette/font-size
+      // preference never flashes the default first (Settings page).
+      (function () {
+        try {
+          var saved = JSON.parse(localStorage.getItem('fico.appearance') || '{}')
+          var root = document.documentElement
+          if (saved.theme === 'light' || saved.theme === 'dark') {
+            root.setAttribute('data-theme', saved.theme)
+          }
+          if (saved.palette && saved.palette !== 'purple') {
+            root.setAttribute('data-palette', saved.palette)
+          }
+          if (saved.fontSize && saved.fontSize !== 'md') {
+            root.setAttribute('data-font-size', saved.fontSize)
+          }
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

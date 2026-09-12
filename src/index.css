@@ -21,6 +21,22 @@
   --radius-card: 0.75rem;
 }
 
+/**
+ * Theme + palette (Settings page). Three independent choices, each with its
+ * own default so a fresh visit needs none of them set:
+ *
+ * - `data-theme="light" | "dark"` on <html> overrides the OS preference; no
+ *   attribute means "follow the system", same as before this existed.
+ * - `data-palette="purple" | "blue" | "teal" | "rose" | "slate"` swaps only
+ *   the *brand accent* — every neutral (surface/panel/ink/etc.) stays
+ *   identical across palettes on purpose. A professional interface uses its
+ *   brand color sparingly and deliberately (Roadmap: design skill), so
+ *   "changing the palette" here means "changing the accent", not
+ *   reskinning the whole app five different ways.
+ * - `data-font-size="sm" | "md" | "lg"` scales the root font size; every
+ *   Tailwind text utility is already rem-based, so this one variable scales
+ *   the entire app's type without touching individual components.
+ */
 :root {
   color-scheme: light dark;
 
@@ -30,27 +46,105 @@
   --line: #e4e4ea;
   --ink: #1b1b22;
   --muted: #6a6a76;
-  --brand: #7c3aed;
-  --brand-ink: #ffffff;
   --danger: #dc2626;
   --success: #059669;
   --warning: #d97706;
+
+  --brand: #7c3aed;
+  --brand-ink: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --surface: #0e0e12;
     --panel: #17171d;
     --panel-2: #1d1d25;
     --line: #2b2b33;
     --ink: #ececf1;
     --muted: #9a9aa6;
-    --brand: #a78bfa;
-    --brand-ink: #16121f;
     --danger: #f87171;
     --success: #34d399;
     --warning: #fbbf24;
+
+    --brand: #a78bfa;
+    --brand-ink: #16121f;
   }
+}
+
+:root[data-theme="dark"] {
+  --surface: #0e0e12;
+  --panel: #17171d;
+  --panel-2: #1d1d25;
+  --line: #2b2b33;
+  --ink: #ececf1;
+  --muted: #9a9aa6;
+  --danger: #f87171;
+  --success: #34d399;
+  --warning: #fbbf24;
+
+  --brand: #a78bfa;
+  --brand-ink: #16121f;
+}
+
+/* Palette accents — light mode. Purple is the default and needs no attribute. */
+:root[data-palette="blue"] {
+  --brand: #2563eb;
+  --brand-ink: #ffffff;
+}
+:root[data-palette="teal"] {
+  --brand: #0d9488;
+  --brand-ink: #ffffff;
+}
+:root[data-palette="rose"] {
+  --brand: #e11d48;
+  --brand-ink: #ffffff;
+}
+:root[data-palette="slate"] {
+  --brand: #475569;
+  --brand-ink: #ffffff;
+}
+
+/* Palette accents — dark mode (system-dark or explicit data-theme="dark"). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"])[data-palette="blue"] {
+    --brand: #60a5fa;
+    --brand-ink: #0b1220;
+  }
+  :root:not([data-theme="light"])[data-palette="teal"] {
+    --brand: #2dd4bf;
+    --brand-ink: #072019;
+  }
+  :root:not([data-theme="light"])[data-palette="rose"] {
+    --brand: #fb7185;
+    --brand-ink: #200a10;
+  }
+  :root:not([data-theme="light"])[data-palette="slate"] {
+    --brand: #94a3b8;
+    --brand-ink: #0f172a;
+  }
+}
+:root[data-theme="dark"][data-palette="blue"] {
+  --brand: #60a5fa;
+  --brand-ink: #0b1220;
+}
+:root[data-theme="dark"][data-palette="teal"] {
+  --brand: #2dd4bf;
+  --brand-ink: #072019;
+}
+:root[data-theme="dark"][data-palette="rose"] {
+  --brand: #fb7185;
+  --brand-ink: #200a10;
+}
+:root[data-theme="dark"][data-palette="slate"] {
+  --brand: #94a3b8;
+  --brand-ink: #0f172a;
+}
+
+html[data-font-size="sm"] {
+  font-size: 14px;
+}
+html[data-font-size="lg"] {
+  font-size: 18px;
 }
 
 * {

@@ -27,6 +27,8 @@ const toUser = (user: User): User => ({
   role: user.role,
   totpEnabled: user.totpEnabled,
   emailVerified: user.emailVerified,
+  avatarUrl: user.avatarUrl ?? null,
+  notificationPreferences: user.notificationPreferences,
 })
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {

@@ -3,6 +3,7 @@ import type {
   AuthResponse,
   DeviceSession,
   MeResponse,
+  NotificationPreferences,
   TwoFactorRequired,
   User,
 } from '../types/auth'
@@ -145,4 +146,28 @@ export const resetPassword = (token: string, newPassword: string) =>
   api<{ success: boolean; message: string }>('/auth/reset-password', {
     method: 'POST',
     body: { token, newPassword },
+  })
+
+/** Only the categories you pass are changed — the rest keep their current value. */
+export const updateNotificationPreferences = (
+  updates: Partial<NotificationPreferences>,
+) =>
+  api<{ success: boolean; notificationPreferences: NotificationPreferences }>(
+    '/auth/notification-preferences',
+    { method: 'PATCH', body: updates },
+  )
+
+/** Uploads (and replaces) your profile picture. */
+export const uploadAvatar = (file: File) => {
+  const form = new FormData()
+  form.append('file', file)
+  return api<{ success: boolean; avatarUrl: string }>('/auth/me/avatar', {
+    method: 'POST',
+    body: form,
+  })
+}
+
+export const deleteAvatar = () =>
+  api<{ success: boolean; message: string }>('/auth/me/avatar', {
+    method: 'DELETE',
   })

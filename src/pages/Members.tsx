@@ -14,7 +14,22 @@ import {
 } from '../services/spaceService'
 import { isNetworkError } from '../lib/api'
 import type { SpaceMember } from '../types/space'
-import { PageHeader, Card, Button, Input, Alert, EmptyState } from '../components/ui'
+import { PageHeader, Card, Button, Input, Alert, EmptyState, SkeletonRow } from '../components/ui'
+
+const MemberAvatar = ({ member }: { member: SpaceMember }) => {
+  const initial = (member.displayName || member.username || '?').charAt(0).toUpperCase()
+  return member.avatarUrl ? (
+    <img
+      src={member.avatarUrl}
+      alt=""
+      className="h-8 w-8 shrink-0 rounded-full object-cover"
+    />
+  ) : (
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-ink">
+      {initial}
+    </span>
+  )
+}
 
 const Members = () => {
   const { activeSpace, refresh } = useSpace()
@@ -138,23 +153,31 @@ const Members = () => {
       />
 
       {error && <Alert>{error}</Alert>}
-      {loading && <p className="muted">Loading…</p>}
 
       <Card>
+        {loading ? (
+          <div className="divide-y divide-line">
+            <SkeletonRow />
+            <SkeletonRow />
+          </div>
+        ) : (
         <ul className="divide-y divide-line">
           {members.map((m) => (
             <li
               key={m.userId}
               className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm"
             >
-              <span>
-                {m.displayName || m.username || m.userId}
-                {m.userId === user?.id && (
-                  <span className="text-muted"> (you)</span>
-                )}
-                {m.role === 'OWNER' && (
-                  <span className="chip ml-2">owner</span>
-                )}
+              <span className="flex items-center gap-2.5">
+                <MemberAvatar member={m} />
+                <span>
+                  {m.displayName || m.username || m.userId}
+                  {m.userId === user?.id && (
+                    <span className="text-muted"> (you)</span>
+                  )}
+                  {m.role === 'OWNER' && (
+                    <span className="chip ml-2">owner</span>
+                  )}
+                </span>
               </span>
 
               {isOwner && m.role !== 'OWNER' && (
@@ -180,6 +203,7 @@ const Members = () => {
             </li>
           ))}
         </ul>
+        )}
       </Card>
 
       {isOwner && invites.length > 0 && (
