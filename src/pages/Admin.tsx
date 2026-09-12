@@ -10,6 +10,7 @@ import {
 import { Link } from 'react-router-dom'
 import type { DeviceSession } from '../types/auth'
 import { PageHeader, Card, Button, Input, Alert, SkeletonRow } from '../components/ui'
+import { IconChevronDown, IconLogOut, IconMessage, IconShield } from '../components/icons'
 
 const formatDate = (iso: string) => new Date(iso).toLocaleString()
 
@@ -137,6 +138,7 @@ const ManagePanel = ({ user, onChanged }: { user: AdminUser; onChanged: () => vo
             className="max-w-xs"
           />
           <Button size="sm" onClick={() => void toggleRole()} disabled={busy}>
+            <IconShield size={14} />
             {user.role === 'ADMIN' ? 'Remove admin access' : 'Make admin'}
           </Button>
         </div>
@@ -158,14 +160,10 @@ const ManagePanel = ({ user, onChanged }: { user: AdminUser; onChanged: () => vo
                     last active {formatDate(s.lastUsedAt)}
                   </span>
                 </span>
-                <button
-                  type="button"
-                  onClick={() => void revoke(s.id)}
-                  disabled={busy}
-                  className="text-xs text-muted underline hover:text-danger disabled:opacity-50"
-                >
-                  sign out
-                </button>
+                <Button size="sm" variant="danger" onClick={() => void revoke(s.id)} disabled={busy}>
+                  <IconLogOut size={13} />
+                  Sign out
+                </Button>
               </li>
             ))}
           </ul>
@@ -202,8 +200,9 @@ const Admin = () => {
         description="Manage every account — not to be confused with a shared Finance's own owner."
       />
 
-      <Link to="/admin/feedback" className="text-sm text-brand underline">
-        Report & feedback →
+      <Link to="/admin/feedback" className="btn inline-flex">
+        <IconMessage size={16} />
+        Report & feedback
       </Link>
 
       {error && <Alert>{error}</Alert>}
@@ -252,13 +251,16 @@ const Admin = () => {
                       </a>
                     </span>
                   ) : (
-                    <button
-                      type="button"
+                    <Button
+                      size="sm"
                       onClick={() => setOpenId(openId === u.id ? null : u.id)}
-                      className="text-xs text-muted underline hover:text-ink"
                     >
-                      {openId === u.id ? 'close' : 'manage'}
-                    </button>
+                      Manage
+                      <IconChevronDown
+                        size={14}
+                        className={openId === u.id ? 'rotate-180 transition-transform' : 'transition-transform'}
+                      />
+                    </Button>
                   )}
                 </div>
                 {openId === u.id && !u.isSelf && (

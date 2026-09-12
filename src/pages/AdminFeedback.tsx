@@ -4,7 +4,8 @@ import {
   setFeedbackStatus,
   type FeedbackEntry,
 } from '../services/feedbackService'
-import { PageHeader, Card, Alert, SkeletonLines } from '../components/ui'
+import { PageHeader, Card, Button, Alert, SkeletonLines } from '../components/ui'
+import { IconCheck, IconRotateCcw } from '../components/icons'
 
 const formatDate = (iso: string) => new Date(iso).toLocaleString()
 
@@ -87,18 +88,19 @@ const AdminFeedback = () => {
                     </span>
                     <p className="mt-1 whitespace-pre-wrap">{row.message}</p>
                   </div>
-                  <button
-                    type="button"
+                  <Button
+                    size="sm"
+                    className="shrink-0"
                     onClick={() => void toggle(row)}
                     disabled={busyId === row.id}
-                    className="shrink-0 text-xs text-muted underline hover:text-ink disabled:opacity-50"
                   >
+                    {row.status === 'OPEN' ? <IconCheck size={14} /> : <IconRotateCcw size={14} />}
                     {busyId === row.id
-                      ? 'saving…'
+                      ? 'Saving…'
                       : row.status === 'OPEN'
-                        ? 'mark resolved'
-                        : 'reopen'}
-                  </button>
+                        ? 'Mark resolved'
+                        : 'Reopen'}
+                  </Button>
                 </div>
               </li>
             ))}

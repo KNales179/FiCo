@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useSpace } from '../hooks/useSpace'
 import { useMoney } from '../hooks/useMoney'
-import { PageHeader, Alert, Modal, SkeletonCard } from '../components/ui'
+import { PageHeader, Alert, Modal, Button, SkeletonCard } from '../components/ui'
+import { IconClipboardCheck } from '../components/icons'
 import QuickAdd from '../components/money/QuickAdd'
 import ScanReceipt from '../components/money/ScanReceipt'
 import AccountsCard from '../components/money/AccountsCard'
@@ -31,13 +32,10 @@ const Home = () => {
         description={`Hello, ${user?.displayName || user?.username}${roleNote}`}
         actions={
           hasCashAccount ? (
-            <button
-              type="button"
-              onClick={() => setCashCheckOpen(true)}
-              className="text-sm text-brand underline"
-            >
+            <Button onClick={() => setCashCheckOpen(true)}>
+              <IconClipboardCheck size={16} />
               Cash check
-            </button>
+            </Button>
           ) : undefined
         }
       />

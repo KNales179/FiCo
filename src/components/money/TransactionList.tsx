@@ -7,17 +7,42 @@ import { listPurchasesForTransaction, type ItemPurchaseDetail } from '../../feat
 import { listTransactions } from '../../features/money'
 import { getLastSeenAt, isUnseen, markSeenNow } from '../../features/seen'
 import { onDataChanged } from '../../features/sync/events'
-import { SkeletonRow } from '../ui'
+import { loadAppearance } from '../../features/theme'
+import { SkeletonRow, Button } from '../ui'
+import {
+  IconArrowDownRight,
+  IconArrowUpRight,
+  IconArrowRightLeft,
+  IconEdit,
+  IconEye,
+  IconEyeOff,
+  IconLock,
+  IconSearch,
+  IconTrash,
+} from '../icons'
 import Attachments from '../Attachments'
 import CategoryPicker from './CategoryPicker'
 import type { Transaction } from '../../types/models'
 
 const SEEN_AREA = 'transactions'
 
-const SIGN: Record<string, string> = {
-  INCOME: '+',
-  EXPENSE: '−',
-  TRANSFER: '→',
+/** A small colored badge for the transaction's direction — the one place
+ * this list leans on color beyond the amount itself, so the type reads at
+ * a glance even before the amount's sign registers. */
+const TypeBadge = ({ type }: { type: Transaction['type'] }) => {
+  const style =
+    type === 'INCOME'
+      ? 'bg-success/10 text-success'
+      : type === 'EXPENSE'
+        ? 'bg-danger/10 text-danger'
+        : 'bg-brand/10 text-brand'
+  const ItemIcon =
+    type === 'INCOME' ? IconArrowUpRight : type === 'EXPENSE' ? IconArrowDownRight : IconArrowRightLeft
+  return (
+    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${style}`}>
+      <ItemIcon size={16} />
+    </span>
+  )
 }
 
 /**
@@ -145,7 +170,8 @@ const EditTransactionForm = ({
   }
 
   return (
-    <li className="py-2 text-sm">
+    <tr className="bg-panel-2/40">
+      <td colSpan={4} className="px-3 py-3">
       <form onSubmit={submit} className="space-y-2">
         {txn.sourceType !== 'MANUAL' && (
           <p className="text-xs text-warning">
@@ -220,19 +246,16 @@ const EditTransactionForm = ({
         </div>
         {error && <p className="text-xs text-danger">{error}</p>}
         <div className="flex gap-2">
-          <button
-            type="submit"
-            disabled={busy}
-            className="text-xs text-brand underline disabled:opacity-50"
-          >
+          <Button type="submit" variant="primary" size="sm" disabled={busy}>
             {busy ? 'Saving…' : 'Save'}
-          </button>
-          <button type="button" onClick={onDone} className="text-xs text-muted underline">
+          </Button>
+          <Button type="button" size="sm" onClick={onDone}>
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
-    </li>
+      </td>
+    </tr>
   )
 }
 
@@ -258,97 +281,125 @@ const Row = ({
   }
 
   return (
-    <li className={`py-2 text-sm ${unseen ? 'bg-brand/5' : ''}`}>
-      <div className="flex items-center justify-between">
-        <span>
-          {unseen && (
-            <span
-              aria-label="New, not yet seen"
-              title="Added by someone else since you last checked"
-              className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-brand align-middle"
-            />
-          )}
-          <span className="font-medium">{txn.title}</span>
-          <span className="ml-2 text-xs text-muted">
-            {new Date(txn.occurredAt).toLocaleDateString()} ·{' '}
-            {txn.type === 'TRANSFER'
-              ? `${accountName(txn.accountId)} → ${accountName(
-                  txn.destinationAccountId,
-                )}`
-              : accountName(txn.accountId)}
-            {txn.categoryName && ` · ${txn.categoryName}`}
-            {txn.visibility === 'PRIVATE' && (
-              <span className="ml-1 text-amber-600">· private</span>
+    <>
+      <tr className={unseen ? 'bg-brand/5' : undefined}>
+        <td className="w-10">
+          <span className="relative inline-flex">
+            <TypeBadge type={txn.type} />
+            {unseen && (
+              <span
+                aria-label="New, not yet seen"
+                title="Added by someone else since you last checked"
+                className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-2 border-panel bg-brand"
+              />
             )}
           </span>
-        </span>
-
-        <span className="flex items-center gap-3">
+        </td>
+        <td>
+          <p className="font-medium text-ink">{txn.title}</p>
+          <p className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-muted">
+            <span>{new Date(txn.occurredAt).toLocaleDateString()}</span>
+            <span aria-hidden="true">·</span>
+            <span>
+              {txn.type === 'TRANSFER'
+                ? `${accountName(txn.accountId)} → ${accountName(txn.destinationAccountId)}`
+                : accountName(txn.accountId)}
+            </span>
+            {txn.categoryName && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span>{txn.categoryName}</span>
+              </>
+            )}
+            {txn.visibility === 'PRIVATE' && (
+              <span className="inline-flex items-center gap-0.5 text-warning">
+                <IconLock size={12} /> private
+              </span>
+            )}
+          </p>
+        </td>
+        <td className="text-right">
           <span
-            className={
+            className={`whitespace-nowrap font-medium tabular-nums ${
               txn.type === 'INCOME'
                 ? 'text-success'
                 : txn.type === 'EXPENSE'
                   ? 'text-danger'
-                  : 'text-muted'
-            }
+                  : 'text-ink'
+            }`}
           >
-            {SIGN[txn.type]} {formatMoney(txn.amountMinor, txn.currency)}
+            {formatMoney(txn.amountMinor, txn.currency)}
           </span>
-          <button
-            type="button"
-            onClick={() => {
-              setOpen((v) => !v)
-              if (!open) onOpen()
-            }}
-            className="text-xs text-muted underline"
-          >
-            {open ? 'close' : 'details'}
-          </button>
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="text-xs text-muted underline"
+        </td>
+        <td className="text-right">
+          <span className="flex items-center justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              aria-label={open ? 'Close details' : 'Details'}
+              title={open ? 'Close details' : 'Details'}
+              onClick={() => {
+                setOpen((v) => !v)
+                if (!open) onOpen()
+              }}
             >
-              edit
-            </button>
-          )}
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() => void removeTransaction(txn.id)}
-              className="text-xs text-muted underline"
-            >
-              delete
-            </button>
-          )}
-        </span>
-      </div>
+              {open ? <IconEyeOff size={16} /> : <IconEye size={16} />}
+            </Button>
+            {canEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
+                aria-label="Edit"
+                title="Edit"
+                onClick={() => setEditing(true)}
+              >
+                <IconEdit size={16} />
+              </Button>
+            )}
+            {canEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
+                aria-label="Delete"
+                title="Delete"
+                className="hover:text-danger"
+                onClick={() => void removeTransaction(txn.id)}
+              >
+                <IconTrash size={16} />
+              </Button>
+            )}
+          </span>
+        </td>
+      </tr>
 
       {open && (
-        <>
-          {txn.type === 'EXPENSE' && <ItemizedPurchase transactionId={txn.id} />}
-          {isMine && (
-            <button
-              type="button"
-              onClick={() =>
-                void setTransactionVisibility(
-                  txn.id,
-                  txn.visibility === 'PRIVATE' ? 'SPACE' : 'PRIVATE',
-                )
-              }
-              className="mt-2 text-xs text-muted underline"
-            >
-              {txn.visibility === 'PRIVATE'
-                ? 'share with the space'
-                : 'make private'}
-            </button>
-          )}
-          <Attachments entityType="TRANSACTION" entityId={txn.id} />
-        </>
+        <tr>
+          <td colSpan={4} className="bg-panel-2/40 px-3 py-3">
+            {txn.type === 'EXPENSE' && <ItemizedPurchase transactionId={txn.id} />}
+            {isMine && (
+              <button
+                type="button"
+                onClick={() =>
+                  void setTransactionVisibility(
+                    txn.id,
+                    txn.visibility === 'PRIVATE' ? 'SPACE' : 'PRIVATE',
+                  )
+                }
+                className="mt-2 text-xs text-muted underline"
+              >
+                {txn.visibility === 'PRIVATE'
+                  ? 'share with the space'
+                  : 'make private'}
+              </button>
+            )}
+            <Attachments entityType="TRANSACTION" entityId={txn.id} />
+          </td>
+        </tr>
       )}
-    </li>
+    </>
   )
 }
 
@@ -451,7 +502,7 @@ const TransactionList = () => {
   const [dateValue, setDateValue] = useState('')
   const [minAmount, setMinAmount] = useState('')
   const [maxAmount, setMaxAmount] = useState('')
-  const [pageSize, setPageSize] = useState(25)
+  const [pageSize, setPageSize] = useState(() => loadAppearance().defaultPageSize)
   const [page, setPage] = useState(1)
 
   // `ctx` is a fresh object every render (useMutationContext doesn't memoize
@@ -555,15 +606,21 @@ const TransactionList = () => {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 border-b border-line pb-3 text-sm">
-        <input
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value)
-            setPage(1)
-          }}
-          placeholder="Search title…"
-          className="input min-w-[8rem] flex-1"
-        />
+        <span className="relative min-w-[9rem] flex-1">
+          <IconSearch
+            size={15}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted"
+          />
+          <input
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setPage(1)
+            }}
+            placeholder="Search title…"
+            className="input pl-8"
+          />
+        </span>
         <select
           value={accountFilter}
           onChange={(e) => {
@@ -688,20 +745,32 @@ const TransactionList = () => {
           {all.length === 0 ? 'No transactions yet.' : 'Nothing matches those filters.'}
         </p>
       ) : (
-        <ul className="mt-1 divide-y">
-          {pageRows.map((txn) => (
-            <Row
-              key={txn.id}
-              txn={txn}
-              accountName={accountName}
-              unseen={
-                !openedIds.has(txn.id) &&
-                isUnseen(txn.createdAt, txn.createdBy, lastSeenAt, user?.id)
-              }
-              onOpen={() => markOpened(txn.id)}
-            />
-          ))}
-        </ul>
+        <div className="table-wrap mt-3">
+          <table className="table">
+            <thead>
+              <tr>
+                <th aria-hidden="true"></th>
+                <th>Description</th>
+                <th className="text-right">Amount</th>
+                <th className="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageRows.map((txn) => (
+                <Row
+                  key={txn.id}
+                  txn={txn}
+                  accountName={accountName}
+                  unseen={
+                    !openedIds.has(txn.id) &&
+                    isUnseen(txn.createdAt, txn.createdBy, lastSeenAt, user?.id)
+                  }
+                  onOpen={() => markOpened(txn.id)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <Pagination page={clampedPage} totalPages={totalPages} onChange={setPage} />

@@ -22,13 +22,16 @@ export const Card = ({
 )
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'primary' | 'ghost'
+  variant?: 'default' | 'primary' | 'ghost' | 'danger'
   size?: 'md' | 'sm'
+  /** Square, no side padding — for an icon with no label. Pair with `aria-label`. */
+  iconOnly?: boolean
 }
 
 export const Button = ({
   variant = 'default',
   size = 'md',
+  iconOnly = false,
   className,
   type = 'button',
   ...rest
@@ -39,7 +42,9 @@ export const Button = ({
       'btn',
       variant === 'primary' && 'btn-primary',
       variant === 'ghost' && 'btn-ghost',
+      variant === 'danger' && 'btn-danger',
       size === 'sm' && 'btn-sm',
+      iconOnly && 'btn-icon',
       className,
     )}
     {...rest}

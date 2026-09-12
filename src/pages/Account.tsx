@@ -21,6 +21,7 @@ import { ensureDeviceId } from '../features/auth/localAuth'
 import { isNetworkError } from '../lib/api'
 import type { DeviceSession } from '../types/auth'
 import { PageHeader, Card, Button, Input, Alert, SkeletonRow } from '../components/ui'
+import { IconCamera, IconLogOut, IconTrash, IconX } from '../components/icons'
 
 const formatDate = (iso: string) => new Date(iso).toLocaleString()
 
@@ -90,10 +91,12 @@ const AvatarSection = () => {
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <Button onClick={() => fileInput.current?.click()} disabled={busy}>
+              <IconCamera size={16} />
               {busy ? 'Working…' : user?.avatarUrl ? 'Change photo' : 'Upload photo'}
             </Button>
             {user?.avatarUrl && (
-              <Button onClick={() => void remove()} disabled={busy}>
+              <Button variant="danger" onClick={() => void remove()} disabled={busy}>
+                <IconTrash size={16} />
                 Remove
               </Button>
             )}
@@ -157,24 +160,22 @@ const EmailVerificationBanner = () => {
           </p>
           {error && <p className="mt-1 text-xs text-danger">{error}</p>}
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 items-start gap-1.5">
           {!sent && (
-            <button
-              type="button"
-              onClick={() => void resend()}
-              disabled={busy}
-              className="text-xs font-medium text-brand underline disabled:opacity-50"
-            >
+            <Button size="sm" variant="primary" onClick={() => void resend()} disabled={busy}>
               {busy ? 'Sending…' : 'Resend email'}
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="ghost"
+            iconOnly
+            aria-label="Dismiss"
+            title="Dismiss"
             onClick={() => setDismissed(true)}
-            className="text-xs text-muted underline"
           >
-            dismiss
-          </button>
+            <IconX size={15} />
+          </Button>
         </div>
       </div>
     </Card>
@@ -290,33 +291,45 @@ const DevicesSection = () => {
       </p>
       {error && <Alert>{error}</Alert>}
       {sessions === null && !error && <SkeletonRow />}
-      {sessions && (
-        <ul className="mt-2 divide-y divide-line">
-          {sessions.length === 0 && (
-            <li className="py-1.5 text-sm text-muted">Nothing to show.</li>
-          )}
-          {sessions.map((s) => (
-            <li key={s.id} className="flex items-center justify-between gap-2 py-2 text-sm">
-              <span>
-                {s.userAgent || 'Unknown device'}
-                {s.isCurrent && (
-                  <span className="ml-2 text-xs font-medium text-brand">this device</span>
-                )}
-                <span className="mt-0.5 block text-xs text-muted">
-                  last active {formatDate(s.lastUsedAt)}
-                </span>
-              </span>
-              <button
-                type="button"
-                onClick={() => void revoke(s)}
-                disabled={busyId === s.id}
-                className="text-xs text-muted underline hover:text-danger disabled:opacity-50"
-              >
-                {busyId === s.id ? 'signing out…' : 'sign out'}
-              </button>
-            </li>
-          ))}
-        </ul>
+      {sessions && sessions.length === 0 && (
+        <p className="mt-2 text-sm text-muted">Nothing to show.</p>
+      )}
+      {sessions && sessions.length > 0 && (
+        <div className="table-wrap mt-2">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Device</th>
+                <th>Last active</th>
+                <th className="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sessions.map((s) => (
+                <tr key={s.id}>
+                  <td>
+                    {s.userAgent || 'Unknown device'}
+                    {s.isCurrent && (
+                      <span className="ml-2 chip">this device</span>
+                    )}
+                  </td>
+                  <td className="text-muted">{formatDate(s.lastUsedAt)}</td>
+                  <td className="text-right">
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => void revoke(s)}
+                      disabled={busyId === s.id}
+                    >
+                      <IconLogOut size={14} />
+                      {busyId === s.id ? 'Signing out…' : 'Sign out'}
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </Card>
   )

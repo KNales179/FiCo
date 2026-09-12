@@ -15,6 +15,7 @@ import {
 import { isNetworkError } from '../lib/api'
 import type { SpaceMember } from '../types/space'
 import { PageHeader, Card, Button, Input, Alert, EmptyState, SkeletonRow } from '../components/ui'
+import { IconAward, IconLogOut, IconUserPlus, IconX } from '../components/icons'
 
 const MemberAvatar = ({ member }: { member: SpaceMember }) => {
   const initial = (member.displayName || member.username || '?').charAt(0).toUpperCase()
@@ -146,6 +147,7 @@ const Members = () => {
         actions={
           !isOwner ? (
             <Button variant="ghost" onClick={() => void leave()}>
+              <IconLogOut size={16} />
               Leave Finance
             </Button>
           ) : undefined
@@ -154,57 +156,70 @@ const Members = () => {
 
       {error && <Alert>{error}</Alert>}
 
-      <Card>
-        {loading ? (
+      {loading ? (
+        <Card>
           <div className="divide-y divide-line">
             <SkeletonRow />
             <SkeletonRow />
           </div>
-        ) : (
-        <ul className="divide-y divide-line">
-          {members.map((m) => (
-            <li
-              key={m.userId}
-              className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm"
-            >
-              <span className="flex items-center gap-2.5">
-                <MemberAvatar member={m} />
-                <span>
-                  {m.displayName || m.username || m.userId}
-                  {m.userId === user?.id && (
-                    <span className="text-muted"> (you)</span>
+        </Card>
+      ) : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Member</th>
+                <th>Role</th>
+                {isOwner && <th className="text-right">Actions</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((m) => (
+                <tr key={m.userId}>
+                  <td>
+                    <span className="flex items-center gap-2.5">
+                      <MemberAvatar member={m} />
+                      <span>
+                        {m.displayName || m.username || m.userId}
+                        {m.userId === user?.id && (
+                          <span className="text-muted"> (you)</span>
+                        )}
+                      </span>
+                    </span>
+                  </td>
+                  <td>
+                    {m.role === 'OWNER' ? (
+                      <span className="chip">owner</span>
+                    ) : (
+                      <span className="text-muted">member</span>
+                    )}
+                  </td>
+                  {isOwner && (
+                    <td className="text-right">
+                      {m.role !== 'OWNER' && (
+                        <span className="flex items-center justify-end gap-1.5">
+                          <Button size="sm" onClick={() => void makeOwner(m)}>
+                            <IconAward size={14} />
+                            Make owner
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => void removeMember(spaceId!, m.userId).then(load)}
+                          >
+                            <IconX size={14} />
+                            Remove
+                          </Button>
+                        </span>
+                      )}
+                    </td>
                   )}
-                  {m.role === 'OWNER' && (
-                    <span className="chip ml-2">owner</span>
-                  )}
-                </span>
-              </span>
-
-              {isOwner && m.role !== 'OWNER' && (
-                <span className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => void makeOwner(m)}
-                    className="text-xs text-muted underline hover:text-ink"
-                  >
-                    make owner
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void removeMember(spaceId!, m.userId).then(load)
-                    }
-                    className="text-xs text-muted underline hover:text-ink"
-                  >
-                    remove
-                  </button>
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-        )}
-      </Card>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {isOwner && invites.length > 0 && (
         <Card>
@@ -216,15 +231,14 @@ const Members = () => {
                 className="flex items-center justify-between py-2 text-sm"
               >
                 <span>{inv.email}</span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    void revokeInvitation(spaceId!, inv.id).then(load)
-                  }
-                  className="text-xs text-muted underline hover:text-ink"
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={() => void revokeInvitation(spaceId!, inv.id).then(load)}
                 >
-                  revoke
-                </button>
+                  <IconX size={14} />
+                  Revoke
+                </Button>
               </li>
             ))}
           </ul>
@@ -245,6 +259,7 @@ const Members = () => {
                 className="min-w-[12rem] flex-1"
               />
               <Button type="submit" variant="primary">
+                <IconUserPlus size={16} />
                 Invite
               </Button>
             </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { updateNotificationPreferences } from '../services/authService'
+import { ApiError, isNetworkError } from '../lib/api'
 import {
   DEFAULT_APPEARANCE,
   PALETTES,
@@ -8,16 +9,18 @@ import {
   loadAppearance,
   saveAppearance,
   type Appearance,
+  type Density,
   type FontSize,
   type ThemeMode,
 } from '../features/theme'
 import type { NotificationPreferences } from '../types/auth'
-import { PageHeader, Card, Alert } from '../components/ui'
+import { PageHeader, Card, Button, Alert } from '../components/ui'
+import { IconBell, IconCheck, IconPalette, IconSlidersHorizontal } from '../components/icons'
 
 const cx = (...parts: Array<string | false | null | undefined>) =>
   parts.filter(Boolean).join(' ')
 
-/** A small segmented control — used for theme mode and font size, both 2-3 choices. */
+/** A small segmented control — used for theme mode, font size, and density. */
 const Segmented = <T extends string>({
   options,
   value,
@@ -37,7 +40,7 @@ const Segmented = <T extends string>({
         className={cx(
           'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
           value === option.value
-            ? 'bg-panel text-ink shadow-sm'
+            ? 'bg-brand text-brand-ink shadow-sm'
             : 'text-muted hover:text-ink',
         )}
       >
@@ -47,7 +50,8 @@ const Segmented = <T extends string>({
   </div>
 )
 
-/** An accessible on/off switch — brand color only when on, per the app's "use it sparingly" rule. */
+/** An accessible on/off switch. The inner check mark keeps "on" unambiguous
+ * even for someone who can't rely on the color difference alone. */
 const Switch = ({
   checked,
   onChange,
@@ -67,18 +71,22 @@ const Switch = ({
     disabled={disabled}
     onClick={() => onChange(!checked)}
     className={cx(
-      'relative h-6 w-11 shrink-0 rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+      'relative h-7 w-12 shrink-0 rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50',
       checked ? 'border-brand bg-brand' : 'border-line bg-panel-2',
     )}
   >
     <span
       className={cx(
-        'absolute top-0.5 h-4.5 w-4.5 rounded-full bg-white shadow transition-transform',
-        checked ? 'translate-x-[22px]' : 'translate-x-0.5',
+        'absolute top-0.5 flex h-5.5 w-5.5 items-center justify-center rounded-full bg-white shadow transition-transform',
+        checked ? 'translate-x-[22px] text-brand' : 'translate-x-0.5 text-transparent',
       )}
-    />
+    >
+      <IconCheck size={13} />
+    </span>
   </button>
 )
+
+const PAGE_SIZE_CHOICES = [10, 25, 50, 100, 200]
 
 const AppearanceSection = () => {
   const [appearance, setAppearance] = useState<Appearance>(loadAppearance)
@@ -89,12 +97,26 @@ const AppearanceSection = () => {
     saveAppearance(next)
   }
 
+  const isDefault =
+    appearance.theme === DEFAULT_APPEARANCE.theme &&
+    appearance.palette === DEFAULT_APPEARANCE.palette &&
+    appearance.fontSize === DEFAULT_APPEARANCE.fontSize &&
+    appearance.density === DEFAULT_APPEARANCE.density &&
+    appearance.defaultPageSize === DEFAULT_APPEARANCE.defaultPageSize
+
   return (
     <Card>
-      <h2 className="section-title">Appearance</h2>
-      <p className="mt-1 text-xs text-muted">
-        Saved to this device — everyone in your Finance can pick their own.
-      </p>
+      <div className="flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand/10 text-brand">
+          <IconPalette size={17} />
+        </span>
+        <div>
+          <h2 className="section-title">Appearance</h2>
+          <p className="text-xs text-muted">
+            Saved to this device — everyone in your Finance can pick their own.
+          </p>
+        </div>
+      </div>
 
       <div className="mt-4 space-y-4">
         <div>
@@ -121,18 +143,23 @@ const AppearanceSection = () => {
                 aria-pressed={appearance.palette === p.value}
                 title={p.label}
                 className={cx(
-                  'flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition-colors',
+                  'flex items-center gap-2 rounded-lg border-2 px-2.5 py-1.5 text-sm font-medium transition-colors',
                   appearance.palette === p.value
-                    ? 'border-ink/30 bg-panel-2'
+                    ? 'border-current bg-panel-2'
                     : 'border-line hover:bg-panel-2',
                 )}
+                style={appearance.palette === p.value ? { color: p.swatch } : undefined}
               >
                 <span
                   aria-hidden="true"
-                  className="h-4 w-4 rounded-full border border-black/10"
+                  className="flex h-4.5 w-4.5 items-center justify-center rounded-full border border-black/10"
                   style={{ backgroundColor: p.swatch }}
-                />
-                {p.label}
+                >
+                  {appearance.palette === p.value && (
+                    <IconCheck size={11} className="text-white" />
+                  )}
+                </span>
+                <span className="text-ink">{p.label}</span>
               </button>
             ))}
           </div>
@@ -151,16 +178,37 @@ const AppearanceSection = () => {
           />
         </div>
 
-        {(appearance.theme !== DEFAULT_APPEARANCE.theme ||
-          appearance.palette !== DEFAULT_APPEARANCE.palette ||
-          appearance.fontSize !== DEFAULT_APPEARANCE.fontSize) && (
-          <button
-            type="button"
-            onClick={() => change(DEFAULT_APPEARANCE)}
-            className="text-xs text-muted underline"
-          >
+        <div>
+          <span className="field-label">Density</span>
+          <Segmented<Density>
+            value={appearance.density}
+            onChange={(density) => change({ ...appearance, density })}
+            options={[
+              { value: 'comfortable', label: 'Comfortable' },
+              { value: 'compact', label: 'Compact' },
+            ]}
+          />
+          <p className="mt-1 text-xs text-muted">
+            Compact tightens table and list rows — handy for a long Records list.
+          </p>
+        </div>
+
+        <div>
+          <span className="field-label">Records list opens with</span>
+          <Segmented<string>
+            value={String(appearance.defaultPageSize)}
+            onChange={(n) => change({ ...appearance, defaultPageSize: Number(n) })}
+            options={PAGE_SIZE_CHOICES.map((n) => ({ value: String(n), label: String(n) }))}
+          />
+          <p className="mt-1 text-xs text-muted">
+            Still changeable per visit from the Records list itself.
+          </p>
+        </div>
+
+        {!isDefault && (
+          <Button size="sm" onClick={() => change(DEFAULT_APPEARANCE)}>
             Reset to default
-          </button>
+          </Button>
         )}
       </div>
     </Card>
@@ -227,7 +275,15 @@ const NotificationsSection = () => {
       await refreshUser()
     } catch (err) {
       setPrefs(previous)
-      setError(err instanceof Error ? err.message : 'Could not save that')
+      setError(
+        isNetworkError(err)
+          ? "Couldn't reach the server — try again once you're back online."
+          : err instanceof ApiError && err.status === 404
+            ? "This server doesn't have that setting yet — it may still be starting up. Try again shortly."
+            : err instanceof Error
+              ? err.message
+              : 'Could not save that',
+      )
     } finally {
       setBusyKey(null)
     }
@@ -239,11 +295,18 @@ const NotificationsSection = () => {
 
   return (
     <Card>
-      <h2 className="section-title">Notifications</h2>
-      <p className="mt-1 text-xs text-muted">
-        Mute what you don't need — push notifications still need to be turned
-        on for this device on the Account page.
-      </p>
+      <div className="flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand/10 text-brand">
+          <IconBell size={17} />
+        </span>
+        <div>
+          <h2 className="section-title">Notifications</h2>
+          <p className="text-xs text-muted">
+            Mute what you don't need — push still needs turning on for this
+            device, on the Account page.
+          </p>
+        </div>
+      </div>
       {error && (
         <div className="mt-2">
           <Alert>{error}</Alert>
@@ -272,7 +335,15 @@ const NotificationsSection = () => {
 const Settings = () => {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <PageHeader title="Settings" description="How Fico looks and speaks up, on this device." />
+      <PageHeader
+        title="Settings"
+        description="How Fico looks and speaks up, on this device."
+        actions={
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand/10 text-brand">
+            <IconSlidersHorizontal size={18} />
+          </span>
+        }
+      />
       <AppearanceSection />
       <NotificationsSection />
     </div>

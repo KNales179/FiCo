@@ -7,7 +7,14 @@ import { formatMoney, parseAmountToMinor } from '../domain/money'
 import { costPerKwhMinor } from '../domain/electricity'
 import { billPayableFrom, isBillPayable } from '../features/bills'
 import { getLastSeenAt, isUnseen, markSeenNow } from '../features/seen'
-import { SkeletonCard } from '../components/ui'
+import { PageHeader, Button, Input, Select, Alert, SkeletonCard } from '../components/ui'
+import {
+  IconCheck,
+  IconChevronDown,
+  IconPlus,
+  IconRotateCcw,
+  IconTrash,
+} from '../components/icons'
 import CategoryPicker from '../components/money/CategoryPicker'
 import type { Bill, BillPayment, BillRecurrence, BillType } from '../types/models'
 
@@ -157,17 +164,17 @@ const PayRow = ({
         </span>
         {payable ? (
           <>
-            <input
+            <Input
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               inputMode="decimal"
               placeholder="Amount"
-              className="w-24 border px-2 py-1"
+              className="w-24"
             />
-            <select
+            <Select
               value={accountId || defaultAccount?.id || ''}
               onChange={(e) => setAccountId(e.target.value)}
-              className="border px-2 py-1"
+              className="w-auto"
             >
               {active.length === 0 && <option value="">No accounts</option>}
               {active.map((a) => (
@@ -175,24 +182,25 @@ const PayRow = ({
                   {a.name}
                 </option>
               ))}
-            </select>
+            </Select>
             {bill.tracksElectricity && (
-              <input
+              <Input
                 value={kwh}
                 onChange={(e) => setKwh(e.target.value)}
                 inputMode="decimal"
                 placeholder="kWh"
-                className="w-20 border px-2 py-1"
+                className="w-20"
               />
             )}
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="sm"
               disabled={busy || active.length === 0}
               onClick={() => void submit()}
-              className="border px-3 py-1 disabled:opacity-50"
             >
-              Pay
-            </button>
+              <IconCheck size={14} />
+              {busy ? 'Paying…' : 'Pay'}
+            </Button>
           </>
         ) : (
           <span className="text-xs text-muted">
@@ -247,9 +255,10 @@ const History = ({ billId, canEdit }: { billId: string; canEdit: boolean }) => {
       <button
         type="button"
         onClick={() => void toggle()}
-        className="text-xs text-muted underline"
+        className="flex items-center gap-1 text-xs font-medium text-muted hover:text-ink"
       >
-        {open ? 'hide history' : 'payment history'}
+        Payment history
+        <IconChevronDown size={13} className={open ? 'rotate-180 transition-transform' : 'transition-transform'} />
       </button>
       {open && rows && (
         <>
@@ -263,14 +272,18 @@ const History = ({ billId, canEdit }: { billId: string; canEdit: boolean }) => {
                   {formatMoney(p.amountMinor)} ({p.periodKey})
                 </span>
                 {canEdit && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    iconOnly
+                    aria-label="Delete payment"
+                    title="Delete payment"
                     onClick={() => void remove(p.id)}
                     disabled={busyId === p.id}
-                    className="underline hover:text-danger disabled:opacity-50"
+                    className="hover:text-danger"
                   >
-                    {busyId === p.id ? 'deleting…' : 'delete'}
-                  </button>
+                    <IconTrash size={13} />
+                  </Button>
                 )}
               </li>
             ))}
@@ -405,12 +418,8 @@ const Bills = () => {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight">Bills</h1>
-      {error && (
-        <p role="alert" className="text-sm text-danger">
-          {error}
-        </p>
-      )}
+      <PageHeader title="Bills" />
+      {error && <Alert>{error}</Alert>}
 
       <section className="card">
         <h2 className="text-lg font-semibold">Upcoming</h2>
@@ -460,8 +469,13 @@ const Bills = () => {
                   <span className="flex items-center gap-2">
                     {canEdit && <BillCategoryPicker bill={bill} />}
                     {canEdit && (
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        aria-label="Delete bill"
+                        title="Delete bill"
+                        className="hover:text-danger"
                         onClick={() => {
                           if (
                             window.confirm(
@@ -470,10 +484,9 @@ const Bills = () => {
                           )
                             void deleteBill(bill.id)
                         }}
-                        className="text-xs text-muted underline"
                       >
-                        delete
-                      </button>
+                        <IconTrash size={14} />
+                      </Button>
                     )}
                   </span>
                 </div>
@@ -504,8 +517,8 @@ const Bills = () => {
                     was due {new Date(bill.nextDueDate).toLocaleDateString()}
                   </span>
                 </span>
-                <button
-                  type="button"
+                <Button
+                  size="sm"
                   disabled={restoringId === bill.id}
                   onClick={async () => {
                     setRestoringId(bill.id)
@@ -515,10 +528,10 @@ const Bills = () => {
                       setRestoringId(null)
                     }
                   }}
-                  className="text-xs text-muted underline hover:text-ink disabled:opacity-50"
                 >
-                  {restoringId === bill.id ? 'restoring…' : 'restore'}
-                </button>
+                  <IconRotateCcw size={14} />
+                  {restoringId === bill.id ? 'Restoring…' : 'Restore'}
+                </Button>
               </li>
             ))}
           </ul>
@@ -563,14 +576,18 @@ const Bills = () => {
                     </td>
                     {canEdit && (
                       <td className="py-1 text-right">
-                        <button
-                          type="button"
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          iconOnly
+                          aria-label="Delete"
+                          title="Delete"
+                          className="hover:text-danger"
                           onClick={() => void removeElectricityRecord(r.billPaymentId)}
                           disabled={electricityBusyId === r.billPaymentId}
-                          className="text-xs text-muted underline hover:text-danger disabled:opacity-50"
                         >
-                          {electricityBusyId === r.billPaymentId ? 'deleting…' : 'delete'}
-                        </button>
+                          <IconTrash size={13} />
+                        </Button>
                       </td>
                     )}
                   </tr>
@@ -585,62 +602,63 @@ const Bills = () => {
         <form onSubmit={submit} className="card">
           <h2 className="text-lg font-semibold">Add a bill</h2>
           <div className="mt-3 flex flex-wrap gap-2 text-sm">
-            <input
+            <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Name (e.g. Electricity)"
               required
               maxLength={80}
-              className="min-w-[10rem] flex-1 border px-2 py-1"
+              className="min-w-[10rem] flex-1"
             />
-            <select
+            <Select
               value={recurrence}
               onChange={(e) =>
                 setRecurrence(e.target.value as BillRecurrence)
               }
-              className="border px-2 py-1"
+              className="w-auto"
             >
               <option value="MONTHLY">monthly</option>
               <option value="YEARLY">yearly</option>
-            </select>
-            <select
+            </Select>
+            <Select
               value={billType}
               onChange={(e) => setBillType(e.target.value as BillType)}
-              className="border px-2 py-1"
+              className="w-auto"
             >
               <option value="FIXED">fixed</option>
               <option value="VARIABLE">variable</option>
-            </select>
-            <input
+            </Select>
+            <Input
               value={expected}
               onChange={(e) => setExpected(e.target.value)}
               inputMode="decimal"
               placeholder="Expected amount"
-              className="w-32 border px-2 py-1"
+              className="w-32"
             />
-            <input
+            <Input
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="border px-2 py-1"
+              className="w-auto"
             />
             <CategoryPicker
               kind="EXPENSE"
               value={categoryId}
               onChange={setCategoryId}
-              className="border px-2 py-1"
+              className="select w-auto"
             />
-            <label className="flex items-center gap-1">
+            <label className="flex items-center gap-1.5 text-sm text-muted">
               <input
                 type="checkbox"
                 checked={tracksElectricity}
                 onChange={(e) => setTracksElectricity(e.target.checked)}
               />
-              track kWh
+              Track kWh
             </label>
-            <button type="submit" className="border px-3 py-1">
-              Add
-            </button>
+            <Button type="submit" variant="primary">
+              <IconPlus size={15} />
+              Add bill
+            </Button>
           </div>
           {formError && (
             <p role="alert" className="mt-2 text-xs text-danger">

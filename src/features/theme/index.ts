@@ -10,17 +10,24 @@
 export type ThemeMode = 'system' | 'light' | 'dark'
 export type Palette = 'purple' | 'blue' | 'teal' | 'rose' | 'slate'
 export type FontSize = 'sm' | 'md' | 'lg'
+export type Density = 'comfortable' | 'compact'
 
 export interface Appearance {
   theme: ThemeMode
   palette: Palette
   fontSize: FontSize
+  /** Row/list spacing — "compact" fits more on screen, e.g. a long Records table. */
+  density: Density
+  /** How many rows the Records list opens with — still changeable per-visit there. */
+  defaultPageSize: number
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
   theme: 'system',
   palette: 'purple',
   fontSize: 'md',
+  density: 'comfortable',
+  defaultPageSize: 25,
 }
 
 export const PALETTES: { value: Palette; label: string; swatch: string }[] = [
@@ -55,6 +62,9 @@ export const applyAppearance = (appearance: Appearance): void => {
 
   if (appearance.fontSize === 'md') root.removeAttribute('data-font-size')
   else root.setAttribute('data-font-size', appearance.fontSize)
+
+  if (appearance.density === 'comfortable') root.removeAttribute('data-density')
+  else root.setAttribute('data-density', appearance.density)
 }
 
 export const saveAppearance = (appearance: Appearance): void => {

@@ -147,6 +147,18 @@ html[data-font-size="lg"] {
   font-size: 18px;
 }
 
+/**
+ * Density (Settings page) — a single variable that every table/list row
+ * reads its vertical padding from, so "compact" and "comfortable" don't
+ * need two copies of every row's markup.
+ */
+:root {
+  --row-py: 0.625rem;
+}
+[data-density="compact"] {
+  --row-py: 0.3rem;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -204,6 +216,15 @@ body {
     @apply border-transparent bg-transparent text-muted hover:bg-panel-2 hover:text-ink;
   }
 
+  .btn-danger {
+    @apply border-danger/30 bg-transparent text-danger hover:border-danger/50 hover:bg-danger/10;
+  }
+
+  /* A square, icon-only button — same family as .btn, just no side padding. */
+  .btn-icon {
+    @apply px-1.5 py-1.5;
+  }
+
   .input,
   .select {
     @apply w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm text-ink
@@ -230,5 +251,37 @@ body {
   .chip {
     @apply inline-flex items-center gap-1 rounded-full border border-line bg-panel-2
       px-2 py-0.5 text-xs text-muted;
+  }
+
+  /* A real data table (Records, member lists) — a scroll container so a
+     wide table never forces the page itself to scroll sideways. */
+  .table-wrap {
+    @apply -mx-4 overflow-x-auto px-4 sm:mx-0 sm:rounded-[var(--radius-card)]
+      sm:border sm:border-line sm:px-0;
+  }
+
+  .table {
+    @apply w-full min-w-[36rem] border-collapse text-sm sm:min-w-0;
+  }
+
+  .table thead th {
+    @apply border-b border-line bg-panel-2 px-3 text-left text-xs font-semibold
+      uppercase tracking-wide text-muted;
+    padding-top: var(--row-py);
+    padding-bottom: var(--row-py);
+  }
+
+  .table tbody td {
+    @apply border-b border-line px-3 align-middle;
+    padding-top: var(--row-py);
+    padding-bottom: var(--row-py);
+  }
+
+  .table tbody tr {
+    @apply transition-colors hover:bg-panel-2/60;
+  }
+
+  .table tbody tr:last-child td {
+    @apply border-b-0;
   }
 }

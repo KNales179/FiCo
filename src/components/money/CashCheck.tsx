@@ -8,6 +8,8 @@ import {
 } from '../../features/reconciliation'
 import { formatMoney, parseAmountToMinor } from '../../domain/money'
 import type { Reconciliation } from '../../types/models'
+import { Button, Input, Select } from '../ui'
+import { IconCheck } from '../icons'
 
 const CashCheck = () => {
   const { accounts, canEdit, refresh } = useMoney()
@@ -82,17 +84,17 @@ const CashCheck = () => {
   return (
     <div>
       {cashAccounts.length > 1 && (
-        <select
+        <Select
           value={selectedId}
           onChange={(e) => setAccountId(e.target.value)}
-          className="mt-2 border px-2 py-1 text-sm"
+          className="mt-2 w-auto"
         >
           {cashAccounts.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
             </option>
           ))}
-        </select>
+        </Select>
       )}
 
       <dl className="mt-3 space-y-1 text-sm">
@@ -104,12 +106,12 @@ const CashCheck = () => {
           <div className="flex items-center justify-between gap-2">
             <dt className="text-muted">Actual (counted)</dt>
             <dd>
-              <input
+              <Input
                 value={actual}
                 onChange={(e) => setActual(e.target.value)}
                 inputMode="decimal"
                 placeholder="0.00"
-                className="w-28 border px-2 py-1 text-right"
+                className="w-28 text-right"
               />
             </dd>
           </div>
@@ -127,21 +129,17 @@ const CashCheck = () => {
 
       {canEdit && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <input
+          <Input
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Note (optional)"
             maxLength={500}
-            className="min-w-[8rem] flex-1 border px-2 py-1 text-sm"
+            className="min-w-[8rem] flex-1"
           />
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void save()}
-            className="border px-3 py-1 text-sm disabled:opacity-50"
-          >
-            Save check
-          </button>
+          <Button variant="primary" disabled={busy} onClick={() => void save()}>
+            <IconCheck size={15} />
+            {busy ? 'Saving…' : 'Save check'}
+          </Button>
         </div>
       )}
 
@@ -166,19 +164,18 @@ const CashCheck = () => {
       )}
 
       {open && (
-        <div className="mt-3 rounded bg-amber-50 p-2 text-xs text-amber-800">
-          Unresolved cash difference from{' '}
-          {new Date(open.createdAt).toLocaleDateString()}:{' '}
-          {formatMoney(open.differenceMinor, account?.currency)}
-          {open.note && ` — "${open.note}"`}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/30 bg-warning/10 p-2.5 text-xs text-warning">
+          <span>
+            Unresolved cash difference from{' '}
+            {new Date(open.createdAt).toLocaleDateString()}:{' '}
+            {formatMoney(open.differenceMinor, account?.currency)}
+            {open.note && ` — "${open.note}"`}
+          </span>
           {canEdit && (
-            <button
-              type="button"
-              onClick={() => void resolve()}
-              className="ml-2 underline"
-            >
-              mark resolved
-            </button>
+            <Button size="sm" onClick={() => void resolve()}>
+              <IconCheck size={13} />
+              Mark resolved
+            </Button>
           )}
         </div>
       )}

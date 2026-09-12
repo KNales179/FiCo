@@ -3,6 +3,7 @@ import { useMoney } from '../../hooks/useMoney'
 import { formatMoney, parseAmountToMinor } from '../../domain/money'
 import type { AccountType } from '../../types/models'
 import { Button } from '../ui'
+import { IconArchive, IconPlus, IconStar, IconTrash, IconX } from '../icons'
 
 const ACCOUNT_TYPES: AccountType[] = [
   'CASH',
@@ -61,7 +62,8 @@ const AccountsCard = () => {
         <h2 className="section-title">Accounts</h2>
         {canEdit && (
           <Button size="sm" onClick={() => setOpen((v) => !v)}>
-            {open ? 'Cancel' : '+ Account'}
+            {open ? <IconX size={14} /> : <IconPlus size={14} />}
+            {open ? 'Cancel' : 'Account'}
           </Button>
         )}
       </div>
@@ -98,31 +100,41 @@ const AccountsCard = () => {
               {canEdit &&
                 account.status === 'ACTIVE' &&
                 !account.isDefault && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    iconOnly
+                    aria-label="Make default"
+                    title="Make default"
                     onClick={() => void makeDefaultAccount(account.id)}
-                    className="text-xs text-muted underline hover:text-ink"
                   >
-                    make default
-                  </button>
+                    <IconStar size={14} />
+                  </Button>
                 )}
               {canEdit && account.status === 'ACTIVE' && (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
+                  aria-label="Archive"
+                  title="Archive"
                   onClick={() => void archiveAccount(account.id)}
-                  className="text-xs text-muted underline hover:text-ink"
                 >
-                  archive
-                </button>
+                  <IconArchive size={14} />
+                </Button>
               )}
               {canEdit && (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
+                  aria-label="Delete"
+                  title="Delete"
+                  className="hover:text-danger"
                   onClick={() => void removeAccount(account.id).catch(() => {})}
-                  className="text-xs text-muted underline hover:text-ink"
                 >
-                  delete
-                </button>
+                  <IconTrash size={14} />
+                </Button>
               )}
             </span>
           </li>

@@ -26,6 +26,9 @@
           if (saved.fontSize && saved.fontSize !== 'md') {
             root.setAttribute('data-font-size', saved.fontSize)
           }
+          if (saved.density && saved.density !== 'comfortable') {
+            root.setAttribute('data-density', saved.density)
+          }
         } catch (e) {}
       })()
     </script>

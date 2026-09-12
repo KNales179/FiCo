@@ -31,7 +31,7 @@ const UpdateBanner = () => {
           setApplying(true)
           void applyPendingUpdate()
         }}
-        className="underline disabled:opacity-50"
+        className="rounded-md bg-brand-ink/15 px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-brand-ink/25 disabled:opacity-50"
       >
         {applying ? 'Updating…' : 'Refresh now'}
       </button>

@@ -1,40 +1,59 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, type ComponentType } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useSpace } from '../hooks/useSpace'
 import { useUnseenBadge } from '../hooks/useUnseenBadge'
 import { listShoppingLists } from '../features/shopping'
 import { listBills } from '../features/bills'
+import {
+  IconHome,
+  IconCart,
+  IconReceipt,
+  IconCalendar,
+  IconChart,
+  IconTag,
+  IconUsers,
+  IconClock,
+  IconUserCircle,
+  IconSettings,
+  IconMessage,
+  IconShield,
+  IconChevronDown,
+  IconLogOut,
+  type IconProps,
+} from './icons'
 import SpaceSwitcher from './SpaceSwitcher'
 import SyncStatus from './SyncStatus'
 import BillReminders from './BillReminders'
 
-/** Primary destinations — always visible (bottom bar on mobile, header on desktop). */
-const PRIMARY = [
-  { to: '/', label: 'Dashboard', icon: '◎', end: true },
-  { to: '/shopping', label: 'Shopping', icon: '🛒' },
-  { to: '/bills', label: 'Bills', icon: '🧾' },
-  { to: '/budget', label: 'Budget', icon: '📅' },
-  { to: '/analytics', label: 'Analytics', icon: '📊' },
-] as const
+type IconComponent = ComponentType<IconProps>
 
-/** Secondary destinations — behind a "More" menu. */
-const SECONDARY = [
-  { to: '/categories', label: 'Categories' },
-  { to: '/members', label: 'Members' },
-  { to: '/activity', label: 'Activity' },
-  { to: '/account', label: 'Account' },
-  { to: '/settings', label: 'Settings' },
-  { to: '/feedback', label: 'Report & feedback' },
-] as const
+/** Primary destinations — always visible (bottom bar on mobile, header on desktop). */
+const PRIMARY: { to: string; label: string; icon: IconComponent; end?: boolean }[] = [
+  { to: '/', label: 'Dashboard', icon: IconHome, end: true },
+  { to: '/shopping', label: 'Shopping', icon: IconCart },
+  { to: '/bills', label: 'Bills', icon: IconReceipt },
+  { to: '/budget', label: 'Budget', icon: IconCalendar },
+  { to: '/analytics', label: 'Analytics', icon: IconChart },
+]
+
+/** Secondary destinations — behind the account menu. */
+const SECONDARY: { to: string; label: string; icon: IconComponent }[] = [
+  { to: '/categories', label: 'Categories', icon: IconTag },
+  { to: '/members', label: 'Members', icon: IconUsers },
+  { to: '/activity', label: 'Activity', icon: IconClock },
+  { to: '/account', label: 'Account', icon: IconUserCircle },
+  { to: '/settings', label: 'Settings', icon: IconSettings },
+  { to: '/feedback', label: 'Report & feedback', icon: IconMessage },
+]
 
 /** Only shown to a system-wide admin — separate from a Finance's own owner. */
-const ADMIN_ITEM = { to: '/admin', label: 'Admin' } as const
+const ADMIN_ITEM = { to: '/admin', label: 'Admin', icon: IconShield }
 
 const primaryLink = ({ isActive }: { isActive: boolean }) =>
-  `rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors ${
+  `flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors ${
     isActive
-      ? 'bg-panel-2 text-ink'
+      ? 'bg-brand/10 text-brand'
       : 'text-muted hover:bg-panel-2 hover:text-ink'
   }`
 
@@ -61,53 +80,67 @@ const AppLayout = () => {
   const billsUnseen = useUnseenBadge('bills', activeSpaceId, user?.id, fetchBills)
 
   // Which primary nav destinations get the little "something new" dot.
-  const badges: Partial<Record<(typeof PRIMARY)[number]['to'], boolean>> = {
+  const badges: Record<string, boolean> = {
     '/shopping': shoppingUnseen,
     '/bills': billsUnseen,
   }
 
+  const initial = (user?.displayName || user?.username || '?').charAt(0).toUpperCase()
+  const menuItems = user?.role === 'ADMIN' ? [...SECONDARY, ADMIN_ITEM] : SECONDARY
+
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 border-b border-line bg-panel/90 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
+      <header className="sticky top-0 z-20 border-b border-line bg-panel/90 shadow-sm backdrop-blur">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4">
           <span className="flex items-center gap-1.5 text-base font-semibold tracking-tight text-brand">
             <img src="/icon-192.png" alt="" className="h-7 w-7 rounded-md" />
-            Fico
+            <span className="hidden sm:inline">Fico</span>
           </span>
           <SpaceSwitcher />
 
           <nav className="ml-1 hidden items-center gap-1 md:flex">
-            {PRIMARY.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={'end' in item ? item.end : undefined}
-                className={primaryLink}
-              >
-                <span className="relative">
-                  {item.label}
-                  {badges[item.to] && (
-                    <span
-                      aria-label="New, not yet seen"
-                      className="absolute -right-2 -top-0.5 h-1.5 w-1.5 rounded-full bg-danger"
-                    />
-                  )}
-                </span>
-              </NavLink>
-            ))}
+            {PRIMARY.map((item) => {
+              const ItemIcon = item.icon
+              return (
+                <NavLink key={item.to} to={item.to} end={item.end} className={primaryLink}>
+                  <span className="relative">
+                    <ItemIcon size={18} />
+                    {badges[item.to] && (
+                      <span
+                        aria-label="New, not yet seen"
+                        className="absolute -right-1 -top-1 h-1.5 w-1.5 rounded-full bg-danger"
+                      />
+                    )}
+                  </span>
+                  <span className="hidden lg:inline">{item.label}</span>
+                </NavLink>
+              )
+            })}
           </nav>
 
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2.5">
             <SyncStatus />
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
-                className="btn btn-sm"
+                className="flex items-center gap-2 rounded-lg border border-line bg-panel py-1 pl-1 pr-2 text-sm font-medium text-ink transition-colors hover:bg-panel-2"
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
               >
-                {user?.displayName || user?.username} ▾
+                {user?.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt=""
+                    className="h-6 w-6 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-xs font-semibold text-brand-ink">
+                    {initial}
+                  </span>
+                )}
+                <span className="hidden sm:inline">{user?.displayName || user?.username}</span>
+                <IconChevronDown size={16} className="text-muted" />
               </button>
               {menuOpen && (
                 <>
@@ -119,25 +152,29 @@ const AppLayout = () => {
                   />
                   <div
                     role="menu"
-                    className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-lg border border-line bg-panel py-1 shadow-lg"
+                    className="absolute right-0 z-20 mt-1.5 w-52 overflow-hidden rounded-lg border border-line bg-panel py-1 shadow-lg"
                   >
-                    {(user?.role === 'ADMIN' ? [...SECONDARY, ADMIN_ITEM] : SECONDARY).map((item) => (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        role="menuitem"
-                        onClick={() => setMenuOpen(false)}
-                        className={({ isActive }) =>
-                          `block px-3 py-2 text-sm ${
-                            isActive
-                              ? 'bg-panel-2 text-ink'
-                              : 'text-muted hover:bg-panel-2 hover:text-ink'
-                          }`
-                        }
-                      >
-                        {item.label}
-                      </NavLink>
-                    ))}
+                    {menuItems.map((item) => {
+                      const ItemIcon = item.icon
+                      return (
+                        <NavLink
+                          key={item.to}
+                          to={item.to}
+                          role="menuitem"
+                          onClick={() => setMenuOpen(false)}
+                          className={({ isActive }) =>
+                            `flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                              isActive
+                                ? 'bg-brand/10 text-brand'
+                                : 'text-muted hover:bg-panel-2 hover:text-ink'
+                            }`
+                          }
+                        >
+                          <ItemIcon size={17} />
+                          {item.label}
+                        </NavLink>
+                      )
+                    })}
                     <div className="my-1 border-t border-line" />
                     <button
                       type="button"
@@ -146,8 +183,9 @@ const AppLayout = () => {
                         setMenuOpen(false)
                         void logout()
                       }}
-                      className="block w-full px-3 py-2 text-left text-sm text-muted hover:bg-panel-2 hover:text-ink"
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-muted transition-colors hover:bg-danger/10 hover:text-danger"
                     >
+                      <IconLogOut size={17} />
                       Log out
                     </button>
                   </div>
@@ -160,35 +198,46 @@ const AppLayout = () => {
 
       <BillReminders />
 
-      <main className="mx-auto max-w-4xl px-4 py-5 pb-24 md:pb-5">
+      <main className="mx-auto max-w-5xl px-3 py-5 pb-24 sm:px-4 md:pb-5">
         <Outlet />
       </main>
 
       {/* Mobile bottom navigation */}
       <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-panel/95 backdrop-blur md:hidden">
-        {PRIMARY.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={'end' in item ? item.end : undefined}
-            className={({ isActive }) =>
-              `flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors ${
-                isActive ? 'text-brand' : 'text-muted'
-              }`
-            }
-          >
-            <span aria-hidden="true" className="relative text-base leading-none">
-              {item.icon}
-              {badges[item.to] && (
-                <span
-                  aria-label="New, not yet seen"
-                  className="absolute -right-1 -top-0.5 h-1.5 w-1.5 rounded-full bg-danger"
-                />
+        {PRIMARY.map((item) => {
+          const ItemIcon = item.icon
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) =>
+                `flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors ${
+                  isActive ? 'text-brand' : 'text-muted'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <span
+                    className={`relative flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
+                      isActive ? 'bg-brand/10' : ''
+                    }`}
+                  >
+                    <ItemIcon size={19} />
+                    {badges[item.to] && (
+                      <span
+                        aria-label="New, not yet seen"
+                        className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-danger"
+                      />
+                    )}
+                  </span>
+                  {item.label}
+                </>
               )}
-            </span>
-            {item.label}
-          </NavLink>
-        ))}
+            </NavLink>
+          )
+        })}
       </nav>
     </div>
   )

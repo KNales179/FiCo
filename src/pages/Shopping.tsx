@@ -7,7 +7,8 @@ import { computeListTotals } from '../features/shopping'
 import { suggestForName, type ItemSuggestion } from '../features/items'
 import { getLastSeenAt, isUnseen, markSeenNow } from '../features/seen'
 import { formatMoney, parseAmountToMinor } from '../domain/money'
-import { SkeletonCard } from '../components/ui'
+import { PageHeader, Button, Input, Select, Alert, SkeletonCard } from '../components/ui'
+import { IconCheck, IconPlus, IconTrash, IconX } from '../components/icons'
 import CategoryPicker from '../components/money/CategoryPicker'
 import type { ShoppingItem } from '../types/models'
 
@@ -26,7 +27,7 @@ const PriceField = ({
     value != null ? String(value / 100) : '',
   )
   return (
-    <input
+    <Input
       value={text}
       onChange={(e) => setText(e.target.value)}
       onBlur={() => {
@@ -37,7 +38,7 @@ const PriceField = ({
       }}
       inputMode="decimal"
       placeholder={placeholder}
-      className="w-20 border px-1 py-0.5 text-sm"
+      className="w-20 px-2 py-1 text-sm"
     />
   )
 }
@@ -89,15 +90,19 @@ const ItemRow = ({ item }: { item: ShoppingItem }) => {
             onChange={(id) =>
               void setItemCategory(item.name, id || null)
             }
-            className="border px-1 py-0.5 text-xs"
+            className="select w-auto text-xs"
           />
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            aria-label="Remove item"
+            title="Remove item"
+            className="hover:text-danger"
             onClick={() => void removeItem(item.id)}
-            className="text-xs text-muted underline"
           >
-            remove
-          </button>
+            <IconTrash size={14} />
+          </Button>
         </>
       ) : (
         <span>
@@ -261,45 +266,42 @@ const Shopping = () => {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight">Shopping</h1>
+      <PageHeader title="Shopping" />
 
-      {error && (
-        <p role="alert" className="text-sm text-danger">
-          {error}
-        </p>
-      )}
+      {error && <Alert>{error}</Alert>}
 
       {canEdit && (
         <form
           onSubmit={submitNewList}
           className="flex flex-wrap items-center gap-2 card"
         >
-          <input
+          <Input
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             placeholder="New list (e.g. Weekend grocery)"
             required
             maxLength={120}
-            className="min-w-[10rem] flex-1 border px-2 py-1 text-sm"
+            className="min-w-[10rem] flex-1"
           />
-          <input
+          <Input
             value={newBudget}
             onChange={(e) => setNewBudget(e.target.value)}
             inputMode="decimal"
             placeholder="Budget (optional)"
-            className="w-32 border px-2 py-1 text-sm"
+            className="w-32"
           />
-          <label className="flex items-center gap-1 text-sm">
+          <label className="flex items-center gap-1.5 text-sm text-muted">
             <input
               type="checkbox"
               checked={newPrivate}
               onChange={(e) => setNewPrivate(e.target.checked)}
             />
-            private
+            Private
           </label>
-          <button type="submit" className="border px-3 py-1 text-sm">
-            Create
-          </button>
+          <Button type="submit" variant="primary">
+            <IconPlus size={15} />
+            Create list
+          </Button>
         </form>
       )}
 
@@ -309,13 +311,16 @@ const Shopping = () => {
             const unseen =
               !openedListIds.has(list.id) &&
               isUnseen(list.createdAt, list.createdBy, lastSeenAt, user?.id)
+            const selected = list.id === selectedList?.id
             return (
               <button
                 key={list.id}
                 type="button"
                 onClick={() => openList(list.id)}
-                className={`relative border px-2 py-1 text-sm ${
-                  list.id === selectedList?.id ? 'bg-brand text-brand-ink' : ''
+                className={`relative rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                  selected
+                    ? 'border-transparent bg-brand text-brand-ink'
+                    : 'border-line bg-panel text-ink hover:bg-panel-2'
                 } ${unseen ? 'ring-2 ring-danger/60' : ''}`}
               >
                 {unseen && (
@@ -355,7 +360,7 @@ const Shopping = () => {
                           : 'PRIVATE',
                     })
                   }
-                  className="underline"
+                  className="font-medium text-brand underline"
                 >
                   {selectedList.visibility === 'PRIVATE'
                     ? 'share'
@@ -377,15 +382,15 @@ const Shopping = () => {
               className="mt-3 border-t pt-3"
             >
               <div className="flex flex-wrap items-center gap-2">
-                <input
+                <Input
                   value={itemName}
                   onChange={(e) => void onItemNameChange(e.target.value)}
                   placeholder="Add item"
                   required
                   maxLength={120}
-                  className="min-w-[8rem] flex-1 border px-2 py-1 text-sm"
+                  className="min-w-[8rem] flex-1"
                 />
-                <input
+                <Input
                   value={itemPrice}
                   onChange={(e) => setItemPrice(e.target.value)}
                   inputMode="decimal"
@@ -394,11 +399,12 @@ const Shopping = () => {
                       ? `${suggestion.lastPriceMinor / 100}`
                       : 'Planned price'
                   }
-                  className="w-28 border px-2 py-1 text-sm"
+                  className="w-28"
                 />
-                <button type="submit" className="border px-3 py-1 text-sm">
+                <Button type="submit" variant="primary">
+                  <IconPlus size={15} />
                   Add
-                </button>
+                </Button>
               </div>
               {suggestion && (
                 <p className="mt-1 text-xs text-muted">
@@ -451,13 +457,13 @@ const Shopping = () => {
                   kind="EXPENSE"
                   value={payCategoryId}
                   onChange={setPayCategoryId}
-                  className="border px-2 py-1 text-sm"
+                  className="select w-auto"
                 />
                 <span className="text-muted">Pay from</span>
-                <select
+                <Select
                   value={payAccountId || defaultAccount?.id || ''}
                   onChange={(e) => setPayAccountId(e.target.value)}
-                  className="border px-2 py-1"
+                  className="w-auto"
                 >
                   {activeAccounts.length === 0 && (
                     <option value="">No accounts</option>
@@ -468,9 +474,9 @@ const Shopping = () => {
                       {a.isDefault ? ' •' : ''}
                     </option>
                   ))}
-                </select>
-                <button
-                  type="button"
+                </Select>
+                <Button
+                  variant="primary"
                   disabled={activeAccounts.length === 0}
                   onClick={async () => {
                     setFormError('')
@@ -498,35 +504,29 @@ const Shopping = () => {
                       )
                     }
                   }}
-                  className="border px-3 py-1 disabled:opacity-50"
                 >
+                  <IconCheck size={15} />
                   Complete shopping
-                </button>
+                </Button>
               </div>
 
               <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => void cancelList(selectedList.id)}
-                  className="border px-3 py-1 text-sm text-muted"
-                >
+                <Button onClick={() => void cancelList(selectedList.id)}>
+                  <IconX size={14} />
                   Cancel list
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void deleteList(selectedList.id)}
-                  className="border px-3 py-1 text-sm text-muted"
-                >
+                </Button>
+                <Button variant="danger" onClick={() => void deleteList(selectedList.id)}>
+                  <IconTrash size={14} />
                   Delete
-                </button>
+                </Button>
               </div>
             </div>
           )}
 
           {canEdit && !listIsActive && (
             <div className="mt-4">
-              <button
-                type="button"
+              <Button
+                variant="danger"
                 onClick={() => {
                   if (
                     window.confirm(
@@ -537,10 +537,10 @@ const Shopping = () => {
                   )
                     void deleteList(selectedList.id)
                 }}
-                className="border px-3 py-1 text-sm text-muted"
               >
+                <IconTrash size={14} />
                 Delete list
-              </button>
+              </Button>
             </div>
           )}
         </section>
