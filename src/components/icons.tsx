@@ -297,6 +297,20 @@ export const IconFilter = (props: IconProps) => (
   </Icon>
 )
 
+export const IconDownload = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 4v11M7.5 11.5 12 16l4.5-4.5" />
+    <path d="M5 19.5h14" />
+  </Icon>
+)
+
+export const IconShare = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 3.5v11.5M8.5 7 12 3.5 15.5 7" />
+    <path d="M5.5 12v6.5a1.5 1.5 0 0 0 1.5 1.5h10a1.5 1.5 0 0 0 1.5-1.5V12" />
+  </Icon>
+)
+
 export const IconInfo = (props: IconProps) => (
   <Icon {...props}>
     <circle cx="12" cy="12" r="8.5" />

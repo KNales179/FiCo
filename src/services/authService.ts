@@ -63,8 +63,13 @@ export const logout = () => {
   )
 }
 
-export const getMe = () => {
-  return api<MeResponse>('/auth/me')
+/**
+ * `timeoutMs` lets a caller be more patient than the default — used at app
+ * boot and on reconnect, where the backend may be a free-tier host waking
+ * from a cold start rather than genuinely unreachable.
+ */
+export const getMe = (timeoutMs?: number) => {
+  return api<MeResponse>('/auth/me', { timeoutMs })
 }
 
 export const updateMe = (

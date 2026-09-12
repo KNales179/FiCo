@@ -21,7 +21,13 @@ import { ensureDeviceId } from '../features/auth/localAuth'
 import { isNetworkError } from '../lib/api'
 import type { DeviceSession } from '../types/auth'
 import { PageHeader, Card, Button, Input, Alert, SkeletonRow } from '../components/ui'
-import { IconCamera, IconLogOut, IconTrash, IconX } from '../components/icons'
+import { IconCamera, IconDownload, IconLogOut, IconShare, IconTrash, IconX } from '../components/icons'
+import {
+  installPlatform,
+  onInstallAvailabilityChange,
+  promptInstall,
+  type InstallPlatform,
+} from '../features/pwa/installPrompt'
 
 const formatDate = (iso: string) => new Date(iso).toLocaleString()
 
@@ -614,6 +620,70 @@ const PushNotificationsSection = () => {
   )
 }
 
+/**
+ * "Download and install like a normal app" — what that actually means for a
+ * PWA: Chrome/Edge (desktop and Android) can install Fico as a real home-
+ * screen / app-list icon that opens in its own window, offline-capable,
+ * indistinguishable from a native app once installed — no app store, no
+ * review, no cost. Safari never offers this automatically; there it's a
+ * manual Share → Add to Home Screen, so this section shows instructions
+ * instead of a button on iOS.
+ */
+const InstallAppSection = () => {
+  const [platform, setPlatform] = useState<InstallPlatform>(installPlatform)
+  const [busy, setBusy] = useState(false)
+  const [declined, setDeclined] = useState(false)
+
+  useEffect(
+    () => onInstallAvailabilityChange(() => setPlatform(installPlatform())),
+    [],
+  )
+
+  if (platform === 'unavailable') return null
+
+  const install = async () => {
+    setBusy(true)
+    try {
+      const accepted = await promptInstall()
+      if (!accepted) setDeclined(true)
+    } finally {
+      setBusy(false)
+      setPlatform(installPlatform())
+    }
+  }
+
+  return (
+    <Card>
+      <h2 className="section-title">Install as an app</h2>
+      <p className="mt-1 text-xs text-muted">
+        Puts Fico on your home screen like a normal app — its own icon, no
+        browser bar, works offline. Free, and nothing to download from a
+        store.
+      </p>
+      {platform === 'promptable' && (
+        <>
+          <Button className="mt-3" variant="primary" onClick={() => void install()} disabled={busy}>
+            <IconDownload size={16} />
+            {busy ? 'Opening…' : 'Install Fico'}
+          </Button>
+          {declined && (
+            <p className="mt-2 text-xs text-muted">
+              No problem — you can install it later from here, or from your
+              browser's own menu.
+            </p>
+          )}
+        </>
+      )}
+      {platform === 'ios-manual' && (
+        <p className="mt-3 flex items-start gap-1.5 text-sm text-ink">
+          <IconShare size={16} className="mt-0.5 shrink-0 text-muted" />
+          Tap the Share button in Safari, then "Add to Home Screen."
+        </p>
+      )}
+    </Card>
+  )
+}
+
 const Account = () => {
   const { user } = useAuth()
 
@@ -624,6 +694,7 @@ const Account = () => {
         description={user ? `Signed in as ${user.username}` : undefined}
       />
       <EmailVerificationBanner />
+      <InstallAppSection />
       <AvatarSection />
       <PasswordSection />
       <DevicesSection />

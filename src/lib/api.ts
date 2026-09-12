@@ -24,6 +24,9 @@ export const probeServer = async (timeoutMs = 4000): Promise<boolean> => {
 
 interface ApiOptions extends Omit<RequestInit, 'body'> {
   body?: unknown
+  /** Overrides the default timeout for just this call — see `getMe`'s use
+   *  of this for the cold-start case below. */
+  timeoutMs?: number
 }
 
 /** Error thrown for any request that reached the server and came back not-ok. */
@@ -55,6 +58,13 @@ export const isNetworkError = (error: unknown): error is NetworkError =>
  * can leave a request hanging well past when the app should have already
  * fallen back to offline mode. Aborting after this long guarantees `api()`
  * always settles one way or the other in reasonable time.
+ *
+ * This is deliberately short enough that an *interactive* action (tapping
+ * Save while genuinely offline) fails fast rather than hanging — it is not
+ * meant to be patient enough for a free-tier host's cold start (Render's
+ * free plan can take 20-50s to wake a sleeping instance). `getMe`'s very
+ * first call at app boot passes its own longer `timeoutMs` for exactly
+ * that reason; every other call keeps this default.
  */
 const REQUEST_TIMEOUT_MS = 8000
 
@@ -62,12 +72,12 @@ export const api = async <T>(
   endpoint: string,
   options: ApiOptions = {},
 ): Promise<T> => {
-  const { body, headers, signal, ...rest } = options
+  const { body, headers, signal, timeoutMs, ...rest } = options
 
   let response: Response
 
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  const timer = setTimeout(() => controller.abort(), timeoutMs ?? REQUEST_TIMEOUT_MS)
   // Respect a caller-provided signal too, so a component that wants to
   // cancel its own request (unmounted, superseded by a newer one) still can.
   signal?.addEventListener('abort', () => controller.abort())

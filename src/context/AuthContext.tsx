@@ -19,6 +19,15 @@ import {
 import { useConnectivity } from '../hooks/useConnectivity'
 import { AuthContext } from './auth-context'
 
+/**
+ * Patient enough to survive a free-tier host waking a sleeping instance
+ * (Render's free plan can take 20-50s) — used only where that's actually
+ * plausible: the very first check at app boot, and reconnecting after being
+ * offline. Everywhere else keeps `api()`'s normal, much shorter default, so
+ * an interactive action while genuinely offline still fails fast.
+ */
+const COLD_START_TIMEOUT_MS = 45_000
+
 const toUser = (user: User): User => ({
   id: user.id,
   username: user.username,
@@ -73,7 +82,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       try {
-        const response = await getMe()
+        const response = await getMe(COLD_START_TIMEOUT_MS)
         if (cancelled) return
         await applyServerAuth(response.user, response.session)
       } catch (error) {
@@ -114,7 +123,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!online || !offline || !user || revalidating.current) return
 
     revalidating.current = true
-    void getMe()
+    void getMe(COLD_START_TIMEOUT_MS)
       .then((response) => applyServerAuth(response.user, response.session))
       .catch(async (error) => {
         if (!isNetworkError(error)) {
