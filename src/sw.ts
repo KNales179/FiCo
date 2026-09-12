@@ -11,7 +11,16 @@ precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html')))
 
-self.skipWaiting()
+// Do NOT call self.skipWaiting() unconditionally here — that would activate
+// a new version (and reload every open tab) the instant it's downloaded,
+// with no warning, which is exactly the "suddenly reloads while typing"
+// bug (owner feedback). Instead this waits for the page to explicitly ask
+// for it — which only happens once a person clicks "Refresh now" on
+// `UpdateBanner` (`registerType: 'prompt'`, `applyPendingUpdate` in
+// `features/pwa/swUpdate.ts`).
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
+})
 self.addEventListener('activate', () => void self.clients.claim())
 
 interface PushPayload {

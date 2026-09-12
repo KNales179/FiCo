@@ -9,7 +9,12 @@ export default defineConfig({
     tailwindcss(),
 
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt', not 'autoUpdate' — autoUpdate silently reloads the page
+      // the moment a new build is detected, with no warning, which was
+      // wiping out whatever the person was mid-typing (owner feedback).
+      // `src/features/pwa/swUpdate.ts` drives the actual update instead,
+      // only ever applying it when the person chooses to.
+      registerType: 'prompt',
 
       // A hand-written service worker (src/sw.ts) instead of the fully
       // generated one — needed to add push/notificationclick handling;

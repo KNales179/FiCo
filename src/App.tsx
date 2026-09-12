@@ -10,6 +10,7 @@ import { BillsProvider } from './context/BillsProvider'
 import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/AppLayout'
 import ConnectionStatus from './components/ConnectionStatus'
+import UpdateBanner from './components/UpdateBanner'
 
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -39,6 +40,7 @@ const App = () => {
             <MoneyProvider>
               <ShoppingProvider>
                 <BillsProvider>
+                  <UpdateBanner />
                   <ConnectionStatus />
 
                   <Suspense fallback={<RouteFallback />}>
