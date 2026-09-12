@@ -32,11 +32,16 @@ const QuickAdd = () => {
     [categories],
   )
 
+  const today = () => new Date().toISOString().slice(0, 10)
+
   const [direction, setDirection] = useState<'EXPENSE' | 'INCOME'>('EXPENSE')
   const [amount, setAmount] = useState('')
   const [title, setTitle] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [chosenAccountId, setChosenAccountId] = useState('')
+  // Defaults to today — only needs changing when the recording happens
+  // later than the actual spend/income (Roadmap feedback).
+  const [date, setDate] = useState(today)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
@@ -53,6 +58,7 @@ const QuickAdd = () => {
     categories.find((c) => c.id === categoryId)?.tracksItems === true
 
   const computedTotalMinor = sumItemPricesMinor(items)
+  const occurredAt = new Date(`${date}T00:00:00.000Z`).toISOString()
 
   const changeCategory = (nextCategoryId: string) => {
     setCategoryId(nextCategoryId)
@@ -99,7 +105,7 @@ const QuickAdd = () => {
         await recordItemizedExpense(ctx, {
           accountId,
           title,
-          occurredAt: new Date().toISOString(),
+          occurredAt,
           amountMinor,
           items: toScannedReceiptItems(items, categoryNameById),
         })
@@ -107,6 +113,7 @@ const QuickAdd = () => {
         setTitle('')
         setCategoryId('')
         setItems([])
+        setDate(today())
         setSaved(true)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not save')
@@ -130,10 +137,12 @@ const QuickAdd = () => {
         title,
         accountId,
         categoryId: categoryId || null,
+        occurredAt,
       })
       setAmount('')
       setTitle('')
       setCategoryId('')
+      setDate(today())
       setSaved(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save')
@@ -205,6 +214,14 @@ const QuickAdd = () => {
               </option>
             ))}
           </select>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            max={today()}
+            title="When this actually happened — defaults to today, change it if you're recording late"
+            className="input w-auto"
+          />
           <CategoryPicker
             kind={direction === 'INCOME' ? 'INCOME' : 'EXPENSE'}
             value={categoryId}
