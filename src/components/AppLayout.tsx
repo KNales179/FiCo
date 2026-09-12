@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import SpaceSwitcher from './SpaceSwitcher'
 import SyncStatus from './SyncStatus'
+import BillReminders from './BillReminders'
 
 /** Primary destinations — always visible (bottom bar on mobile, header on desktop). */
 const PRIMARY = [
@@ -118,6 +119,8 @@ const AppLayout = () => {
           </div>
         </div>
       </header>
+
+      <BillReminders />
 
       <main className="mx-auto max-w-4xl px-4 py-5 pb-24 md:pb-5">
         <Outlet />

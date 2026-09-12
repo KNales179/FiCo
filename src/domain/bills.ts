@@ -52,6 +52,42 @@ export const retreatDueDate = (
   return prev.toISOString()
 }
 
+export interface BillReminder {
+  billId: string
+  name: string
+  dueDate: string
+  overdue: boolean
+}
+
+/** How many days ahead counts as "coming up" for an in-app reminder. */
+export const DUE_SOON_DAYS = 3
+
+/**
+ * Bills worth flagging right now — already overdue, or due within
+ * `daysAhead` — for an in-app "bills due soon" reminder. Sorted soonest
+ * (or most overdue) first. A bill that's inactive or further out isn't
+ * urgent enough to interrupt anyone with.
+ */
+export const dueSoonBills = (
+  bills: Array<{ id: string; name: string; active: boolean; nextDueDate: string }>,
+  nowIso: string,
+  daysAhead: number = DUE_SOON_DAYS,
+): BillReminder[] => {
+  const thresholdIso = new Date(
+    new Date(nowIso).getTime() + daysAhead * 24 * 60 * 60 * 1000,
+  ).toISOString()
+
+  return bills
+    .filter((bill) => bill.active && bill.nextDueDate <= thresholdIso)
+    .map((bill) => ({
+      billId: bill.id,
+      name: bill.name,
+      dueDate: bill.nextDueDate,
+      overdue: bill.nextDueDate < nowIso,
+    }))
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+}
+
 /** Stable key for the occurrence a date belongs to — dedupes payments. */
 export const periodKey = (
   iso: string,

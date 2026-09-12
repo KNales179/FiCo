@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { balanceEffect, validateTransactionInput } from './transactions'
-import { advanceDueDate, periodKey, retreatDueDate } from './bills'
+import { advanceDueDate, dueSoonBills, periodKey, retreatDueDate } from './bills'
 import { resolveRange, summarize } from './analytics'
 import { pickTripCategory } from './shopping'
 import type { Account, Transaction } from '../types/models'
@@ -125,6 +125,21 @@ describe('bill recurrence', () => {
     expect(
       retreatDueDate('2027-01-15T00:00:00.000Z', 'YEARLY').slice(0, 10),
     ).toBe('2026-01-15')
+  })
+  it('dueSoonBills flags overdue and coming-up bills, ignores the rest', () => {
+    const now = '2026-09-11T00:00:00.000Z'
+    const rows = dueSoonBills(
+      [
+        { id: 'b1', name: 'Wifi', active: true, nextDueDate: '2026-09-08T00:00:00.000Z' }, // overdue
+        { id: 'b2', name: 'Electric', active: true, nextDueDate: '2026-09-13T00:00:00.000Z' }, // 2 days out
+        { id: 'b3', name: 'Rent', active: true, nextDueDate: '2026-10-01T00:00:00.000Z' }, // far off
+        { id: 'b4', name: 'Gym', active: false, nextDueDate: '2026-09-12T00:00:00.000Z' }, // inactive
+      ],
+      now,
+    )
+    expect(rows.map((r) => r.billId)).toEqual(['b1', 'b2'])
+    expect(rows[0]).toMatchObject({ name: 'Wifi', overdue: true })
+    expect(rows[1]).toMatchObject({ name: 'Electric', overdue: false })
   })
 })
 
