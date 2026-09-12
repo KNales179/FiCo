@@ -116,6 +116,7 @@ const EditTransactionForm = ({
 
   const [title, setTitle] = useState(txn.title)
   const [amount, setAmount] = useState((txn.amountMinor / 100).toFixed(2))
+  const [date, setDate] = useState(txn.occurredAt.slice(0, 10))
   const [accountId, setAccountId] = useState(txn.accountId)
   const [destinationAccountId, setDestinationAccountId] = useState(
     txn.destinationAccountId ?? '',
@@ -131,6 +132,10 @@ const EditTransactionForm = ({
       setError('Enter an amount greater than zero')
       return
     }
+    if (!date) {
+      setError('Pick a date')
+      return
+    }
     setError('')
     setBusy(true)
     try {
@@ -138,6 +143,7 @@ const EditTransactionForm = ({
         title,
         amountMinor,
         accountId,
+        occurredAt: new Date(`${date}T00:00:00.000Z`).toISOString(),
         ...(txn.type === 'TRANSFER'
           ? { destinationAccountId: destinationAccountId || null }
           : {}),
@@ -175,6 +181,13 @@ const EditTransactionForm = ({
             inputMode="decimal"
             placeholder="Amount"
             className="input w-24"
+          />
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            max={new Date().toISOString().slice(0, 10)}
+            className="input w-auto"
           />
         </div>
         <div className="flex flex-wrap gap-2">

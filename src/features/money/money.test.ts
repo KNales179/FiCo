@@ -173,7 +173,9 @@ describe('money engine (Roadmap Phase 6 integrity)', () => {
       amountMinor: 8000,
       categoryId: 'cat-1',
       categoryName: 'Food',
+      occurredAt: '2026-03-01T00:00:00.000Z',
     })
+    expect(edited.occurredAt).toBe('2026-03-01T00:00:00.000Z')
     expect(edited).toMatchObject({
       title: 'Coffee and pastry',
       amountMinor: 8000,
