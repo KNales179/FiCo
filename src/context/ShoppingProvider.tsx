@@ -69,7 +69,11 @@ export const ShoppingProvider = ({
     setItems(listId ? await listItems(listId) : [])
   }, [])
 
-  const load = useCallback(async () => {
+  // Silent by default — see the matching note in MoneyProvider. Only the
+  // mount effect below passes `{ initial: true }`; every other refresh
+  // (after a save, another device's change arriving via sync) updates
+  // the already-rendered lists in place instead of tearing the page down.
+  const load = useCallback(async (options: { initial?: boolean } = {}) => {
     if (!activeSpaceId) {
       setLists([])
       setItems([])
@@ -77,7 +81,7 @@ export const ShoppingProvider = ({
       setLoading(false)
       return
     }
-    setLoading(true)
+    if (options.initial) setLoading(true)
     setError(null)
     try {
       const all = await listShoppingLists(activeSpaceId)
@@ -101,7 +105,7 @@ export const ShoppingProvider = ({
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load()
+    void load({ initial: true })
   }, [load])
 
   useEffect(

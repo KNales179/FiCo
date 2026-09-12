@@ -57,7 +57,12 @@ export const BillsProvider = ({ children }: { children: ReactNode }) => {
     return ctx
   }
 
-  const load = useCallback(async () => {
+  // Silent by default — see the matching note in MoneyProvider. Only the
+  // mount effect below passes `{ initial: true }`; every other refresh
+  // (after paying a bill, another device's change arriving via sync)
+  // updates the already-rendered list in place instead of tearing the
+  // page down.
+  const load = useCallback(async (options: { initial?: boolean } = {}) => {
     if (!activeSpaceId) {
       setBills([])
       setDeletedBills([])
@@ -65,7 +70,7 @@ export const BillsProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false)
       return
     }
-    setLoading(true)
+    if (options.initial) setLoading(true)
     setError(null)
     try {
       const [b, deleted, e] = await Promise.all([
@@ -87,7 +92,7 @@ export const BillsProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load()
+    void load({ initial: true })
   }, [load])
 
   useEffect(() => onDataChanged(() => void load()), [load])

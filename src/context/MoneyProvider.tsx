@@ -72,7 +72,19 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
       ? { spaceId: activeSpaceId, userId: user.id, deviceId }
       : null
 
-  const load = useCallback(async () => {
+  /**
+   * Refetches and updates state. By default this is silent — it never
+   * touches `loading` — because every call site except the very first one
+   * (below) is a refresh *after* the page already has data: a save's own
+   * follow-up, another device's change arriving via sync, a child
+   * component's own "refresh" call. Blocking the dashboard behind a
+   * "Loading…" placeholder on every one of those was tearing the whole
+   * page down and back up each time (owner feedback: "I edit, I save, it
+   * got reload and I got push back at the top... it keeps reloading").
+   * Only `{ initial: true }` — used once, for the very first load of a
+   * space — shows that placeholder.
+   */
+  const load = useCallback(async (options: { initial?: boolean } = {}) => {
     if (!activeSpaceId) {
       setAccounts([])
       setTotals({})
@@ -82,7 +94,7 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
       return
     }
 
-    setLoading(true)
+    if (options.initial) setLoading(true)
     setError(null)
     try {
       if (ctx && canEdit) {
@@ -115,11 +127,12 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load()
+    void load({ initial: true })
   }, [load])
 
   // Coalesce bursts of mutations (e.g. completing a shopping list emits many
   // `fico:data-changed` events) into a single reload (Roadmap Phase 26).
+  // Silent — the page already has data by the time anything can change it.
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     const unsubscribe = onDataChanged(() => {
