@@ -1,11 +1,17 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useMoney } from '../../hooks/useMoney'
 import { useAuth } from '../../hooks/useAuth'
+import { useMutationContext } from '../../hooks/useMutationContext'
 import { combineDateAndTime, formatMoney, parseAmountToMinor, timeOfDay } from '../../domain/money'
 import { listPurchasesForTransaction, type ItemPurchaseDetail } from '../../features/items'
+import { listTransactions } from '../../features/money'
+import { getLastSeenAt, isUnseen, markSeenNow } from '../../features/seen'
+import { onDataChanged } from '../../features/sync/events'
 import Attachments from '../Attachments'
 import CategoryPicker from './CategoryPicker'
 import type { Transaction } from '../../types/models'
+
+const SEEN_AREA = 'transactions'
 
 const SIGN: Record<string, string> = {
   INCOME: '+',
@@ -232,9 +238,13 @@ const EditTransactionForm = ({
 const Row = ({
   txn,
   accountName,
+  unseen,
+  onOpen,
 }: {
   txn: Transaction
   accountName: (id: string | null | undefined) => string
+  unseen: boolean
+  onOpen: () => void
 }) => {
   const { canEdit, removeTransaction, setTransactionVisibility } = useMoney()
   const { user } = useAuth()
@@ -247,9 +257,16 @@ const Row = ({
   }
 
   return (
-    <li className="py-2 text-sm">
+    <li className={`py-2 text-sm ${unseen ? 'bg-brand/5' : ''}`}>
       <div className="flex items-center justify-between">
         <span>
+          {unseen && (
+            <span
+              aria-label="New, not yet seen"
+              title="Added by someone else since you last checked"
+              className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-brand align-middle"
+            />
+          )}
           <span className="font-medium">{txn.title}</span>
           <span className="ml-2 text-xs text-muted">
             {new Date(txn.occurredAt).toLocaleDateString()} ·{' '}
@@ -279,7 +296,10 @@ const Row = ({
           </span>
           <button
             type="button"
-            onClick={() => setOpen((v) => !v)}
+            onClick={() => {
+              setOpen((v) => !v)
+              if (!open) onOpen()
+            }}
             className="text-xs text-muted underline"
           >
             {open ? 'close' : 'details'}
@@ -331,8 +351,146 @@ const Row = ({
   )
 }
 
+type DateMode = 'any' | 'day' | 'month' | 'year'
+
+/** [startIso, endIso) for whichever date filter is active, or null for "any". */
+const dateModeRange = (mode: DateMode, value: string): [string, string] | null => {
+  if (mode === 'any' || !value) return null
+  if (mode === 'day') {
+    const start = new Date(`${value}T00:00:00.000Z`)
+    return [start.toISOString(), new Date(start.getTime() + 86_400_000).toISOString()]
+  }
+  if (mode === 'month') {
+    const [y, m] = value.split('-').map(Number)
+    return [
+      new Date(Date.UTC(y, m - 1, 1)).toISOString(),
+      new Date(Date.UTC(y, m, 1)).toISOString(),
+    ]
+  }
+  const y = Number(value)
+  if (!Number.isInteger(y)) return null
+  return [
+    new Date(Date.UTC(y, 0, 1)).toISOString(),
+    new Date(Date.UTC(y + 1, 0, 1)).toISOString(),
+  ]
+}
+
+/** Prev/Next plus a small window of clickable page numbers around the current one. */
+const Pagination = ({
+  page,
+  totalPages,
+  onChange,
+}: {
+  page: number
+  totalPages: number
+  onChange: (page: number) => void
+}) => {
+  if (totalPages <= 1) return null
+
+  const windowStart = Math.max(1, Math.min(page - 2, totalPages - 4))
+  const windowEnd = Math.min(totalPages, windowStart + 4)
+  const pages = Array.from(
+    { length: windowEnd - windowStart + 1 },
+    (_, i) => windowStart + i,
+  )
+
+  const pageBtn = (n: number) => (
+    <button
+      key={n}
+      type="button"
+      onClick={() => onChange(n)}
+      className={`min-w-[1.75rem] rounded px-1.5 py-1 text-xs ${
+        n === page ? 'bg-brand text-brand-ink' : 'text-muted hover:bg-panel-2'
+      }`}
+    >
+      {n}
+    </button>
+  )
+
+  return (
+    <div className="mt-3 flex items-center justify-center gap-1 border-t border-line pt-3">
+      <button
+        type="button"
+        onClick={() => onChange(page - 1)}
+        disabled={page <= 1}
+        className="rounded px-2 py-1 text-xs text-muted hover:bg-panel-2 disabled:opacity-40"
+      >
+        ‹ Prev
+      </button>
+      {windowStart > 1 && <span className="px-1 text-xs text-muted">…</span>}
+      {pages.map(pageBtn)}
+      {windowEnd < totalPages && <span className="px-1 text-xs text-muted">…</span>}
+      <button
+        type="button"
+        onClick={() => onChange(page + 1)}
+        disabled={page >= totalPages}
+        className="rounded px-2 py-1 text-xs text-muted hover:bg-panel-2 disabled:opacity-40"
+      >
+        Next ›
+      </button>
+    </div>
+  )
+}
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 200]
+
 const TransactionList = () => {
-  const { transactions, accounts } = useMoney()
+  const { accounts, categories } = useMoney()
+  const { user } = useAuth()
+  const { ctx } = useMutationContext()
+
+  const [all, setAll] = useState<Transaction[] | null>(null)
+  const [lastSeenAt, setLastSeenAt] = useState<string | null>(null)
+  const [openedIds, setOpenedIds] = useState<Set<string>>(new Set())
+
+  const [search, setSearch] = useState('')
+  const [accountFilter, setAccountFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [dateMode, setDateMode] = useState<DateMode>('any')
+  const [dateValue, setDateValue] = useState('')
+  const [minAmount, setMinAmount] = useState('')
+  const [maxAmount, setMaxAmount] = useState('')
+  const [pageSize, setPageSize] = useState(25)
+  const [page, setPage] = useState(1)
+
+  // `ctx` is a fresh object every render (useMutationContext doesn't memoize
+  // it) — depending on the object itself instead of its stable spaceId would
+  // re-run these effects on every keystroke, re-scanning the whole space and
+  // (worse) prematurely marking everything "seen" while still on the page.
+  const spaceId = ctx?.spaceId
+
+  const load = useCallback(async () => {
+    if (!spaceId) return
+    const rows = await listTransactions(spaceId)
+    // Same rule as everywhere else — a private record is only shown to
+    // whoever created it (Product Spec §22).
+    setAll(rows.filter((t) => t.visibility !== 'PRIVATE' || t.createdBy === user?.id))
+  }, [spaceId, user?.id])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load()
+  }, [load])
+  useEffect(() => onDataChanged(() => void load()), [load])
+
+  // "Seen" cursor for this section — read once on arrival, advanced to now
+  // on the way out, so anything added by someone else while you were here
+  // stops being highlighted the *next* time you visit, not mid-visit.
+  useEffect(() => {
+    if (!spaceId) return
+    void getLastSeenAt(SEEN_AREA, spaceId).then(setLastSeenAt)
+    return () => {
+      void markSeenNow(SEEN_AREA, spaceId)
+    }
+  }, [spaceId])
+
+  const markOpened = useCallback((id: string) => {
+    setOpenedIds((prev) => {
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+  }, [])
 
   const nameById = useMemo(
     () => new Map(accounts.map((a) => [a.id, a.name])),
@@ -341,22 +499,205 @@ const TransactionList = () => {
   const accountName = (id: string | null | undefined) =>
     (id && nameById.get(id)) || '?'
 
-  if (transactions.length === 0) {
-    return (
-      <section className="card text-sm text-muted">
-        No transactions yet.
-      </section>
-    )
+  const dateRange = useMemo(
+    () => dateModeRange(dateMode, dateValue),
+    [dateMode, dateValue],
+  )
+
+  const filtered = useMemo(() => {
+    if (!all) return []
+    const minMinor = minAmount.trim() ? parseAmountToMinor(minAmount) : null
+    const maxMinor = maxAmount.trim() ? parseAmountToMinor(maxAmount) : null
+    const q = search.trim().toLowerCase()
+
+    return all.filter((t) => {
+      if (
+        accountFilter &&
+        t.accountId !== accountFilter &&
+        t.destinationAccountId !== accountFilter
+      )
+        return false
+      if (categoryFilter && t.categoryId !== categoryFilter) return false
+      if (dateRange && (t.occurredAt < dateRange[0] || t.occurredAt >= dateRange[1]))
+        return false
+      if (minMinor != null && t.amountMinor < minMinor) return false
+      if (maxMinor != null && t.amountMinor > maxMinor) return false
+      if (q && !t.title.toLowerCase().includes(q)) return false
+      return true
+    })
+  }, [all, accountFilter, categoryFilter, dateRange, minAmount, maxAmount, search])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const clampedPage = Math.min(page, totalPages)
+  const pageRows = filtered.slice(
+    (clampedPage - 1) * pageSize,
+    clampedPage * pageSize,
+  )
+
+  if (all === null) {
+    return <section className="card text-sm text-muted">Loading…</section>
   }
 
   return (
     <section className="card">
-      <h2 className="text-lg font-semibold">Recent</h2>
-      <ul className="mt-3 divide-y">
-        {transactions.map((txn) => (
-          <Row key={txn.id} txn={txn} accountName={accountName} />
-        ))}
-      </ul>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold">Records</h2>
+        <span className="text-xs text-muted">
+          {filtered.length} of {all.length}
+        </span>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-b border-line pb-3 text-sm">
+        <input
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            setPage(1)
+          }}
+          placeholder="Search title…"
+          className="input min-w-[8rem] flex-1"
+        />
+        <select
+          value={accountFilter}
+          onChange={(e) => {
+            setAccountFilter(e.target.value)
+            setPage(1)
+          }}
+          className="select w-auto"
+        >
+          <option value="">Any account</option>
+          {accounts.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={categoryFilter}
+          onChange={(e) => {
+            setCategoryFilter(e.target.value)
+            setPage(1)
+          }}
+          className="select w-auto"
+        >
+          <option value="">Any category</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={dateMode}
+          onChange={(e) => {
+            setDateMode(e.target.value as DateMode)
+            setDateValue('')
+            setPage(1)
+          }}
+          className="select w-auto"
+        >
+          <option value="any">Any date</option>
+          <option value="day">A day</option>
+          <option value="month">A month</option>
+          <option value="year">A year</option>
+        </select>
+        {dateMode === 'day' && (
+          <input
+            type="date"
+            value={dateValue}
+            onChange={(e) => {
+              setDateValue(e.target.value)
+              setPage(1)
+            }}
+            className="input w-auto"
+          />
+        )}
+        {dateMode === 'month' && (
+          <input
+            type="month"
+            value={dateValue}
+            onChange={(e) => {
+              setDateValue(e.target.value)
+              setPage(1)
+            }}
+            className="input w-auto"
+          />
+        )}
+        {dateMode === 'year' && (
+          <input
+            type="number"
+            inputMode="numeric"
+            placeholder="YYYY"
+            value={dateValue}
+            onChange={(e) => {
+              setDateValue(e.target.value)
+              setPage(1)
+            }}
+            className="input w-20"
+          />
+        )}
+        <input
+          value={minAmount}
+          onChange={(e) => {
+            setMinAmount(e.target.value)
+            setPage(1)
+          }}
+          inputMode="decimal"
+          placeholder="Min ₱"
+          className="input w-20"
+        />
+        <input
+          value={maxAmount}
+          onChange={(e) => {
+            setMaxAmount(e.target.value)
+            setPage(1)
+          }}
+          inputMode="decimal"
+          placeholder="Max ₱"
+          className="input w-20"
+        />
+        <label className="ml-auto flex items-center gap-1.5 text-xs text-muted">
+          Show
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value))
+              setPage(1)
+            }}
+            className="select w-auto"
+          >
+            {PAGE_SIZE_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+          per page
+        </label>
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="py-4 text-sm text-muted">
+          {all.length === 0 ? 'No transactions yet.' : 'Nothing matches those filters.'}
+        </p>
+      ) : (
+        <ul className="mt-1 divide-y">
+          {pageRows.map((txn) => (
+            <Row
+              key={txn.id}
+              txn={txn}
+              accountName={accountName}
+              unseen={
+                !openedIds.has(txn.id) &&
+                isUnseen(txn.createdAt, txn.createdBy, lastSeenAt, user?.id)
+              }
+              onOpen={() => markOpened(txn.id)}
+            />
+          ))}
+        </ul>
+      )}
+
+      <Pagination page={clampedPage} totalPages={totalPages} onChange={setPage} />
     </section>
   )
 }
