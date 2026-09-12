@@ -49,19 +49,35 @@ export class NetworkError extends Error {
 export const isNetworkError = (error: unknown): error is NetworkError =>
   error instanceof NetworkError
 
+/**
+ * A dead connection doesn't always make `fetch` reject quickly — wifi that's
+ * still "connected" to a router with no upstream internet, in particular,
+ * can leave a request hanging well past when the app should have already
+ * fallen back to offline mode. Aborting after this long guarantees `api()`
+ * always settles one way or the other in reasonable time.
+ */
+const REQUEST_TIMEOUT_MS = 8000
+
 export const api = async <T>(
   endpoint: string,
   options: ApiOptions = {},
 ): Promise<T> => {
-  const { body, headers, ...rest } = options
+  const { body, headers, signal, ...rest } = options
 
   let response: Response
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  // Respect a caller-provided signal too, so a component that wants to
+  // cancel its own request (unmounted, superseded by a newer one) still can.
+  signal?.addEventListener('abort', () => controller.abort())
 
   try {
     response = await fetch(`${API_URL}${endpoint}`, {
       ...rest,
 
       credentials: 'include',
+      signal: controller.signal,
 
       headers: {
         'Content-Type': 'application/json',
@@ -71,8 +87,11 @@ export const api = async <T>(
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
   } catch (cause) {
-    // fetch only rejects when the request could not be made at all.
+    // fetch only rejects when the request could not be made at all (this
+    // includes our own timeout abort).
     throw new NetworkError(cause)
+  } finally {
+    clearTimeout(timer)
   }
 
   let data: { message?: string } | null = null

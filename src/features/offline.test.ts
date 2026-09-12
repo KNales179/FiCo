@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ctx, failFetch, withDB } from '../test/helpers'
-import { syncEventRepository } from '../repositories'
+import { sessionRepository, syncEventRepository } from '../repositories'
 import {
   computeSpaceBalances,
   createAccount,
@@ -150,6 +150,36 @@ describe('offline operation (Phase 23)', () => {
     await clearLocalAuth({ markSignedOut: true })
     expect(await loadLocalAuth()).toBeNull()
     expect(await wasSignedOut()).toBe(true)
+  })
+
+  it('a locally-stale session still opens offline — expiry is enforced online, not against a clock nothing can renew', async () => {
+    // The server's own session may well still be perfectly valid — the
+    // local copy of `expiresAt` only ever refreshes on a `getMe()` call,
+    // so it can look "expired" here just from time passing in an open
+    // tab, or from being offline for a while. There is no way to renew
+    // it without a connection, so treating that as a hard lockout would
+    // mean a legitimately signed-in device can no longer be used offline
+    // at exactly the moment offline access is the point (owner feedback:
+    // "if you are offline you can't login... you won't be able to check
+    // the family or shared finance").
+    await persistLocalAuth(
+      { id: 'user-1', username: 'ivhel', email: 'ivhel@example.com', displayName: 'Ivhel' },
+      { expiresAt: new Date(Date.now() - 86_400_000).toISOString() },
+    )
+
+    const snapshot = await loadLocalAuth()
+    expect(snapshot?.user.id).toBe('user-1')
+  })
+
+  it('a revoked session still cannot open offline, expired or not', async () => {
+    await persistLocalAuth(
+      { id: 'user-1', username: 'ivhel', email: 'ivhel@example.com', displayName: 'Ivhel' },
+      { expiresAt: new Date(Date.now() + 86_400_000).toISOString() },
+    )
+    const deviceId = await ensureDeviceId()
+    await sessionRepository.revoke(deviceId)
+
+    expect(await loadLocalAuth()).toBeNull()
   })
 
   it('logging out wipes this device\'s cached financial data (shared-device safety), but keeps its own device id', async () => {

@@ -83,16 +83,34 @@ export async function persistLocalAuth(
   await metadataRepository.remove(SIGNED_OUT_KEY)
 }
 
-/** Return a still-valid local authentication for this device, or null. */
+/**
+ * Return the local authentication for this device, or null — for opening
+ * Fico *offline*, so it deliberately does not enforce `expiresAt`.
+ *
+ * That field mirrors the server's own session expiry, which only actually
+ * renews (slides forward) on a request the server sees — so a device that
+ * has been offline for a while, or that just hasn't made a fresh `getMe()`
+ * call in the current tab, can have a locally-stale `expiresAt` that looks
+ * "expired" even though the real, server-side session is still perfectly
+ * valid. There is no way to renew it while offline anyway, so treating a
+ * past `expiresAt` as a hard local lockout only means: a device that was
+ * legitimately signed in can no longer be *used* offline — precisely the
+ * case this function exists for (owner feedback: a personal or shared
+ * Finance should still open with whatever was last cached when there's no
+ * connection, not force a login it's impossible to complete). Real
+ * expiry/revocation enforcement happens online, against the server, the
+ * moment connectivity returns (`AuthContext`'s reconnect-revalidation
+ * effect) — this local copy only ever grants *provisional* access.
+ *
+ * `revokedAt` and the account's own status are still honored — those are
+ * "this device/account should never have gotten in", not "hasn't proven
+ * itself recently enough".
+ */
 export async function loadLocalAuth(): Promise<LocalAuthSnapshot | null> {
   const deviceId = await ensureDeviceId()
 
   const session = await sessionRepository.get(deviceId)
-  if (
-    !session ||
-    session.revokedAt ||
-    new Date(session.expiresAt).getTime() <= Date.now()
-  ) {
+  if (!session || session.revokedAt) {
     return null
   }
 
