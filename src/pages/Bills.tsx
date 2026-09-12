@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useBills } from '../hooks/useBills'
 import { useMoney } from '../hooks/useMoney'
+import { useAuth } from '../hooks/useAuth'
+import { useSpace } from '../hooks/useSpace'
 import { formatMoney, parseAmountToMinor } from '../domain/money'
 import { costPerKwhMinor } from '../domain/electricity'
 import { billPayableFrom, isBillPayable } from '../features/bills'
+import { getLastSeenAt, isUnseen, markSeenNow } from '../features/seen'
 import CategoryPicker from '../components/money/CategoryPicker'
 import type { Bill, BillPayment, BillRecurrence, BillType } from '../types/models'
+
+const SEEN_AREA = 'bills'
 
 /**
  * The most recent payment on a bill, shown inline right on its row — not
@@ -14,7 +19,15 @@ import type { Bill, BillPayment, BillRecurrence, BillType } from '../types/model
  * unless I check the date and the history"). Re-fetches whenever the
  * bill's own due date moves, which is exactly what a new payment does.
  */
-const LastPaid = ({ bill }: { bill: Bill }) => {
+const LastPaid = ({
+  bill,
+  lastSeenAt,
+  currentUserId,
+}: {
+  bill: Bill
+  lastSeenAt: string | null
+  currentUserId: string | undefined
+}) => {
   const { paymentsFor } = useBills()
   const [payment, setPayment] = useState<BillPayment | null | undefined>(
     undefined,
@@ -39,9 +52,15 @@ const LastPaid = ({ bill }: { bill: Bill }) => {
   if (payment === null) {
     return <p className="mt-0.5 text-xs text-muted">Not paid yet</p>
   }
+  // Someone else paid this since you last checked (owner feedback: "the
+  // payment record will be highlighted" — a push notification is the
+  // other half of this, sent server-side when the payment is synced up).
+  const unseen = isUnseen(payment.createdAt, payment.createdBy, lastSeenAt, currentUserId)
   return (
-    <p className="mt-0.5 text-xs text-success">
-      ✓ paid {formatMoney(payment.amountMinor)} on{' '}
+    <p
+      className={`mt-0.5 text-xs text-success ${unseen ? 'rounded bg-danger/10 px-1 py-0.5 ring-1 ring-danger/40' : ''}`}
+    >
+      {unseen && '🔴 '}✓ paid {formatMoney(payment.amountMinor)} on{' '}
       {new Date(payment.paidAt).toLocaleDateString()}
     </p>
   )
@@ -71,7 +90,15 @@ const BillCategoryPicker = ({ bill }: { bill: Bill }) => {
   )
 }
 
-const PayRow = ({ bill }: { bill: Bill }) => {
+const PayRow = ({
+  bill,
+  lastSeenAt,
+  currentUserId,
+}: {
+  bill: Bill
+  lastSeenAt: string | null
+  currentUserId: string | undefined
+}) => {
   const { payBill } = useBills()
   const { accounts, defaultAccount } = useMoney()
   const active = accounts.filter((a) => a.status === 'ACTIVE')
@@ -173,7 +200,7 @@ const PayRow = ({ bill }: { bill: Bill }) => {
         )}
       </div>
       {error && <span className="text-xs text-danger">{error}</span>}
-      <LastPaid bill={bill} />
+      <LastPaid bill={bill} lastSeenAt={lastSeenAt} currentUserId={currentUserId} />
     </div>
   )
 }
@@ -267,9 +294,24 @@ const Bills = () => {
     deletePayment,
   } = useBills()
   const { categories } = useMoney()
+  const { user } = useAuth()
+  const { activeSpaceId } = useSpace()
   const [electricityBusyId, setElectricityBusyId] = useState<string | null>(null)
   const [electricityError, setElectricityError] = useState('')
   const [restoringId, setRestoringId] = useState<string | null>(null)
+  const [lastSeenAt, setLastSeenAt] = useState<string | null>(null)
+
+  // "Seen" cursor for this section (Roadmap feedback: a bill someone else
+  // added, or a payment someone else made, stays highlighted until you
+  // open this page — a push notification is the other half of this, sent
+  // server-side when the bill/payment is synced up).
+  useEffect(() => {
+    if (!activeSpaceId) return
+    void getLastSeenAt(SEEN_AREA, activeSpaceId).then(setLastSeenAt)
+    return () => {
+      void markSeenNow(SEEN_AREA, activeSpaceId)
+    }
+  }, [activeSpaceId])
 
   const removeElectricityRecord = async (billPaymentId: string) => {
     if (
@@ -371,7 +413,12 @@ const Bills = () => {
         ) : (
           <div className="mt-2 divide-y">
             {upcoming.map((bill) => (
-              <PayRow key={bill.id} bill={bill} />
+              <PayRow
+                key={bill.id}
+                bill={bill}
+                lastSeenAt={lastSeenAt}
+                currentUserId={user?.id}
+              />
             ))}
           </div>
         )}
@@ -380,41 +427,53 @@ const Bills = () => {
       <section className="card">
         <h2 className="text-lg font-semibold">All bills</h2>
         <ul className="mt-2 divide-y">
-          {active.map((bill) => (
-            <li key={bill.id} className="py-2 text-sm">
-              <div className="flex items-center justify-between gap-2">
-                <span>
-                  {bill.name}
-                  <span className="ml-2 text-xs text-muted">
-                    next {new Date(bill.nextDueDate).toLocaleDateString()}
-                    {bill.expectedAmountMinor != null &&
-                      ` · ~${formatMoney(bill.expectedAmountMinor)}`}
+          {active.map((bill) => {
+            const billUnseen = isUnseen(bill.createdAt, bill.createdBy, lastSeenAt, user?.id)
+            return (
+              <li
+                key={bill.id}
+                className={`py-2 text-sm ${billUnseen ? 'bg-danger/5' : ''}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span>
+                    {billUnseen && (
+                      <span
+                        aria-label="New, not yet seen"
+                        className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-danger align-middle"
+                      />
+                    )}
+                    {bill.name}
+                    <span className="ml-2 text-xs text-muted">
+                      next {new Date(bill.nextDueDate).toLocaleDateString()}
+                      {bill.expectedAmountMinor != null &&
+                        ` · ~${formatMoney(bill.expectedAmountMinor)}`}
+                    </span>
                   </span>
-                </span>
-                <span className="flex items-center gap-2">
-                  {canEdit && <BillCategoryPicker bill={bill} />}
-                  {canEdit && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `Delete "${bill.name}"? This removes the whole bill, not just one payment — its payment history stays intact and can be restored later. To fix one wrong payment instead, use "delete" under that payment's own history below.`,
+                  <span className="flex items-center gap-2">
+                    {canEdit && <BillCategoryPicker bill={bill} />}
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Delete "${bill.name}"? This removes the whole bill, not just one payment — its payment history stays intact and can be restored later. To fix one wrong payment instead, use "delete" under that payment's own history below.`,
+                            )
                           )
-                        )
-                          void deleteBill(bill.id)
-                      }}
-                      className="text-xs text-muted underline"
-                    >
-                      delete
-                    </button>
-                  )}
-                </span>
-              </div>
-              <LastPaid bill={bill} />
-              <History billId={bill.id} canEdit={canEdit} />
-            </li>
-          ))}
+                            void deleteBill(bill.id)
+                        }}
+                        className="text-xs text-muted underline"
+                      >
+                        delete
+                      </button>
+                    )}
+                  </span>
+                </div>
+                <LastPaid bill={bill} lastSeenAt={lastSeenAt} currentUserId={user?.id} />
+                <History billId={bill.id} canEdit={canEdit} />
+              </li>
+            )
+          })}
           {active.length === 0 && (
             <li className="py-2 text-sm text-muted">No bills yet.</li>
           )}

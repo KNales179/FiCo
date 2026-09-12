@@ -108,6 +108,11 @@ export interface Account extends SyncableEntity {
   status: AccountStatus
   /** The pre-selected payment source for Quick Add. At most one per space. */
   isDefault: boolean
+  /** Whoever added it — this account is "theirs" for the purpose of
+   *  notifying them when someone else's transaction touches it (Roadmap
+   *  feedback). Optional so an account synced from before this existed
+   *  just never triggers that notification, rather than guessing. */
+  createdBy?: string
 }
 
 export type TransactionType = 'INCOME' | 'EXPENSE' | 'TRANSFER'

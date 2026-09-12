@@ -52,6 +52,7 @@ export const createAccount = async (
     openingBalanceMinor: 0,
     status: 'ACTIVE',
     isDefault: makeDefault,
+    createdBy: ctx.userId,
     syncStatus: 'PENDING',
     version: 1,
   })

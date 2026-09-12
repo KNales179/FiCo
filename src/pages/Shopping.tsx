@@ -1,12 +1,16 @@
-import { useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useShopping } from '../hooks/useShopping'
 import { useMoney } from '../hooks/useMoney'
+import { useAuth } from '../hooks/useAuth'
 import { useSpace } from '../hooks/useSpace'
 import { computeListTotals } from '../features/shopping'
 import { suggestForName, type ItemSuggestion } from '../features/items'
+import { getLastSeenAt, isUnseen, markSeenNow } from '../features/seen'
 import { formatMoney, parseAmountToMinor } from '../domain/money'
 import CategoryPicker from '../components/money/CategoryPicker'
 import type { ShoppingItem } from '../types/models'
+
+const SEEN_AREA = 'shopping'
 
 const PriceField = ({
   value,
@@ -123,7 +127,10 @@ const Shopping = () => {
   } = useShopping()
 
   const { accounts, defaultAccount, categories } = useMoney()
+  const { user } = useAuth()
   const { activeSpaceId } = useSpace()
+  const [lastSeenAt, setLastSeenAt] = useState<string | null>(null)
+  const [openedListIds, setOpenedListIds] = useState<Set<string>>(new Set())
   const activeAccounts = useMemo(
     () => accounts.filter((a) => a.status === 'ACTIVE'),
     [accounts],
@@ -171,6 +178,25 @@ const Shopping = () => {
         if (suggestRequestedAt.current === requestedAt) setSuggestion(s)
       })
     }, 200)
+  }
+
+  // "Seen" cursor for this section (Roadmap feedback: a list someone else
+  // created stays highlighted until you open it, or leave the page).
+  useEffect(() => {
+    if (!activeSpaceId) return
+    void getLastSeenAt(SEEN_AREA, activeSpaceId).then(setLastSeenAt)
+    return () => {
+      void markSeenNow(SEEN_AREA, activeSpaceId)
+    }
+  }, [activeSpaceId])
+
+  const openList = (id: string) => {
+    selectList(id)
+    setOpenedListIds((prev) => {
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
   }
 
   const totals = useMemo(
@@ -273,20 +299,31 @@ const Shopping = () => {
 
       {lists.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {lists.map((list) => (
-            <button
-              key={list.id}
-              type="button"
-              onClick={() => selectList(list.id)}
-              className={`border px-2 py-1 text-sm ${
-                list.id === selectedList?.id ? 'bg-brand text-brand-ink' : ''
-              }`}
-            >
-              {list.title}
-              {list.status !== 'ACTIVE' &&
-                ` (${list.status.toLowerCase()})`}
-            </button>
-          ))}
+          {lists.map((list) => {
+            const unseen =
+              !openedListIds.has(list.id) &&
+              isUnseen(list.createdAt, list.createdBy, lastSeenAt, user?.id)
+            return (
+              <button
+                key={list.id}
+                type="button"
+                onClick={() => openList(list.id)}
+                className={`relative border px-2 py-1 text-sm ${
+                  list.id === selectedList?.id ? 'bg-brand text-brand-ink' : ''
+                } ${unseen ? 'ring-2 ring-danger/60' : ''}`}
+              >
+                {unseen && (
+                  <span
+                    aria-label="New, not yet seen"
+                    className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-danger"
+                  />
+                )}
+                {list.title}
+                {list.status !== 'ACTIVE' &&
+                  ` (${list.status.toLowerCase()})`}
+              </button>
+            )
+          })}
         </div>
       )}
 
