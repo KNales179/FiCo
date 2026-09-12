@@ -12,7 +12,7 @@ import type { AnalyticsPeriod } from '../domain/analytics'
 import { compareElectricityPeriods } from '../domain/electricity'
 import { formatMoney } from '../domain/money'
 import type { SpaceMember } from '../types/space'
-import { Skeleton, SkeletonCard } from '../components/ui'
+import { PageHeader, Select, Skeleton, SkeletonCard } from '../components/ui'
 
 const PERIODS: { value: AnalyticsPeriod; label: string }[] = [
   { value: 'THIS_MONTH', label: 'This month' },
@@ -138,20 +138,22 @@ const Analytics = () => {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
-        <select
-          value={period}
-          onChange={(e) => setPeriod(e.target.value as AnalyticsPeriod)}
-          className="border px-2 py-1 text-sm"
-        >
-          {PERIODS.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <PageHeader
+        title="Analytics"
+        actions={
+          <Select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value as AnalyticsPeriod)}
+            className="w-auto"
+          >
+            {PERIODS.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </Select>
+        }
+      />
 
       {loading && (
         <div className="space-y-4">

@@ -93,8 +93,8 @@ const AppLayout = () => {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 border-b border-line bg-panel/90 shadow-sm backdrop-blur">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4">
-          <span className="flex items-center gap-1.5 text-base font-semibold tracking-tight text-brand">
+        <div className="mx-auto flex max-w-5xl flex-nowrap items-center gap-x-2 px-3 py-2.5 sm:px-4">
+          <span className="flex shrink-0 items-center gap-1.5 text-base font-semibold tracking-tight text-brand">
             <img src="/icon-192.png" alt="" className="h-7 w-7 rounded-md" />
             <span className="hidden sm:inline">Fico</span>
           </span>
@@ -114,18 +114,20 @@ const AppLayout = () => {
                       />
                     )}
                   </span>
-                  <span className="hidden lg:inline">{item.label}</span>
+                  {/* Labels only once there's real room for them (xl) — an
+                      icon-only nav at md/lg guarantees the profile button
+                      still fits right beside Analytics on the same line,
+                      never wrapping onto its own row. */}
+                  <span className="hidden xl:inline">{item.label}</span>
                 </NavLink>
               )
             })}
           </nav>
 
-          {/* On mobile (nav hidden, bottom nav used instead) this still sits at
-              the far right — ml-auto. At md+, cancelling that (md:ml-0) drops
-              it straight into the row right after Analytics, next to the
-              primary nav instead of stretched off to the opposite edge. */}
-          <div className="ml-auto flex items-center gap-2.5 md:ml-0">
-            <SyncStatus />
+          {/* Always right after the nav, on the same line, at every width —
+              never bundled with (or wrapped together with) the sync status,
+              which lives on its own row below the header instead. */}
+          <div className="ml-auto flex shrink-0 items-center">
             <div className="relative">
               <button
                 type="button"
@@ -199,6 +201,12 @@ const AppLayout = () => {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Its own row, always — never sharing space with (or wrapping onto
+            the same line as) the nav or the profile button above. */}
+        <div className="mx-auto max-w-5xl px-3 pb-2 sm:px-4">
+          <SyncStatus />
         </div>
       </header>
 
