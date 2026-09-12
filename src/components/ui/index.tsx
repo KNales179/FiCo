@@ -115,3 +115,42 @@ export const Alert = ({ children }: { children: ReactNode }) => (
     {children}
   </p>
 )
+
+/** A centered dialog over a dimmed backdrop — click the backdrop, or the ✕, to close. */
+export const Modal = ({
+  title,
+  onClose,
+  children,
+}: {
+  title: string
+  onClose: () => void
+  children: ReactNode
+}) => (
+  <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-4 py-8">
+    <button
+      type="button"
+      aria-label="Close"
+      className="fixed inset-0 cursor-default"
+      onClick={onClose}
+    />
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      className="card relative max-h-full w-full max-w-md overflow-y-auto"
+    >
+      <div className="flex items-center justify-between">
+        <h2 className="section-title">{title}</h2>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="text-muted hover:text-ink"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="mt-3">{children}</div>
+    </div>
+  </div>
+)

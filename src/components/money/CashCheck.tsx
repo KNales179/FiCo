@@ -80,9 +80,7 @@ const CashCheck = () => {
   }
 
   return (
-    <section className="card">
-      <h2 className="text-lg font-semibold">Cash check</h2>
-
+    <div>
       {cashAccounts.length > 1 && (
         <select
           value={selectedId}
@@ -184,7 +182,7 @@ const CashCheck = () => {
           )}
         </div>
       )}
-    </section>
+    </div>
   )
 }
 

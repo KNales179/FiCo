@@ -34,11 +34,14 @@ const QuickAdd = () => {
 
   const today = () => new Date().toISOString().slice(0, 10)
 
-  const [direction, setDirection] = useState<'EXPENSE' | 'INCOME'>('EXPENSE')
+  const [direction, setDirection] = useState<'EXPENSE' | 'INCOME' | 'TRANSFER'>(
+    'EXPENSE',
+  )
   const [amount, setAmount] = useState('')
   const [title, setTitle] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [chosenAccountId, setChosenAccountId] = useState('')
+  const [destinationAccountId, setDestinationAccountId] = useState('')
   // Defaults to today — only needs changing when the recording happens
   // later than the actual spend/income (Roadmap feedback).
   const [date, setDate] = useState(today)
@@ -52,6 +55,12 @@ const QuickAdd = () => {
   // The chosen account, falling back to the space default, then the first.
   const accountId =
     chosenAccountId || defaultAccount?.id || activeAccounts[0].id
+  // The other side of a transfer — falls back to whatever active account
+  // isn't the source, so the picker never starts pointed at itself.
+  const toAccountId =
+    destinationAccountId ||
+    activeAccounts.find((a) => a.id !== accountId)?.id ||
+    ''
 
   const batchMode =
     direction === 'EXPENSE' &&
@@ -131,19 +140,26 @@ const QuickAdd = () => {
       return
     }
 
+    if (direction === 'TRANSFER' && toAccountId === accountId) {
+      setError('Pick two different accounts')
+      return
+    }
+
     setBusy(true)
     try {
       await addTransaction({
         type: direction,
         amountMinor,
-        title,
+        title: title.trim() || 'Transfer',
         accountId,
-        categoryId: categoryId || null,
+        categoryId: direction === 'TRANSFER' ? null : categoryId || null,
+        destinationAccountId: direction === 'TRANSFER' ? toAccountId : undefined,
         occurredAt,
       })
       setAmount('')
       setTitle('')
       setCategoryId('')
+      setDestinationAccountId('')
       setDate(today())
       setSaved(true)
     } catch (err) {
@@ -158,7 +174,7 @@ const QuickAdd = () => {
       <div className="flex items-center justify-between">
         <h2 className="section-title">Quick add</h2>
         <div className="inline-flex overflow-hidden rounded-lg border border-line text-xs font-medium">
-          {(['EXPENSE', 'INCOME'] as const).map((d) => (
+          {(['EXPENSE', 'INCOME', 'TRANSFER'] as const).map((d) => (
             <button
               key={d}
               type="button"
@@ -169,7 +185,7 @@ const QuickAdd = () => {
                   : 'bg-panel text-muted hover:bg-panel-2'
               }`}
             >
-              {d === 'EXPENSE' ? 'Spent' : 'Received'}
+              {d === 'EXPENSE' ? 'Spent' : d === 'INCOME' ? 'Received' : 'Transfer'}
             </button>
           ))}
         </div>
@@ -198,9 +214,15 @@ const QuickAdd = () => {
               setSaved(false)
             }}
             placeholder={
-              batchMode ? 'Where? (e.g. the store)' : direction === 'EXPENSE' ? 'What for?' : 'From?'
+              batchMode
+                ? 'Where? (e.g. the store)'
+                : direction === 'EXPENSE'
+                  ? 'What for?'
+                  : direction === 'INCOME'
+                    ? 'From?'
+                    : 'Note (optional)'
             }
-            required
+            required={direction !== 'TRANSFER'}
             maxLength={120}
             className="input min-w-[8rem] flex-1"
           />
@@ -208,6 +230,7 @@ const QuickAdd = () => {
             value={accountId}
             onChange={(e) => setChosenAccountId(e.target.value)}
             className="select w-auto"
+            title={direction === 'TRANSFER' ? 'From' : undefined}
           >
             {activeAccounts.map((a) => (
               <option key={a.id} value={a.id}>
@@ -216,6 +239,22 @@ const QuickAdd = () => {
               </option>
             ))}
           </select>
+          {direction === 'TRANSFER' && (
+            <>
+              <span className="text-sm text-muted">to</span>
+              <select
+                value={toAccountId}
+                onChange={(e) => setDestinationAccountId(e.target.value)}
+                className="select w-auto"
+              >
+                {activeAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
           <input
             type="date"
             value={date}
@@ -224,11 +263,13 @@ const QuickAdd = () => {
             title="When this actually happened — defaults to today, change it if you're recording late"
             className="input w-auto"
           />
-          <CategoryPicker
-            kind={direction === 'INCOME' ? 'INCOME' : 'EXPENSE'}
-            value={categoryId}
-            onChange={changeCategory}
-          />
+          {direction !== 'TRANSFER' && (
+            <CategoryPicker
+              kind={direction === 'INCOME' ? 'INCOME' : 'EXPENSE'}
+              value={categoryId}
+              onChange={changeCategory}
+            />
+          )}
           {!batchMode && (
             <Button type="submit" variant="primary" disabled={busy}>
               {busy ? 'Saving…' : 'Add'}
