@@ -26,6 +26,7 @@ const toUser = (user: User): User => ({
   displayName: user.displayName ?? null,
   role: user.role,
   totpEnabled: user.totpEnabled,
+  emailVerified: user.emailVerified,
 })
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {

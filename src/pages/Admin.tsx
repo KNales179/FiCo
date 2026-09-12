@@ -221,6 +221,11 @@ const Admin = () => {
                     {u.totpEnabled && (
                       <span className="ml-2 text-xs text-success">2FA on</span>
                     )}
+                    <span
+                      className={`ml-2 text-xs ${u.emailVerified ? 'text-success' : 'text-warning'}`}
+                    >
+                      {u.emailVerified ? 'email verified' : 'email unverified'}
+                    </span>
                     {u.status !== 'ACTIVE' && (
                       <span className="ml-2 text-xs text-danger">{u.status.toLowerCase()}</span>
                     )}

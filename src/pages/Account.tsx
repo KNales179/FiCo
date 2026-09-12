@@ -5,6 +5,7 @@ import {
   confirmTwoFactorSetup,
   disableTwoFactor,
   listMySessions,
+  resendVerificationEmail,
   revokeMySession,
   startTwoFactorSetup,
 } from '../services/authService'
@@ -20,6 +21,70 @@ import type { DeviceSession } from '../types/auth'
 import { PageHeader, Card, Button, Input, Alert } from '../components/ui'
 
 const formatDate = (iso: string) => new Date(iso).toLocaleString()
+
+/**
+ * A dismissible nudge, not a gate — an unverified email never blocks
+ * anything in Fico (owner's call: soft-verify, visible to an admin, not
+ * enforced). Dismissing it only hides it for this browser tab session;
+ * it comes back next time until the email is actually verified.
+ */
+const EmailVerificationBanner = () => {
+  const { user } = useAuth()
+  const [dismissed, setDismissed] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [sent, setSent] = useState(false)
+
+  if (!user || user.emailVerified || dismissed) return null
+
+  const resend = async () => {
+    setError('')
+    setBusy(true)
+    try {
+      await resendVerificationEmail()
+      setSent(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send that')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card className="border-warning/40 bg-warning/5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium">Your email isn't verified yet</p>
+          <p className="mt-0.5 text-xs text-muted">
+            {sent
+              ? `Sent a new link to ${user.email} — check your inbox.`
+              : "Doesn't block anything here, but confirming it's really you is a good idea."}
+          </p>
+          {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+        </div>
+        <div className="flex shrink-0 gap-2">
+          {!sent && (
+            <button
+              type="button"
+              onClick={() => void resend()}
+              disabled={busy}
+              className="text-xs font-medium text-brand underline disabled:opacity-50"
+            >
+              {busy ? 'Sending…' : 'Resend email'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setDismissed(true)}
+            className="text-xs text-muted underline"
+          >
+            dismiss
+          </button>
+        </div>
+      </div>
+    </Card>
+  )
+}
 
 const PasswordSection = () => {
   const [currentPassword, setCurrentPassword] = useState('')
@@ -450,6 +515,7 @@ const Account = () => {
         title="Account"
         description={user ? `Signed in as ${user.username}` : undefined}
       />
+      <EmailVerificationBanner />
       <PasswordSection />
       <DevicesSection />
       <PushNotificationsSection />

@@ -7,6 +7,7 @@ export interface User {
   displayName?: string | null
   role?: UserRole
   totpEnabled?: boolean
+  emailVerified?: boolean
 }
 
 export interface SessionInfo {

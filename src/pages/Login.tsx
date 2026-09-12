@@ -164,6 +164,12 @@ const Login = () => {
             >
               {loading ? 'Signing in…' : 'Sign in'}
             </button>
+
+            <p className="text-center text-sm">
+              <Link to="/forgot-password" className="text-muted underline">
+                Forgot your password?
+              </Link>
+            </p>
           </form>
         )}
 

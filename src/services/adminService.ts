@@ -9,6 +9,7 @@ export interface AdminUser {
   status: 'ACTIVE' | 'DISABLED'
   role: UserRole
   totpEnabled: boolean
+  emailVerified: boolean
   createdAt: string
   isSelf: boolean
 }

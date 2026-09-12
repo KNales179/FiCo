@@ -119,3 +119,30 @@ export const disableTwoFactor = (password: string, code: string) =>
     method: 'POST',
     body: { password, code },
   })
+
+/** Ask for a new verification link — the earlier one expired, or never arrived. */
+export const resendVerificationEmail = () =>
+  api<{ success: boolean; message: string }>('/auth/verify-email/resend', {
+    method: 'POST',
+  })
+
+/** The token from the link in the verification email. */
+export const verifyEmail = (token: string) =>
+  api<{ success: boolean; message: string }>('/auth/verify-email', {
+    method: 'POST',
+    body: { token },
+  })
+
+/** Always resolves with the same generic message — never reveals whether the account exists. */
+export const forgotPassword = (identifier: string) =>
+  api<{ success: boolean; message: string }>('/auth/forgot-password', {
+    method: 'POST',
+    body: { identifier },
+  })
+
+/** The token from the link in the password-reset email, plus the chosen new password. */
+export const resetPassword = (token: string, newPassword: string) =>
+  api<{ success: boolean; message: string }>('/auth/reset-password', {
+    method: 'POST',
+    body: { token, newPassword },
+  })
