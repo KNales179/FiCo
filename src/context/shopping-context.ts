@@ -23,7 +23,11 @@ export interface ShoppingContextValue {
     >,
   ) => Promise<void>
   cancelList: (id: string) => Promise<void>
-  completeList: (id: string, accountId?: string) => Promise<CompletionResult>
+  completeList: (
+    id: string,
+    accountId?: string,
+    category?: { categoryId: string | null; categoryName: string | null },
+  ) => Promise<CompletionResult>
   deleteList: (id: string) => Promise<void>
   addItem: (input: NewItemInput) => Promise<void>
   renameItem: (id: string, name: string) => Promise<void>

@@ -205,6 +205,18 @@ export interface PriceHistory extends BaseEntity {
   amountMinor: number
   purchasedAt: string
   transactionId?: string | null
+  /**
+   * A snapshot of this purchase line as it was rung up — the item's name,
+   * how much of it, and the category confirmed for it at the time — kept
+   * independent of the (mutable, deletable) `ItemProfile` and shopping-list
+   * item it came from, so a transaction's item breakdown survives a
+   * shopping list later being cleaned up or deleted (owner feedback: the
+   * two are separate features and one's cleanup must never erase the
+   * other's history).
+   */
+  name?: string
+  quantity?: number
+  categoryName?: string | null
 }
 
 // ---------------------------------------------------------------------------

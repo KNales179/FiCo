@@ -107,6 +107,8 @@ const QuickAdd = () => {
           title,
           occurredAt,
           amountMinor,
+          categoryId: categoryId || null,
+          categoryName: categoryNameById.get(categoryId) ?? null,
           items: toScannedReceiptItems(items, categoryNameById),
         })
         await refresh()

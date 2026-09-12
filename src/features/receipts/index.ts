@@ -78,15 +78,21 @@ const recordItemizedTransaction = async (
     }),
   )
 
-  const tripCategory =
-    resolved.length > 0
+  // An explicit category the person picked for the whole trip (Shopping's
+  // "Complete shopping" bar, Quick Add's category picker, or a scanned
+  // receipt's review screen) always wins outright — it's a conscious
+  // choice, not a guess. Only when nothing was picked does this fall back
+  // to deriving one from what the items themselves share.
+  const tripCategory = input.categoryId
+    ? { categoryId: input.categoryId, categoryName: input.categoryName ?? null }
+    : resolved.length > 0
       ? pickTripCategory(
           resolved.map((r) => ({
             categoryId: r.categoryId,
             categoryName: r.categoryName,
           })),
         )
-      : { categoryId: input.categoryId ?? null, categoryName: input.categoryName ?? null }
+      : { categoryId: null, categoryName: null }
 
   const txn = await recordTransaction(ctx, {
     type: 'EXPENSE',
@@ -101,13 +107,16 @@ const recordItemizedTransaction = async (
   })
 
   const purchasedAt = new Date().toISOString()
-  for (const { row, profileId } of resolved) {
+  for (const { row, profileId, categoryName } of resolved) {
     if (row.priceMinor != null && row.priceMinor > 0) {
       await recordPurchasePrice(ctx, {
         itemProfileId: profileId,
         amountMinor: row.priceMinor,
         purchasedAt,
         transactionId: txn.id,
+        name: row.name.trim(),
+        quantity: row.quantity,
+        categoryName,
       })
     }
   }

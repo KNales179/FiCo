@@ -13,6 +13,7 @@ import {
   updateItem,
 } from './index'
 import { completeListWithExpenses } from './complete'
+import { listPurchasesForTransaction } from '../items'
 
 const c = ctx()
 
@@ -154,5 +155,54 @@ describe('shopping lists → one expense per trip (Roadmap Phase 9, revised)', (
     const expenses = await listTransactions(c.spaceId, { type: 'EXPENSE' })
     expect(expenses).toHaveLength(1)
     expect(expenses[0].amountMinor).toBe(15000)
+
+    // And so does its item breakdown — the Shopping page and a
+    // transaction's own history are separate features, so cleaning up the
+    // list here must never erase the other's record of what was bought.
+    const purchases = await listPurchasesForTransaction(expenses[0].id)
+    expect(purchases).toEqual([
+      { name: 'Rice', amountMinor: 15000, quantity: 1, categoryName: null },
+    ])
+  })
+
+  it('an explicit trip category, chosen at checkout, wins over guessing one from the items', async () => {
+    const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+    const groceries = await categoryRepository.create({
+      spaceId: c.spaceId,
+      name: 'Groceries',
+      normalizedName: 'groceries',
+      kind: 'EXPENSE',
+      archived: false,
+      tracksItems: false,
+      createdBy: c.userId,
+      syncStatus: 'PENDING',
+      version: 1,
+    })
+    const food = await categoryRepository.create({
+      spaceId: c.spaceId,
+      name: 'Food',
+      normalizedName: 'food',
+      kind: 'EXPENSE',
+      archived: false,
+      tracksItems: false,
+      createdBy: c.userId,
+      syncStatus: 'PENDING',
+      version: 1,
+    })
+
+    const list = await createShoppingList(c, { title: 'SM Supermarket' })
+    const rice = await addItem(c, list.id, { name: 'Rice' })
+    const { setItemNameCategory } = await import('../items')
+    await setItemNameCategory(c, 'Rice', food.id)
+    await updateItem(c, rice.id, { actualPriceMinor: 20000 })
+    await setItemChecked(c, rice.id, true)
+
+    await completeListWithExpenses(c, list.id, cash.id, {
+      categoryId: groceries.id,
+      categoryName: 'Groceries',
+    })
+
+    const expenses = await listTransactions(c.spaceId, { type: 'EXPENSE' })
+    expect(expenses[0].categoryName).toBe('Groceries')
   })
 })

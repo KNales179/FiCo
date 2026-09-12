@@ -2,11 +2,10 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useMoney } from '../../hooks/useMoney'
 import { useAuth } from '../../hooks/useAuth'
 import { formatMoney, parseAmountToMinor } from '../../domain/money'
-import { listItems } from '../../features/shopping/items'
 import { listPurchasesForTransaction, type ItemPurchaseDetail } from '../../features/items'
 import Attachments from '../Attachments'
 import CategoryPicker from './CategoryPicker'
-import type { Transaction, ShoppingItem } from '../../types/models'
+import type { Transaction } from '../../types/models'
 
 const SIGN: Record<string, string> = {
   INCOME: '+',
@@ -14,55 +13,18 @@ const SIGN: Record<string, string> = {
   TRANSFER: '→',
 }
 
-/** The itemized detail behind a rolled-up shopping trip (Roadmap Phase 26 feedback). */
-const ReceiptItems = ({ listId }: { listId: string }) => {
-  const [items, setItems] = useState<ShoppingItem[] | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    void listItems(listId).then((rows) => {
-      if (!cancelled) setItems(rows.filter((i) => i.purchased))
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [listId])
-
-  if (items === null) return <p className="mt-2 text-xs text-muted">Loading items…</p>
-  if (items.length === 0) return null
-
-  return (
-    <ul className="mt-2 divide-y divide-line rounded-lg border border-line">
-      {items.map((item) => (
-        <li
-          key={item.id}
-          className="flex items-center justify-between px-2.5 py-1.5 text-xs"
-        >
-          <span>
-            {item.name}
-            {item.quantity !== 1 && (
-              <span className="text-muted">
-                {' '}
-                {Number.isInteger(item.quantity)
-                  ? `× ${item.quantity}`
-                  : `${item.quantity}kg`}
-              </span>
-            )}
-          </span>
-          <span className="tabular-nums text-muted">
-            {item.actualPriceMinor != null
-              ? formatMoney(item.actualPriceMinor)
-              : '—'}
-          </span>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-/** The itemized detail behind a dashboard batch entry (Quick Add's itemized
- *  mode) — unlike a scanned receipt, it has no shopping list to read items
- *  from, so this reads the same price-history rows back by transaction. */
+/**
+ * The itemized detail behind an expense — a scanned receipt, a completed
+ * shopping trip, or a dashboard batch entry (Quick Add's itemized mode)
+ * all go through the same recording path, which snapshots each line
+ * (name, quantity, category) into price history at the moment it's
+ * recorded. Reading it back from there — rather than from the shopping
+ * list's own, separately-editable items — means this stays correct even
+ * after that list (or its items) is later renamed or deleted: the
+ * Shopping page and a transaction's own history are separate features,
+ * and cleaning up one must never erase the other's record of what was
+ * actually bought.
+ */
 const ItemizedPurchase = ({ transactionId }: { transactionId: string }) => {
   const [items, setItems] = useState<ItemPurchaseDetail[] | null>(null)
 
@@ -86,7 +48,20 @@ const ItemizedPurchase = ({ transactionId }: { transactionId: string }) => {
           key={i}
           className="flex items-center justify-between px-2.5 py-1.5 text-xs"
         >
-          <span>{item.name}</span>
+          <span>
+            {item.name}
+            {item.quantity !== 1 && (
+              <span className="text-muted">
+                {' '}
+                {Number.isInteger(item.quantity)
+                  ? `× ${item.quantity}`
+                  : `${item.quantity}kg`}
+              </span>
+            )}
+            {item.categoryName && (
+              <span className="text-muted"> · {item.categoryName}</span>
+            )}
+          </span>
           <span className="tabular-nums text-muted">
             {formatMoney(item.amountMinor)}
           </span>
@@ -254,7 +229,6 @@ const Row = ({
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const isMine = txn.createdBy === user?.id
-  const isShoppingTrip = txn.sourceType === 'SHOPPING_LIST' && txn.sourceId
 
   if (editing) {
     return <EditTransactionForm txn={txn} onDone={() => setEditing(false)} />
@@ -321,10 +295,7 @@ const Row = ({
 
       {open && (
         <>
-          {isShoppingTrip && <ReceiptItems listId={txn.sourceId!} />}
-          {!isShoppingTrip && txn.type === 'EXPENSE' && (
-            <ItemizedPurchase transactionId={txn.id} />
-          )}
+          {txn.type === 'EXPENSE' && <ItemizedPurchase transactionId={txn.id} />}
           {isMine && (
             <button
               type="button"

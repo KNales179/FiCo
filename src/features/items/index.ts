@@ -78,15 +78,21 @@ export const suggestForName = async (
 export interface ItemPurchaseDetail {
   name: string
   amountMinor: number
+  quantity: number
+  categoryName: string | null
 }
 
 /**
  * The itemized lines behind one transaction, when there are any — this is
- * how a dashboard batch entry (Quick Add's itemized mode) shows its item
- * breakdown, since unlike a scanned receipt it has no shopping list to
- * read that from (Roadmap feedback: deliberately never creates one).
+ * how both a dashboard batch entry (Quick Add's itemized mode) and a
+ * scanned-receipt or shopping-trip transaction show their item breakdown.
  * Price history rows are linked to the transaction that recorded them
- * regardless of which path created them, so this works the same either way.
+ * regardless of which path created them, and carry their own name/quantity/
+ * category snapshot — so this still works even after the shopping list (or
+ * its items) that originally fed it has since been edited or deleted; the
+ * two features are separate, and one's cleanup never erases the other's
+ * history. Falls back to the item profile's current name for a handful of
+ * older rows recorded before that snapshot existed.
  */
 export const listPurchasesForTransaction = async (
   transactionId: string,
@@ -98,8 +104,10 @@ export const listPurchasesForTransaction = async (
     rows.map((row) => itemProfileRepository.get(row.itemProfileId)),
   )
   return rows.map((row, i) => ({
-    name: profiles[i]?.displayName ?? 'Item',
+    name: row.name ?? profiles[i]?.displayName ?? 'Item',
     amountMinor: row.amountMinor,
+    quantity: row.quantity ?? 1,
+    categoryName: row.categoryName ?? null,
   }))
 }
 
@@ -110,6 +118,9 @@ export const recordPurchasePrice = async (
     amountMinor: number
     purchasedAt: string
     transactionId?: string | null
+    name?: string
+    quantity?: number
+    categoryName?: string | null
   },
 ): Promise<void> => {
   const entry = await priceHistoryRepository.create({
@@ -117,6 +128,9 @@ export const recordPurchasePrice = async (
     amountMinor: params.amountMinor,
     purchasedAt: params.purchasedAt,
     transactionId: params.transactionId ?? null,
+    name: params.name,
+    quantity: params.quantity,
+    categoryName: params.categoryName ?? null,
   })
   await enqueueMutation(ctx, 'priceHistory', entry.id, 'CREATE', entry)
 }

@@ -32,10 +32,19 @@ export interface CompletionResult {
  * Idempotent — a list that already produced its rollup transaction is
  * skipped, so re-running (or completing twice) never double-charges.
  */
+export interface CompleteListOptions {
+  /** The category picked for the whole trip ("Shopping" or "Groceries",
+   *  say) — a conscious choice that always wins over guessing one from
+   *  what the items themselves share. */
+  categoryId?: string | null
+  categoryName?: string | null
+}
+
 export const completeListWithExpenses = async (
   ctx: MutationContext,
   listId: string,
   accountId: string,
+  options?: CompleteListOptions,
 ): Promise<CompletionResult> => {
   const alreadyRolledUp = await transactionRepository.findBySource(
     'SHOPPING_LIST',
@@ -78,13 +87,17 @@ export const completeListWithExpenses = async (
     }),
   )
 
+  // A category the person explicitly picked for the whole trip always
+  // wins over guessing one from what the items themselves share.
   const { categoryId: tripCategoryId, categoryName: tripCategoryName } =
-    pickTripCategory(
-      resolved.map((r) => ({
-        categoryId: r.profile.categoryId ?? null,
-        categoryName: r.categoryName,
-      })),
-    )
+    options?.categoryId
+      ? { categoryId: options.categoryId, categoryName: options.categoryName ?? null }
+      : pickTripCategory(
+          resolved.map((r) => ({
+            categoryId: r.profile.categoryId ?? null,
+            categoryName: r.categoryName,
+          })),
+        )
 
   const spentMinor = eligible.reduce(
     (sum, item) => sum + item.actualPriceMinor!,
@@ -103,12 +116,15 @@ export const completeListWithExpenses = async (
     sourceId: listId,
   })
 
-  for (const { item, profile } of resolved) {
+  for (const { item, profile, categoryName } of resolved) {
     await recordPurchasePrice(ctx, {
       itemProfileId: profile.id,
       amountMinor: item.actualPriceMinor!,
       purchasedAt,
       transactionId: txn.id,
+      name: item.name,
+      quantity: item.quantity,
+      categoryName,
     })
 
     const linked = await shoppingItemRepository.update(item.id, {

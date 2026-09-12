@@ -12,6 +12,7 @@ import { suggestForName } from '../../features/items'
 import { addAttachment } from '../../features/attachments'
 import { formatMoney, parseAmountToMinor } from '../../domain/money'
 import { Button, Card, Input } from '../ui'
+import CategoryPicker from './CategoryPicker'
 import ItemRowsEditor from './ItemRowsEditor'
 import {
   newBlankItem,
@@ -62,6 +63,10 @@ const ScanReceipt = () => {
    *  manual edit turns this off so typing doesn't get clobbered. */
   const [amountAuto, setAmountAuto] = useState(true)
   const [accountId, setAccountId] = useState('')
+  // The trip's own category ("Groceries", "Shopping", …) — a conscious
+  // choice that overrides whatever the individual items would otherwise
+  // be guessed into (owner feedback).
+  const [categoryId, setCategoryId] = useState('')
   const [items, setItems] = useState<DraftItem[]>([])
 
   /** Several photos picked at once (Roadmap Phase 26 feedback) — each is its
@@ -106,6 +111,7 @@ const ScanReceipt = () => {
     setDate('')
     setAmount('')
     setAmountAuto(true)
+    setCategoryId('')
     setItems([])
     setQueue([])
     setQueueIndex(0)
@@ -156,6 +162,7 @@ const ScanReceipt = () => {
       setRawText(parsed.rawText)
       setItems(await toDraftItems(ctx.spaceId, parsed.items))
       setAmountAuto(true)
+      setCategoryId('')
       setAccountId(defaultAccount?.id ?? activeAccounts[0].id)
       setStage('review')
     } catch (err) {
@@ -223,6 +230,8 @@ const ScanReceipt = () => {
         title,
         occurredAt: new Date(date).toISOString(),
         amountMinor,
+        categoryId: categoryId || null,
+        categoryName: categoryNameById.get(categoryId) ?? null,
         items: toScannedReceiptItems(items, categoryNameById),
       })
 
@@ -342,6 +351,19 @@ const ScanReceipt = () => {
               </select>
             </label>
           </div>
+
+          <label className="block">
+            <span className="field-label">This trip is</span>
+            <CategoryPicker
+              kind="EXPENSE"
+              value={categoryId}
+              onChange={setCategoryId}
+            />
+            <p className="mt-1 text-xs text-muted">
+              Sets the category for the whole trip — otherwise Fico guesses
+              from whatever the items below share, which isn't always right.
+            </p>
+          </label>
 
           {printedItemCount != null && printedItemCount !== itemPieceCount && (
             <p className="text-xs text-warning">

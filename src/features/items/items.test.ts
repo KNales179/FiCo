@@ -94,8 +94,8 @@ describe('item profiles (§10)', () => {
     const purchases = await listPurchasesForTransaction(transaction.id)
     expect(purchases).toEqual(
       expect.arrayContaining([
-        { name: 'Rice', amountMinor: 10000 },
-        { name: 'Eggs', amountMinor: 5000 },
+        { name: 'Rice', amountMinor: 10000, quantity: 2, categoryName: null },
+        { name: 'Eggs', amountMinor: 5000, quantity: 1, categoryName: null },
       ]),
     )
     expect(purchases).toHaveLength(2)

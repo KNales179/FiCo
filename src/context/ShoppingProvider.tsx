@@ -151,7 +151,11 @@ export const ShoppingProvider = ({
     },
     updateList: wrap(updateShoppingList),
     cancelList: wrap(cancelShoppingList),
-    completeList: async (id: string, accountId?: string) => {
+    completeList: async (
+      id: string,
+      accountId?: string,
+      category?: { categoryId: string | null; categoryName: string | null },
+    ) => {
       const payFrom = accountId ?? defaultAccount?.id
       if (!payFrom) {
         throw new Error('Add an account to pay from first')
@@ -160,6 +164,7 @@ export const ShoppingProvider = ({
         requireCtx(),
         id,
         payFrom,
+        category,
       )
       await reload()
       await refreshMoney()

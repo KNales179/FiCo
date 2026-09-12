@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { ctx, withDB } from '../../test/helpers'
 import { categoryRepository, shoppingItemRepository, shoppingListRepository } from '../../repositories'
 import { createAccount, computeSpaceBalances, listTransactions } from '../money'
+import { listPurchasesForTransaction } from '../items'
+import { deleteShoppingList } from '../shopping'
 import { listItems } from '../shopping/items'
 import { recordItemizedExpense, recordScannedReceipt } from './index'
 
@@ -127,6 +129,79 @@ describe('recordScannedReceipt (receipt scanning)', () => {
     const { suggestForName } = await import('../items')
     expect((await suggestForName(c.spaceId, 'Rice'))?.category).toBe('Groceries')
     expect((await suggestForName(c.spaceId, 'Soap'))?.category).toBe('Household')
+  })
+
+  it('an explicit trip category always wins over guessing one from the items', async () => {
+    const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+    const groceries = await categoryRepository.create({
+      spaceId: c.spaceId,
+      name: 'Groceries',
+      normalizedName: 'groceries',
+      kind: 'EXPENSE',
+      archived: false,
+      tracksItems: true,
+      createdBy: c.userId,
+      syncStatus: 'PENDING',
+      version: 1,
+    })
+    const food = await categoryRepository.create({
+      spaceId: c.spaceId,
+      name: 'Food',
+      normalizedName: 'food',
+      kind: 'EXPENSE',
+      archived: false,
+      tracksItems: false,
+      createdBy: c.userId,
+      syncStatus: 'PENDING',
+      version: 1,
+    })
+
+    // Every item resolves to "Food" on its own, but the person picked
+    // "Groceries" for the whole trip on the review screen — that choice
+    // must stick, not get silently overridden by the item-level guess.
+    const { transaction } = await recordScannedReceipt(c, {
+      accountId: cash.id,
+      title: 'SM Supermarket',
+      occurredAt: '2026-09-12',
+      amountMinor: 54700,
+      categoryId: groceries.id,
+      categoryName: 'Groceries',
+      items: [
+        { name: 'Rice', quantity: 1, priceMinor: 30000, categoryId: food.id, categoryName: 'Food' },
+        { name: 'Eggs', quantity: 1, priceMinor: 24700, categoryId: food.id, categoryName: 'Food' },
+      ],
+    })
+
+    expect(transaction.categoryName).toBe('Groceries')
+  })
+
+  it("a receipt's item breakdown survives its shopping list being deleted", async () => {
+    const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+    const { transaction, listId } = await recordScannedReceipt(c, {
+      accountId: cash.id,
+      title: 'SM Supermarket',
+      occurredAt: '2026-09-12',
+      amountMinor: 21000,
+      items: [
+        { name: 'Milk', quantity: 2, priceMinor: 18000, categoryId: null, categoryName: 'Groceries' },
+        { name: 'Bread', quantity: 1, priceMinor: 3000, categoryId: null, categoryName: 'Groceries' },
+      ],
+    })
+
+    // Cleaning up the shopping list — a separate feature — must never
+    // erase the transaction's own record of what was bought (owner
+    // feedback: "the record and the shopping page is not the same
+    // database").
+    await deleteShoppingList(c, listId)
+    expect(await listItems(listId)).toHaveLength(0)
+
+    const purchases = await listPurchasesForTransaction(transaction.id)
+    expect(purchases).toHaveLength(2)
+    expect(purchases.find((p) => p.name === 'Milk')).toMatchObject({
+      quantity: 2,
+      amountMinor: 18000,
+      categoryName: 'Groceries',
+    })
   })
 
   it('keeps a null price on an item the review screen never filled in', async () => {

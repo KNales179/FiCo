@@ -122,11 +122,15 @@ const Shopping = () => {
     updateList,
   } = useShopping()
 
-  const { accounts, defaultAccount } = useMoney()
+  const { accounts, defaultAccount, categories } = useMoney()
   const { activeSpaceId } = useSpace()
   const activeAccounts = useMemo(
     () => accounts.filter((a) => a.status === 'ACTIVE'),
     [accounts],
+  )
+  const categoryNameById = useMemo(
+    () => new Map(categories.map((c) => [c.id, c.name])),
+    [categories],
   )
 
   const [newTitle, setNewTitle] = useState('')
@@ -137,6 +141,10 @@ const Shopping = () => {
   const [suggestion, setSuggestion] = useState<ItemSuggestion | null>(null)
   const [formError, setFormError] = useState('')
   const [payAccountId, setPayAccountId] = useState('')
+  // The trip's own category ("Groceries" vs "Shopping", say) — a
+  // conscious choice at checkout time, instead of guessing one from
+  // whatever the individual items happen to share (owner feedback).
+  const [payCategoryId, setPayCategoryId] = useState('')
   const [completion, setCompletion] = useState<string | null>(null)
 
   const onItemNameChange = async (value: string) => {
@@ -379,6 +387,13 @@ const Shopping = () => {
           {canEdit && listIsActive && (
             <div className="mt-4 space-y-2">
               <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-muted">This trip is</span>
+                <CategoryPicker
+                  kind="EXPENSE"
+                  value={payCategoryId}
+                  onChange={setPayCategoryId}
+                  className="border px-2 py-1 text-sm"
+                />
                 <span className="text-muted">Pay from</span>
                 <select
                   value={payAccountId || defaultAccount?.id || ''}
@@ -405,12 +420,17 @@ const Shopping = () => {
                       const r = await completeList(
                         selectedList.id,
                         payAccountId || defaultAccount?.id,
+                        {
+                          categoryId: payCategoryId || null,
+                          categoryName: categoryNameById.get(payCategoryId) ?? null,
+                        },
                       )
                       setCompletion(
                         r.createdCount === 0
                           ? 'Shopping done — nothing new to record.'
                           : `Shopping done — ${formatMoney(r.spentMinor)} recorded across ${r.itemCount} item${r.itemCount === 1 ? '' : 's'}.`,
                       )
+                      setPayCategoryId('')
                     } catch (err) {
                       setFormError(
                         err instanceof Error
