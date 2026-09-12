@@ -64,19 +64,25 @@ export const parseAmountToMinor = (
 }
 
 /**
- * Moves an existing ISO timestamp to a new calendar date (`"YYYY-MM-DD"`,
- * as a `<input type="date">` gives it) without touching its time-of-day.
- * Used when editing a transaction's date: a bill payment (or anything
- * else recorded with a real time, not just a date) would otherwise get
- * silently flattened to midnight on every edit — moving it earlier in the
+ * Combines a `<input type="date">` value ("YYYY-MM-DD") and a
+ * `<input type="time">` value ("HH:MM", optional) into one ISO timestamp
+ * (UTC). Used when editing a transaction: the edit form defaults `time`
+ * from whatever the transaction already had, so simply not touching that
+ * field keeps it exactly as it was — a bill payment (or anything else
+ * recorded with a real time, not just a date) would otherwise get
+ * silently flattened to midnight on every edit, moving it earlier in the
  * day and reordering it among that day's other transactions even though
- * nothing about when it actually happened changed.
+ * nothing about when it actually happened changed. Letting the field be
+ * edited at all also means an already-flattened record from before this
+ * existed can be nudged back to roughly the right time by hand.
  */
-export const withUpdatedDate = (originalIso: string, newDate: string): string => {
-  const [year, month, day] = newDate.split('-').map(Number)
-  const next = new Date(originalIso)
-  next.setUTCFullYear(year, month - 1, day)
-  return next.toISOString()
+export const combineDateAndTime = (date: string, time: string): string =>
+  new Date(`${date}T${time || '00:00'}:00.000Z`).toISOString()
+
+/** The "HH:MM" a `<input type="time">` needs to show an ISO timestamp's own time-of-day. */
+export const timeOfDay = (iso: string): string => {
+  const d = new Date(iso)
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
 }
 
 /** Minor units → a plain decimal string ("1250.50"), no symbol or grouping. */

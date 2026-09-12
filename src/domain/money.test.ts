@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  combineDateAndTime,
   formatMoney,
   minorToDecimalString,
   parseAmountToMinor,
-  withUpdatedDate,
+  timeOfDay,
 } from './money'
 
 describe('parseAmountToMinor', () => {
@@ -43,21 +44,36 @@ describe('minorToDecimalString', () => {
   })
 })
 
-describe('withUpdatedDate', () => {
-  it('moves the calendar date but keeps the original time-of-day', () => {
+describe('timeOfDay + combineDateAndTime', () => {
+  it("timeOfDay reads a timestamp's own time-of-day for the edit form to default to", () => {
+    expect(timeOfDay('2026-09-12T14:23:05.000Z')).toBe('14:23')
+    expect(timeOfDay('2026-09-12T00:00:00.000Z')).toBe('00:00')
+  })
+
+  it('combineDateAndTime round-trips with timeOfDay — an edit that only changes the date keeps the original time', () => {
     // A bill payment recorded at a real moment, not midnight — editing
-    // the transaction (without deliberately changing the date) must not
+    // the transaction (without deliberately changing the time) must not
     // flatten this to midnight and silently reorder it among that day's
     // other transactions (owner feedback: "it got rearranged... there
     // was already a spending before [this] was recorded").
-    expect(
-      withUpdatedDate('2026-09-12T14:23:05.000Z', '2026-09-12'),
-    ).toBe('2026-09-12T14:23:05.000Z')
+    const original = '2026-09-12T14:23:05.000Z'
+    expect(combineDateAndTime('2026-09-12', timeOfDay(original))).toBe(
+      '2026-09-12T14:23:00.000Z', // seconds aren't representable by <input type="time">
+    )
+    expect(combineDateAndTime('2026-09-20', timeOfDay(original))).toBe(
+      '2026-09-20T14:23:00.000Z',
+    )
   })
 
-  it('changing the date only shifts the day, not the time', () => {
-    expect(
-      withUpdatedDate('2026-09-12T14:23:05.000Z', '2026-09-20'),
-    ).toBe('2026-09-20T14:23:05.000Z')
+  it('an already-flattened record can be nudged to a real time by hand', () => {
+    expect(combineDateAndTime('2026-09-12', '16:45')).toBe(
+      '2026-09-12T16:45:00.000Z',
+    )
+  })
+
+  it('a blank time defaults to midnight, same as before this existed', () => {
+    expect(combineDateAndTime('2026-09-12', '')).toBe(
+      '2026-09-12T00:00:00.000Z',
+    )
   })
 })

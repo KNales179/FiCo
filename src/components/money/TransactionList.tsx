@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useMoney } from '../../hooks/useMoney'
 import { useAuth } from '../../hooks/useAuth'
-import { formatMoney, parseAmountToMinor, withUpdatedDate } from '../../domain/money'
+import { combineDateAndTime, formatMoney, parseAmountToMinor, timeOfDay } from '../../domain/money'
 import { listPurchasesForTransaction, type ItemPurchaseDetail } from '../../features/items'
 import Attachments from '../Attachments'
 import CategoryPicker from './CategoryPicker'
@@ -92,6 +92,11 @@ const EditTransactionForm = ({
   const [title, setTitle] = useState(txn.title)
   const [amount, setAmount] = useState((txn.amountMinor / 100).toFixed(2))
   const [date, setDate] = useState(txn.occurredAt.slice(0, 10))
+  // Defaults to whatever time-of-day the transaction already has, so
+  // leaving it alone keeps it exactly as-is — but it's still editable, so
+  // a record already flattened to midnight by an earlier edit (before
+  // this field existed) can be nudged back to roughly the right time.
+  const [time, setTime] = useState(timeOfDay(txn.occurredAt))
   const [accountId, setAccountId] = useState(txn.accountId)
   const [destinationAccountId, setDestinationAccountId] = useState(
     txn.destinationAccountId ?? '',
@@ -118,7 +123,7 @@ const EditTransactionForm = ({
         title,
         amountMinor,
         accountId,
-        occurredAt: withUpdatedDate(txn.occurredAt, date),
+        occurredAt: combineDateAndTime(date, time),
         ...(txn.type === 'TRANSFER'
           ? { destinationAccountId: destinationAccountId || null }
           : {}),
@@ -162,6 +167,13 @@ const EditTransactionForm = ({
             value={date}
             onChange={(e) => setDate(e.target.value)}
             max={new Date().toISOString().slice(0, 10)}
+            className="input w-auto"
+          />
+          <input
+            type="time"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+            title="Time — only changes the day/time shown here, not what it's linked to"
             className="input w-auto"
           />
         </div>
