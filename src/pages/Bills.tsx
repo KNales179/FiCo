@@ -1,10 +1,51 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useBills } from '../hooks/useBills'
 import { useMoney } from '../hooks/useMoney'
 import { formatMoney, parseAmountToMinor } from '../domain/money'
 import { costPerKwhMinor } from '../domain/electricity'
+import { billPayableFrom, isBillPayable } from '../features/bills'
 import CategoryPicker from '../components/money/CategoryPicker'
 import type { Bill, BillPayment, BillRecurrence, BillType } from '../types/models'
+
+/**
+ * The most recent payment on a bill, shown inline right on its row — not
+ * buried in the collapsible history — so paying one never looks like it
+ * silently failed (owner feedback: "it look like it's not payed yet
+ * unless I check the date and the history"). Re-fetches whenever the
+ * bill's own due date moves, which is exactly what a new payment does.
+ */
+const LastPaid = ({ bill }: { bill: Bill }) => {
+  const { paymentsFor } = useBills()
+  const [payment, setPayment] = useState<BillPayment | null | undefined>(
+    undefined,
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    void paymentsFor(bill.id).then((rows) => {
+      if (cancelled) return
+      const latest = rows
+        .filter((p) => !p.deletedAt)
+        .sort((a, b) => b.paidAt.localeCompare(a.paidAt))[0]
+      setPayment(latest ?? null)
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bill.id, bill.nextDueDate])
+
+  if (payment === undefined) return null
+  if (payment === null) {
+    return <p className="mt-0.5 text-xs text-muted">Not paid yet</p>
+  }
+  return (
+    <p className="mt-0.5 text-xs text-success">
+      ✓ paid {formatMoney(payment.amountMinor)} on{' '}
+      {new Date(payment.paidAt).toLocaleDateString()}
+    </p>
+  )
+}
 
 /** Inline category picker on an existing bill's row — sets the category for
  *  this bill's *next* payment onward; already-recorded payments keep the
@@ -45,6 +86,12 @@ const PayRow = ({ bill }: { bill: Bill }) => {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
+  // Paying far ahead of schedule is what made an already-paid bill look
+  // unpaid until someone checked the date and history (owner feedback) —
+  // so the pay form itself doesn't show up until it's actually due soon,
+  // or already overdue.
+  const payable = isBillPayable(bill.nextDueDate, new Date().toISOString())
+
   const submit = async () => {
     setError('')
     const minor = parseAmountToMinor(amount)
@@ -71,51 +118,62 @@ const PayRow = ({ bill }: { bill: Bill }) => {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 py-1.5 text-sm">
-      <span className="min-w-[7rem] flex-1">
-        {bill.name}
-        <span className="ml-2 text-xs text-muted">
-          due {new Date(bill.nextDueDate).toLocaleDateString()} ·{' '}
-          {bill.recurrence.toLowerCase()} · {bill.billType.toLowerCase()}
+    <div className="py-1.5 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="min-w-[7rem] flex-1">
+          {bill.name}
+          <span className="ml-2 text-xs text-muted">
+            due {new Date(bill.nextDueDate).toLocaleDateString()} ·{' '}
+            {bill.recurrence.toLowerCase()} · {bill.billType.toLowerCase()}
+          </span>
         </span>
-      </span>
-      <input
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-        inputMode="decimal"
-        placeholder="Amount"
-        className="w-24 border px-2 py-1"
-      />
-      <select
-        value={accountId || defaultAccount?.id || ''}
-        onChange={(e) => setAccountId(e.target.value)}
-        className="border px-2 py-1"
-      >
-        {active.length === 0 && <option value="">No accounts</option>}
-        {active.map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.name}
-          </option>
-        ))}
-      </select>
-      {bill.tracksElectricity && (
-        <input
-          value={kwh}
-          onChange={(e) => setKwh(e.target.value)}
-          inputMode="decimal"
-          placeholder="kWh"
-          className="w-20 border px-2 py-1"
-        />
-      )}
-      <button
-        type="button"
-        disabled={busy || active.length === 0}
-        onClick={() => void submit()}
-        className="border px-3 py-1 disabled:opacity-50"
-      >
-        Pay
-      </button>
+        {payable ? (
+          <>
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              inputMode="decimal"
+              placeholder="Amount"
+              className="w-24 border px-2 py-1"
+            />
+            <select
+              value={accountId || defaultAccount?.id || ''}
+              onChange={(e) => setAccountId(e.target.value)}
+              className="border px-2 py-1"
+            >
+              {active.length === 0 && <option value="">No accounts</option>}
+              {active.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+            {bill.tracksElectricity && (
+              <input
+                value={kwh}
+                onChange={(e) => setKwh(e.target.value)}
+                inputMode="decimal"
+                placeholder="kWh"
+                className="w-20 border px-2 py-1"
+              />
+            )}
+            <button
+              type="button"
+              disabled={busy || active.length === 0}
+              onClick={() => void submit()}
+              className="border px-3 py-1 disabled:opacity-50"
+            >
+              Pay
+            </button>
+          </>
+        ) : (
+          <span className="text-xs text-muted">
+            Payable starting {new Date(billPayableFrom(bill.nextDueDate)).toLocaleDateString()}
+          </span>
+        )}
+      </div>
       {error && <span className="text-xs text-danger">{error}</span>}
+      <LastPaid bill={bill} />
     </div>
   )
 }
@@ -353,6 +411,7 @@ const Bills = () => {
                   )}
                 </span>
               </div>
+              <LastPaid bill={bill} />
               <History billId={bill.id} canEdit={canEdit} />
             </li>
           ))}

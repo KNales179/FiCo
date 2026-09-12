@@ -88,6 +88,34 @@ export const dueSoonBills = (
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
 }
 
+/**
+ * How many days before its due date a bill becomes payable. Paying far
+ * ahead of schedule is what made an already-paid bill look unpaid until
+ * someone checked the date and the payment history (owner feedback) — so
+ * outside this window, paying is refused rather than silently allowed.
+ * A bill that's already overdue is always payable, no matter how late.
+ */
+export const PAYABLE_WINDOW_DAYS = 7
+
+/** True once `dueDateIso` is within `windowDays` of `paidAtIso`, or past. */
+export const isBillPayable = (
+  dueDateIso: string,
+  paidAtIso: string,
+  windowDays: number = PAYABLE_WINDOW_DAYS,
+): boolean => {
+  const windowStart = new Date(dueDateIso).getTime() - windowDays * 24 * 60 * 60 * 1000
+  return new Date(paidAtIso).getTime() >= windowStart
+}
+
+/** The earliest a bill becomes payable — for "payable starting …" messaging. */
+export const billPayableFrom = (
+  dueDateIso: string,
+  windowDays: number = PAYABLE_WINDOW_DAYS,
+): string =>
+  new Date(
+    new Date(dueDateIso).getTime() - windowDays * 24 * 60 * 60 * 1000,
+  ).toISOString()
+
 /** Stable key for the occurrence a date belongs to — dedupes payments. */
 export const periodKey = (
   iso: string,

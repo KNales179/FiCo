@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { balanceEffect, validateTransactionInput } from './transactions'
-import { advanceDueDate, dueSoonBills, periodKey, retreatDueDate } from './bills'
+import {
+  advanceDueDate,
+  billPayableFrom,
+  dueSoonBills,
+  isBillPayable,
+  periodKey,
+  retreatDueDate,
+} from './bills'
 import { resolveRange, summarize } from './analytics'
 import { pickTripCategory } from './shopping'
 import type { Account, Transaction } from '../types/models'
@@ -140,6 +147,26 @@ describe('bill recurrence', () => {
     expect(rows.map((r) => r.billId)).toEqual(['b1', 'b2'])
     expect(rows[0]).toMatchObject({ name: 'Wifi', overdue: true })
     expect(rows[1]).toMatchObject({ name: 'Electric', overdue: false })
+  })
+  it('isBillPayable refuses payment more than a week ahead of the due date', () => {
+    expect(
+      isBillPayable('2026-10-01T00:00:00.000Z', '2026-09-11T00:00:00.000Z'),
+    ).toBe(false)
+  })
+  it('isBillPayable allows payment exactly at the 7-day boundary', () => {
+    expect(
+      isBillPayable('2026-10-01T00:00:00.000Z', '2026-09-24T00:00:00.000Z'),
+    ).toBe(true)
+  })
+  it('isBillPayable allows an overdue bill no matter how late', () => {
+    expect(
+      isBillPayable('2026-09-01T00:00:00.000Z', '2027-01-01T00:00:00.000Z'),
+    ).toBe(true)
+  })
+  it('billPayableFrom is the due date minus the window', () => {
+    expect(billPayableFrom('2026-10-01T00:00:00.000Z').slice(0, 10)).toBe(
+      '2026-09-24',
+    )
   })
 })
 

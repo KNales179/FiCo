@@ -7,7 +7,13 @@ import {
 import { recordTransaction } from '../money'
 import { enqueueMutation } from '../sync/enqueue'
 import type { MutationContext } from '../sync/context'
-import { advanceDueDate, periodKey, retreatDueDate } from '../../domain/bills'
+import {
+  advanceDueDate,
+  billPayableFrom,
+  isBillPayable,
+  periodKey,
+  retreatDueDate,
+} from '../../domain/bills'
 import type {
   Bill,
   BillPayment,
@@ -174,6 +180,15 @@ export const payBill = async (
 
   const paidAt = input.paidAt ?? new Date().toISOString()
 
+  // Paying far ahead of schedule is what made an already-paid bill look
+  // unpaid until someone checked the date and history (owner feedback) —
+  // so this is refused, unless the bill is already overdue.
+  if (!isBillPayable(bill.nextDueDate, paidAt)) {
+    throw new Error(
+      `Not payable yet — this bill can be paid starting ${billPayableFrom(bill.nextDueDate).slice(0, 10)}`,
+    )
+  }
+
   const txn = await recordTransaction(ctx, {
     type: 'EXPENSE',
     amountMinor: input.amountMinor,
@@ -298,4 +313,9 @@ export const deleteBillPayment = async (
   return updatedBill
 }
 
-export { advanceDueDate, periodKey } from '../../domain/bills'
+export {
+  advanceDueDate,
+  billPayableFrom,
+  isBillPayable,
+  periodKey,
+} from '../../domain/bills'
