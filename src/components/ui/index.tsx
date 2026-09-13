@@ -7,6 +7,7 @@ import {
   type ReactNode,
   type SelectHTMLAttributes,
 } from 'react'
+import { IconX } from '../icons'
 
 /**
  * Small shared UI primitives (Roadmap Phase 25). They wrap the utility classes
@@ -244,7 +245,7 @@ export const Modal = ({
             aria-label="Close"
             className="text-muted hover:text-ink"
           >
-            ✕
+            <IconX size={18} />
           </button>
         </div>
         <div className="mt-3">{children}</div>

@@ -12,6 +12,7 @@ import { suggestForName } from '../../features/items'
 import { addAttachment } from '../../features/attachments'
 import { formatMoney, parseAmountToMinor } from '../../domain/money'
 import { Button, Card, Input } from '../ui'
+import { IconCamera, IconUpload, IconX } from '../icons'
 import CategoryPicker from './CategoryPicker'
 import ItemRowsEditor from './ItemRowsEditor'
 import {
@@ -39,7 +40,13 @@ const ScanReceipt = () => {
   const { accounts, defaultAccount, categories, canEdit, refresh } =
     useMoney()
   const { ctx } = useMutationContext()
-  const fileInput = useRef<HTMLInputElement>(null)
+  // Two separate inputs, not one — a camera-capture input only ever takes
+  // one photo at a time (that's inherent to how "point the camera and
+  // take a picture" works, `multiple` or not), while picking from the
+  // gallery/files should still support choosing several at once for the
+  // queue feature below.
+  const cameraInput = useRef<HTMLInputElement>(null)
+  const galleryInput = useRef<HTMLInputElement>(null)
 
   const [open, setOpen] = useState(false)
   const [stage, setStage] = useState<'idle' | 'reading' | 'review' | 'saving'>(
@@ -115,7 +122,8 @@ const ScanReceipt = () => {
     setItems([])
     setQueue([])
     setQueueIndex(0)
-    if (fileInput.current) fileInput.current.value = ''
+    if (cameraInput.current) cameraInput.current.value = ''
+    if (galleryInput.current) galleryInput.current.value = ''
   }
 
   /** Suggest a category per item from what Fico already knows about it —
@@ -253,7 +261,10 @@ const ScanReceipt = () => {
 
   if (!open) {
     return (
-      <Button onClick={() => setOpen(true)}>📷 Scan a receipt</Button>
+      <Button onClick={() => setOpen(true)}>
+        <IconCamera size={16} />
+        Scan a receipt
+      </Button>
     )
   }
 
@@ -270,30 +281,52 @@ const ScanReceipt = () => {
             </span>
           )}
         </h2>
-        <button
-          type="button"
-          onClick={reset}
-          className="text-xs text-muted underline hover:text-ink"
-        >
-          cancel
-        </button>
+        <Button size="sm" onClick={reset}>
+          <IconX size={14} />
+          Cancel
+        </Button>
       </div>
 
       {stage === 'idle' && (
         <div className="mt-3">
+          <div className="flex flex-wrap gap-2">
+            {/* Only meaningful on a device with a camera — hidden at desktop
+                widths, where it'd just open the same file picker as Upload
+                anyway. */}
+            <Button
+              className="lg:hidden"
+              onClick={() => cameraInput.current?.click()}
+            >
+              <IconCamera size={16} />
+              Take a photo
+            </Button>
+            <Button onClick={() => galleryInput.current?.click()}>
+              <IconUpload size={16} />
+              Upload
+            </Button>
+          </div>
+
           <input
-            ref={fileInput}
+            ref={cameraInput}
             type="file"
             accept="image/*"
             capture="environment"
+            onChange={(e) => void onPick(e)}
+            hidden
+          />
+          <input
+            ref={galleryInput}
+            type="file"
+            accept="image/*"
             multiple
             onChange={(e) => void onPick(e)}
-            className="text-sm"
+            hidden
           />
-          <p className="mt-1 text-xs text-muted">
+
+          <p className="mt-2 text-xs text-muted">
             Reading happens on this device — the photo isn't sent anywhere.
-            Pick more than one to go through several receipts (different
-            stores, same trip) one after another.
+            Uploading lets you pick more than one, to go through several
+            receipts (different stores, same trip) one after another.
           </p>
         </div>
       )}

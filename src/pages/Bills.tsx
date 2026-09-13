@@ -66,9 +66,16 @@ const LastPaid = ({
   const unseen = isUnseen(payment.createdAt, payment.createdBy, lastSeenAt, currentUserId)
   return (
     <p
-      className={`mt-0.5 text-xs text-success ${unseen ? 'rounded bg-danger/10 px-1 py-0.5 ring-1 ring-danger/40' : ''}`}
+      className={`mt-0.5 flex items-center gap-1 text-xs text-success ${unseen ? 'rounded bg-danger/10 px-1 py-0.5 ring-1 ring-danger/40' : ''}`}
     >
-      {unseen && '🔴 '}✓ paid {formatMoney(payment.amountMinor)} on{' '}
+      {unseen && (
+        <span
+          aria-label="New, not yet seen"
+          className="h-1.5 w-1.5 shrink-0 rounded-full bg-danger"
+        />
+      )}
+      <IconCheck size={12} className="shrink-0" />
+      paid {formatMoney(payment.amountMinor)} on{' '}
       {new Date(payment.paidAt).toLocaleDateString()}
     </p>
   )

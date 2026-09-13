@@ -304,6 +304,13 @@ export const IconDownload = (props: IconProps) => (
   </Icon>
 )
 
+export const IconUpload = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 15V4M7.5 8.5 12 4l4.5 4.5" />
+    <path d="M5 19.5h14" />
+  </Icon>
+)
+
 export const IconShare = (props: IconProps) => (
   <Icon {...props}>
     <path d="M12 3.5v11.5M8.5 7 12 3.5 15.5 7" />

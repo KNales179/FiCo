@@ -98,12 +98,12 @@ const AppLayout = () => {
             line and pushes the whole page down," neither of which is
             actually correct. The real fix is making sure the content itself
             (space switcher, +New) shrinks enough to fit on mobile — see
-            SpaceSwitcher's max-width and its icon-only +New button below —
-            with overflow-x-auto here purely as a last-resort safety net, so
-            a truly extreme case (a very long space name at the largest text
-            size on the narrowest screen) scrolls slightly instead of
-            clipping or reflowing the page. */}
-        <div className="mx-auto flex max-w-5xl flex-nowrap items-center gap-x-2 overflow-x-auto px-3 py-2.5 sm:px-4">
+            SpaceSwitcher's max-width and its icon-only +New button below.
+            Deliberately NOT overflow-x-auto here — setting overflow-x to
+            anything but visible forces overflow-y to clip too (the two axes
+            can't be mixed), which was silently clipping the profile
+            dropdown menu below the row instead of showing it. */}
+        <div className="mx-auto flex max-w-5xl flex-nowrap items-center gap-x-2 px-3 py-2.5 sm:px-4">
           <span className="flex shrink-0 items-center gap-1.5 text-base font-semibold tracking-tight text-brand">
             <img src="/icon-192.png" alt="" className="h-7 w-7 rounded-md" />
             <span className="hidden sm:inline">Fico</span>
