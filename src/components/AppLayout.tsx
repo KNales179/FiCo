@@ -93,7 +93,17 @@ const AppLayout = () => {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 border-b border-line bg-panel/90 shadow-sm backdrop-blur">
-        <div className="mx-auto flex max-w-5xl flex-nowrap items-center gap-x-2 px-3 py-2.5 sm:px-4">
+        {/* Always flex-nowrap, on every width — wrapping just traded "the
+            profile button clips off-screen" for "the header grows a second
+            line and pushes the whole page down," neither of which is
+            actually correct. The real fix is making sure the content itself
+            (space switcher, +New) shrinks enough to fit on mobile — see
+            SpaceSwitcher's max-width and its icon-only +New button below —
+            with overflow-x-auto here purely as a last-resort safety net, so
+            a truly extreme case (a very long space name at the largest text
+            size on the narrowest screen) scrolls slightly instead of
+            clipping or reflowing the page. */}
+        <div className="mx-auto flex max-w-5xl flex-nowrap items-center gap-x-2 overflow-x-auto px-3 py-2.5 sm:px-4">
           <span className="flex shrink-0 items-center gap-1.5 text-base font-semibold tracking-tight text-brand">
             <img src="/icon-192.png" alt="" className="h-7 w-7 rounded-md" />
             <span className="hidden sm:inline">Fico</span>

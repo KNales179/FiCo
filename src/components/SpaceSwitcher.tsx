@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useSpace } from '../hooks/useSpace'
+import { IconPlus, IconX } from './icons'
 
 const SpaceSwitcher = () => {
   const {
@@ -49,7 +50,7 @@ const SpaceSwitcher = () => {
           id="space"
           value={activeSpaceId ?? ''}
           onChange={(event) => void switchSpace(event.target.value)}
-          className="select w-auto py-1 text-sm"
+          className="select w-auto max-w-[6rem] shrink truncate py-1 text-sm sm:max-w-none"
         >
           {spaces.length === 0 && <option value="">No spaces</option>}
           {spaces.map((space) => (
@@ -64,9 +65,12 @@ const SpaceSwitcher = () => {
         <button
           type="button"
           onClick={() => setCreating((value) => !value)}
-          className="btn btn-sm"
+          className="btn btn-sm shrink-0"
+          aria-label={creating ? 'Cancel' : 'New Finance'}
+          title={creating ? 'Cancel' : 'New Finance'}
         >
-          {creating ? 'Cancel' : '+ New'}
+          {creating ? <IconX size={14} /> : <IconPlus size={14} />}
+          <span className="hidden sm:inline">{creating ? 'Cancel' : 'New'}</span>
         </button>
       </div>
 
