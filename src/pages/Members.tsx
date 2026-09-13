@@ -197,18 +197,25 @@ const Members = () => {
                   {isOwner && (
                     <td className="text-right">
                       {m.role !== 'OWNER' && (
-                        <span className="flex items-center justify-end gap-1.5">
-                          <Button size="sm" onClick={() => void makeOwner(m)}>
+                        <span className="flex items-center justify-end gap-1">
+                          <Button
+                            size="sm"
+                            iconOnly
+                            aria-label="Make owner"
+                            title="Make owner"
+                            onClick={() => void makeOwner(m)}
+                          >
                             <IconAward size={14} />
-                            Make owner
                           </Button>
                           <Button
                             size="sm"
+                            iconOnly
                             variant="danger"
+                            aria-label="Remove"
+                            title="Remove"
                             onClick={() => void removeMember(spaceId!, m.userId).then(load)}
                           >
                             <IconX size={14} />
-                            Remove
                           </Button>
                         </span>
                       )}

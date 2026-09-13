@@ -419,8 +419,14 @@ body {
     padding-bottom: var(--row-py);
   }
 
+  /* overflow-wrap: anywhere (not just break-words' break-word) — a browser's
+     table auto-layout sizes each column to fit the longest *unbreakable*
+     run of content in it, and `anywhere` is what actually gets counted
+     during that sizing (break-word alone often isn't), so a long token
+     with no natural break point (a user-agent string, an unbroken id)
+     can't silently force the whole table wider than its container again. */
   .table tbody td {
-    @apply border-b border-line px-3 align-middle;
+    @apply border-b border-line px-3 align-middle [overflow-wrap:anywhere];
     padding-top: var(--row-py);
     padding-bottom: var(--row-py);
   }

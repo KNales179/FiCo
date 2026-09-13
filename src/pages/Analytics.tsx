@@ -157,7 +157,7 @@ const Analytics = () => {
 
       {loading && (
         <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Skeleton className="h-20" />
             <Skeleton className="h-20" />
             <Skeleton className="h-20" />
@@ -168,23 +168,26 @@ const Analytics = () => {
 
       {data && !loading && (
         <>
-          <section className="grid grid-cols-3 gap-3">
+          {/* One column on a narrow phone (so a big number/font-size combo
+              always has the card's full width to sit in), three side by
+              side once there's actually room. */}
+          <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="card">
               <div className="text-xs text-muted">Income</div>
-              <div className="text-lg font-semibold text-success">
+              <div className="break-words text-lg font-semibold text-success">
                 {formatMoney(data.incomeMinor, data.currency)}
               </div>
             </div>
             <div className="card">
               <div className="text-xs text-muted">Expenses</div>
-              <div className="text-lg font-semibold text-danger">
+              <div className="break-words text-lg font-semibold text-danger">
                 {formatMoney(data.expenseMinor, data.currency)}
               </div>
             </div>
             <div className="card">
               <div className="text-xs text-muted">Net</div>
               <div
-                className={`text-lg font-semibold ${
+                className={`break-words text-lg font-semibold ${
                   data.netMinor < 0 ? 'text-danger' : ''
                 }`}
               >

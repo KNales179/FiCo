@@ -203,7 +203,6 @@ const QuickAdd = () => {
               inputMode="decimal"
               placeholder="Amount"
               required
-              autoFocus
               className="input w-28"
             />
           )}

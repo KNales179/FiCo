@@ -18,6 +18,7 @@ import {
   IconSettings,
   IconMessage,
   IconInfo,
+  IconCompass,
   IconShield,
   IconChevronDown,
   IconLogOut,
@@ -26,6 +27,7 @@ import {
 import SpaceSwitcher from './SpaceSwitcher'
 import SyncStatus from './SyncStatus'
 import BillReminders from './BillReminders'
+import WelcomeModal from './WelcomeModal'
 
 type IconComponent = ComponentType<IconProps>
 
@@ -45,6 +47,7 @@ const SECONDARY: { to: string; label: string; icon: IconComponent }[] = [
   { to: '/activity', label: 'Activity', icon: IconClock },
   { to: '/account', label: 'Account', icon: IconUserCircle },
   { to: '/settings', label: 'Settings', icon: IconSettings },
+  { to: '/tutorial', label: 'How Fico works', icon: IconCompass },
   { to: '/credits', label: 'Credits', icon: IconInfo },
   { to: '/feedback', label: 'Report & feedback', icon: IconMessage },
 ]
@@ -221,6 +224,7 @@ const AppLayout = () => {
       </header>
 
       <BillReminders />
+      <WelcomeModal />
 
       <main className="mx-auto max-w-5xl px-3 py-5 pb-24 sm:px-4 md:pb-5">
         <Outlet />

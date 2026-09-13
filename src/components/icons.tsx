@@ -318,6 +318,21 @@ export const IconShare = (props: IconProps) => (
   </Icon>
 )
 
+export const IconCloudOff = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M3 3l18 18" />
+    <path d="M8 16.5H6.5a3.5 3.5 0 0 1-.6-6.95M17.9 13.1A4 4 0 0 0 15 6.3a5.5 5.5 0 0 0-8.6-1.9" />
+    <path d="M16.5 16.5h.5a3 3 0 0 0 .3-6" />
+  </Icon>
+)
+
+export const IconCompass = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="m14.8 9.2-1.9 4.7-4.7 1.9 1.9-4.7Z" />
+  </Icon>
+)
+
 export const IconInfo = (props: IconProps) => (
   <Icon {...props}>
     <circle cx="12" cy="12" r="8.5" />
