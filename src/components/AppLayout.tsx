@@ -5,6 +5,7 @@ import { useSpace } from '../hooks/useSpace'
 import { useUnseenBadge } from '../hooks/useUnseenBadge'
 import { listShoppingLists } from '../features/shopping'
 import { listBills } from '../features/bills'
+import { listFeedback } from '../services/feedbackService'
 import {
   IconHome,
   IconCart,
@@ -84,10 +85,31 @@ const AppLayout = () => {
   )
   const billsUnseen = useUnseenBadge('bills', activeSpaceId, user?.id, fetchBills)
 
+  // Feedback isn't tied to a Finance/space, so there's no real spaceId to
+  // scope the "seen" cursor by — 'admin' is just a fixed, stable key for
+  // that cursor's storage slot, same mechanism as everywhere else. Only an
+  // admin can even call this endpoint, so a non-admin gets an empty list.
+  const fetchOpenFeedback = useCallback(
+    () =>
+      user?.role === 'ADMIN'
+        ? listFeedback().then((res) =>
+            res.feedback.filter((f) => f.status === 'OPEN'),
+          )
+        : Promise.resolve([]),
+    [user?.role],
+  )
+  const feedbackUnseen = useUnseenBadge(
+    'feedback',
+    'admin',
+    user?.id,
+    fetchOpenFeedback,
+  )
+
   // Which primary nav destinations get the little "something new" dot.
   const badges: Record<string, boolean> = {
     '/shopping': shoppingUnseen,
     '/bills': billsUnseen,
+    '/admin': feedbackUnseen,
   }
 
   const initial = (user?.displayName || user?.username || '?').charAt(0).toUpperCase()
@@ -149,17 +171,25 @@ const AppLayout = () => {
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
               >
-                {user?.avatarUrl ? (
-                  <img
-                    src={user.avatarUrl}
-                    alt=""
-                    className="h-6 w-6 rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-xs font-semibold text-brand-ink">
-                    {initial}
-                  </span>
-                )}
+                <span className="relative inline-flex">
+                  {user?.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt=""
+                      className="h-6 w-6 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-xs font-semibold text-brand-ink">
+                      {initial}
+                    </span>
+                  )}
+                  {feedbackUnseen && (
+                    <span
+                      aria-label="New, not yet seen"
+                      className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-2 border-panel bg-danger"
+                    />
+                  )}
+                </span>
                 <span className="hidden sm:inline">{user?.displayName || user?.username}</span>
                 <IconChevronDown size={16} className="text-muted" />
               </button>
@@ -191,7 +221,15 @@ const AppLayout = () => {
                             }`
                           }
                         >
-                          <ItemIcon size={17} />
+                          <span className="relative inline-flex">
+                            <ItemIcon size={17} />
+                            {badges[item.to] && (
+                              <span
+                                aria-label="New, not yet seen"
+                                className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-danger"
+                              />
+                            )}
+                          </span>
                           {item.label}
                         </NavLink>
                       )

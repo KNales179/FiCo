@@ -8,6 +8,7 @@ import {
   recordTransaction,
 } from '../money'
 import {
+  addScheduledDate,
   advanceDueDate,
   createBill,
   deleteBill,
@@ -48,7 +49,7 @@ describe('bills (Phase 11)', () => {
       paidAt: '2026-03-14T00:00:00.000Z',
     })
 
-    expect(updated.nextDueDate.slice(0, 10)).toBe('2026-04-15')
+    expect(updated.nextDueDate!.slice(0, 10)).toBe('2026-04-15')
     // FIXED bills learn their real amount from the payment.
     expect(updated.expectedAmountMinor).toBe(149900)
 
@@ -91,7 +92,7 @@ describe('bills (Phase 11)', () => {
       '2026-06',
     ])
     const after = await getBill(bill.id)
-    expect(after?.nextDueDate.slice(0, 10)).toBe('2026-07-01')
+    expect(after?.nextDueDate!.slice(0, 10)).toBe('2026-07-01')
   })
 
   it('refuses to re-pay an occurrence whose due date was rolled back', async () => {
@@ -155,7 +156,7 @@ describe('bills (Phase 11)', () => {
       billId: bill.id,
       amountMinor: 300000,
       paidAt,
-      periodKey: periodKey(bill.nextDueDate, bill.recurrence),
+      periodKey: periodKey(bill.nextDueDate!, bill.recurrence),
       accountId: cash.id,
       transactionId: txn.id,
       createdBy: c.userId,
@@ -163,15 +164,15 @@ describe('bills (Phase 11)', () => {
       version: 1,
     })
     await billRepository.update(bill.id, {
-      nextDueDate: advanceDueDate(bill.nextDueDate, bill.recurrence),
+      nextDueDate: advanceDueDate(bill.nextDueDate!, bill.recurrence),
       syncStatus: 'PENDING',
     })
 
     const afterPay = await getBill(bill.id)
-    expect(afterPay?.nextDueDate.slice(0, 10)).toBe('2026-11-01')
+    expect(afterPay?.nextDueDate!.slice(0, 10)).toBe('2026-11-01')
 
     const rolledBack = await deleteBillPayment(c, payment.id)
-    expect(rolledBack.nextDueDate.slice(0, 10)).toBe('2026-10-01')
+    expect(rolledBack.nextDueDate!.slice(0, 10)).toBe('2026-10-01')
 
     // The linked expense is gone (balance restored) and the payment no
     // longer counts toward history.
@@ -188,7 +189,7 @@ describe('bills (Phase 11)', () => {
       accountId: cash.id,
       paidAt: '2026-09-25T00:00:00.000Z',
     })
-    expect(paidAgain.nextDueDate.slice(0, 10)).toBe('2026-10-30')
+    expect(paidAgain.nextDueDate!.slice(0, 10)).toBe('2026-10-30')
   })
 
   it('refuses to undo a payment that is no longer the most recent one', async () => {
@@ -339,7 +340,7 @@ describe('bills (Phase 11)', () => {
       paidAt: '2026-02-10T00:00:00.000Z',
     })
     const after = await getBill(bill.id)
-    expect(after?.nextDueDate.slice(0, 10)).toBe('2027-02-10')
+    expect(after?.nextDueDate!.slice(0, 10)).toBe('2027-02-10')
   })
 
   it('refuses to pay a bill more than a week ahead of its due date', async () => {
@@ -376,7 +377,7 @@ describe('bills (Phase 11)', () => {
       accountId: cash.id,
       paidAt: '2026-09-24T00:00:00.000Z',
     })
-    expect(afterFirst.nextDueDate.slice(0, 10)).toBe('2026-11-01')
+    expect(afterFirst.nextDueDate!.slice(0, 10)).toBe('2026-11-01')
 
     // Next occurrence is due 2026-11-01 — paying it months late (overdue)
     // is always allowed, no matter how far past the window.
@@ -385,6 +386,262 @@ describe('bills (Phase 11)', () => {
       accountId: cash.id,
       paidAt: '2027-02-01T00:00:00.000Z',
     })
-    expect(afterSecond.nextDueDate.slice(0, 10)).toBe('2026-12-01')
+    expect(afterSecond.nextDueDate!.slice(0, 10)).toBe('2026-12-01')
+  })
+
+  describe('editing an existing bill', () => {
+    it('updates name, price type and due date on a MONTHLY bill', async () => {
+      const bill = await createBill(c, {
+        name: 'Internet',
+        recurrence: 'MONTHLY',
+        billType: 'VARIABLE',
+        nextDueDate: '2026-03-15T00:00:00.000Z',
+      })
+
+      const updated = await updateBill(c, bill.id, {
+        name: 'Home Internet',
+        billType: 'FIXED',
+        expectedAmountMinor: 150000,
+        nextDueDate: '2026-03-20T00:00:00.000Z',
+      })
+
+      expect(updated.name).toBe('Home Internet')
+      expect(updated.billType).toBe('FIXED')
+      expect(updated.expectedAmountMinor).toBe(150000)
+      expect(updated.nextDueDate!.slice(0, 10)).toBe('2026-03-20')
+      // Recurrence untouched by this patch, still MONTHLY.
+      expect(updated.recurrence).toBe('MONTHLY')
+    })
+
+    it('switching a bill from MONTHLY to SCHEDULED replaces its due date with a real calendar', async () => {
+      const bill = await createBill(c, {
+        name: 'Tuition',
+        recurrence: 'MONTHLY',
+        billType: 'FIXED',
+        nextDueDate: '2026-03-15T00:00:00.000Z',
+      })
+
+      const dates = [
+        '2026-10-01T00:00:00.000Z',
+        '2026-11-04T00:00:00.000Z',
+        '2026-12-09T00:00:00.000Z',
+      ]
+      const updated = await updateBill(c, bill.id, {
+        recurrence: 'SCHEDULED',
+        scheduledDates: dates,
+        nextDueDate: dates[0],
+      })
+
+      expect(updated.recurrence).toBe('SCHEDULED')
+      expect(updated.scheduledDates).toEqual(dates)
+      expect(updated.nextDueDate).toBe(dates[0])
+    })
+
+    it('switching a SCHEDULED bill back to MONTHLY can clear its old dates', async () => {
+      const bill = await createBill(c, {
+        name: 'Tuition',
+        recurrence: 'SCHEDULED',
+        billType: 'FIXED',
+        scheduledDates: ['2026-10-01T00:00:00.000Z'],
+      })
+
+      const updated = await updateBill(c, bill.id, {
+        recurrence: 'MONTHLY',
+        nextDueDate: '2026-11-01T00:00:00.000Z',
+        scheduledDates: null,
+      })
+
+      expect(updated.recurrence).toBe('MONTHLY')
+      expect(updated.scheduledDates).toBeFalsy()
+      expect(updated.nextDueDate!.slice(0, 10)).toBe('2026-11-01')
+    })
+  })
+
+  describe('SCHEDULED recurrence — irregular, specific dates (e.g. tuition)', () => {
+    it('rejects creating a scheduled bill with no dates at all', async () => {
+      await expect(
+        createBill(c, {
+          name: 'Tuition',
+          recurrence: 'SCHEDULED',
+          billType: 'VARIABLE',
+          scheduledDates: [],
+        }),
+      ).rejects.toThrow(/at least one date/i)
+    })
+
+    it('starts at the earliest of several dates given out of order, and advances through them on payment', async () => {
+      const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+      const bill = await createBill(c, {
+        name: 'Tuition',
+        recurrence: 'SCHEDULED',
+        billType: 'VARIABLE',
+        scheduledDates: [
+          '2026-11-03T00:00:00.000Z',
+          '2026-09-15T00:00:00.000Z',
+        ],
+      })
+      // Earliest of the two, not just the first one listed.
+      expect(bill.nextDueDate?.slice(0, 10)).toBe('2026-09-15')
+      expect(bill.scheduledDates).toHaveLength(2)
+
+      const { bill: afterFirst } = await payBill(c, bill.id, {
+        amountMinor: 15000,
+        accountId: cash.id,
+        paidAt: '2026-09-15T00:00:00.000Z',
+      })
+      // Moves on to the next date on the list, not a computed interval.
+      expect(afterFirst.nextDueDate?.slice(0, 10)).toBe('2026-11-03')
+      expect(afterFirst.scheduledDates).toHaveLength(1)
+
+      const { bill: afterSecond } = await payBill(c, bill.id, {
+        amountMinor: 15000,
+        accountId: cash.id,
+        paidAt: '2026-11-03T00:00:00.000Z',
+      })
+      // Nothing else scheduled — genuinely nothing due until a date is added.
+      expect(afterSecond.nextDueDate).toBeNull()
+      expect(afterSecond.scheduledDates).toHaveLength(0)
+
+      const payments = await listBillPayments(bill.id)
+      expect(payments.map((p) => p.periodKey).sort()).toEqual([
+        '2026-09-15',
+        '2026-11-03',
+      ])
+    })
+
+    it('adding a date to an exhausted schedule makes it payable again', async () => {
+      const bill = await createBill(c, {
+        name: 'Tuition',
+        recurrence: 'SCHEDULED',
+        billType: 'VARIABLE',
+        scheduledDates: ['2026-09-15T00:00:00.000Z'],
+      })
+      const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+      const { bill: exhausted } = await payBill(c, bill.id, {
+        amountMinor: 15000,
+        accountId: cash.id,
+        paidAt: '2026-09-15T00:00:00.000Z',
+      })
+      expect(exhausted.nextDueDate).toBeNull()
+
+      const updated = await addScheduledDate(
+        c,
+        bill.id,
+        '2027-01-20T00:00:00.000Z',
+      )
+      expect(updated.nextDueDate?.slice(0, 10)).toBe('2027-01-20')
+      expect(updated.scheduledDates).toEqual(['2027-01-20T00:00:00.000Z'])
+    })
+
+    it('undoing the most recent scheduled payment restores its exact date', async () => {
+      const cash = await createAccount(c, {
+        name: 'Cash',
+        type: 'CASH',
+        openingBalanceMinor: 1000000,
+      })
+      const bill = await createBill(c, {
+        name: 'Tuition',
+        recurrence: 'SCHEDULED',
+        billType: 'VARIABLE',
+        scheduledDates: [
+          '2026-09-15T00:00:00.000Z',
+          '2026-11-03T00:00:00.000Z',
+        ],
+      })
+      const { payment } = await payBill(c, bill.id, {
+        amountMinor: 15000,
+        accountId: cash.id,
+        paidAt: '2026-09-15T00:00:00.000Z',
+      })
+
+      const rolledBack = await deleteBillPayment(c, payment.id)
+      expect(rolledBack.nextDueDate?.slice(0, 10)).toBe('2026-09-15')
+      expect(rolledBack.scheduledDates?.sort()).toEqual([
+        '2026-09-15T00:00:00.000Z',
+        '2026-11-03T00:00:00.000Z',
+      ])
+
+      const bal = await computeSpaceBalances(c.spaceId)
+      expect(bal.accounts[0].balanceMinor).toBe(1000000)
+    })
+  })
+
+  describe('NONE recurrence — no fixed date at all (e.g. gas)', () => {
+    it('is created with no due date and no payability restriction', async () => {
+      const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+      const bill = await createBill(c, {
+        name: 'Gas',
+        recurrence: 'NONE',
+        billType: 'VARIABLE',
+      })
+      expect(bill.nextDueDate).toBeNull()
+
+      // No due date to be "too early" against — payable any time.
+      const { bill: after } = await payBill(c, bill.id, {
+        amountMinor: 90000,
+        accountId: cash.id,
+        paidAt: '2026-01-05T00:00:00.000Z',
+      })
+      expect(after.nextDueDate).toBeNull()
+    })
+
+    it('can be paid more than once in the same calendar month with no dedup rejection', async () => {
+      const cash = await createAccount(c, { name: 'Cash', type: 'CASH' })
+      const bill = await createBill(c, {
+        name: 'Gas',
+        recurrence: 'NONE',
+        billType: 'VARIABLE',
+      })
+      await payBill(c, bill.id, {
+        amountMinor: 90000,
+        accountId: cash.id,
+        paidAt: '2026-01-05T00:00:00.000Z',
+      })
+      await payBill(c, bill.id, {
+        amountMinor: 85000,
+        accountId: cash.id,
+        paidAt: '2026-01-20T00:00:00.000Z',
+      })
+
+      const payments = await listBillPayments(bill.id)
+      expect(payments).toHaveLength(2)
+      // Each payment is its own occurrence — no shared periodKey to dedupe.
+      expect(payments[0].periodKey).not.toBe(payments[1].periodKey)
+    })
+
+    it('any of its payments can be deleted, in any order, with no "most recent" restriction', async () => {
+      const cash = await createAccount(c, {
+        name: 'Cash',
+        type: 'CASH',
+        openingBalanceMinor: 1000000,
+      })
+      const bill = await createBill(c, {
+        name: 'Gas',
+        recurrence: 'NONE',
+        billType: 'VARIABLE',
+      })
+      const { payment: first } = await payBill(c, bill.id, {
+        amountMinor: 90000,
+        accountId: cash.id,
+        paidAt: '2026-01-05T00:00:00.000Z',
+      })
+      await payBill(c, bill.id, {
+        amountMinor: 85000,
+        accountId: cash.id,
+        paidAt: '2026-01-20T00:00:00.000Z',
+      })
+
+      // The *older* of the two — would be refused for MONTHLY/YEARLY/
+      // SCHEDULED, but NONE has no due-date cursor to protect.
+      await deleteBillPayment(c, first.id)
+      const remaining = (await listBillPayments(bill.id)).filter(
+        (p) => !p.deletedAt,
+      )
+      expect(remaining).toHaveLength(1)
+      expect(remaining[0].amountMinor).toBe(85000)
+
+      const bal = await computeSpaceBalances(c.spaceId)
+      expect(bal.accounts[0].balanceMinor).toBe(1000000 - 85000)
+    })
   })
 })

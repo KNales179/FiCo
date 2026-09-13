@@ -17,12 +17,22 @@ export const isExpense = (txn: Pick<Transaction, 'type'>): boolean =>
  *   EXPENSE   → −amount on its account
  *   TRANSFER  → −amount on the source, +amount on the destination
  *
- * A TRANSFER is never an expense and never changes the space total (Rule 4).
+ * A TRANSFER is never an expense and never changes the space total (Rule 4)
+ * — that's true even across currencies, since the same conversion that
+ * takes value out of the source is exactly what appears in the destination.
+ * When the two accounts share a currency the destination simply receives
+ * `amountMinor`; a cross-currency transfer instead credits
+ * `destinationAmountMinor` — the converted amount in the destination's own
+ * currency, computed once at entry time and never recalculated later.
  */
 export const balanceEffect = (
   txn: Pick<
     Transaction,
-    'type' | 'amountMinor' | 'accountId' | 'destinationAccountId'
+    | 'type'
+    | 'amountMinor'
+    | 'accountId'
+    | 'destinationAccountId'
+    | 'destinationAmountMinor'
   >,
   accountId: string,
 ): number => {
@@ -30,7 +40,7 @@ export const balanceEffect = (
     return txn.type === 'INCOME' ? txn.amountMinor : -txn.amountMinor
   }
   if (txn.type === 'TRANSFER' && txn.destinationAccountId === accountId) {
-    return txn.amountMinor
+    return txn.destinationAmountMinor ?? txn.amountMinor
   }
   return 0
 }
@@ -41,6 +51,8 @@ export interface TransactionInput {
   title: string
   accountId: string
   destinationAccountId?: string | null
+  /** Cross-currency TRANSFER only — see `balanceEffect`'s doc comment. */
+  destinationAmountMinor?: number | null
 }
 
 /**
@@ -82,8 +94,18 @@ export const validateTransactionInput = (
   if (destination.status !== 'ACTIVE') {
     return 'The destination account is archived'
   }
+
+  // Same-currency transfers need nothing extra — the destination just
+  // receives the same amountMinor that left the source. A cross-currency
+  // transfer needs the converted amount spelled out explicitly, since it's
+  // the only source of truth for what actually lands on the other side.
   if (destination.currency !== source.currency) {
-    return 'Both accounts must use the same currency'
+    if (
+      !isValidMinor(input.destinationAmountMinor) ||
+      (input.destinationAmountMinor as number) <= 0
+    ) {
+      return 'Enter how much this is worth in the destination currency'
+    }
   }
 
   return null

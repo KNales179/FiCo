@@ -1,9 +1,17 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useMoney } from '../../hooks/useMoney'
 import { useMutationContext } from '../../hooks/useMutationContext'
-import { formatMoney, parseAmountToMinor } from '../../domain/money'
+import {
+  currencySymbol,
+  formatMoney,
+  minorPerMajor,
+  minorToDecimalString,
+  parseAmountToMinor,
+} from '../../domain/money'
+import { fetchExchangeRate } from '../../features/currency/exchangeRate'
 import { recordItemizedExpense } from '../../features/receipts'
 import { Button } from '../ui'
+import { IconRotateCcw } from '../icons'
 import CategoryPicker from './CategoryPicker'
 import ItemRowsEditor from './ItemRowsEditor'
 import { newBlankItem, sumItemPricesMinor, toScannedReceiptItems } from './draftItems'
@@ -50,17 +58,94 @@ const QuickAdd = () => {
   const [saved, setSaved] = useState(false)
   const [items, setItems] = useState<DraftItem[]>([])
 
-  if (!canEdit || activeAccounts.length === 0) return null
-
   // The chosen account, falling back to the space default, then the first.
   const accountId =
-    chosenAccountId || defaultAccount?.id || activeAccounts[0].id
+    chosenAccountId || defaultAccount?.id || activeAccounts[0]?.id || ''
   // The other side of a transfer — falls back to whatever active account
   // isn't the source, so the picker never starts pointed at itself.
   const toAccountId =
     destinationAccountId ||
     activeAccounts.find((a) => a.id !== accountId)?.id ||
     ''
+
+  const fromAccount = activeAccounts.find((a) => a.id === accountId)
+  const toAccount = activeAccounts.find((a) => a.id === toAccountId)
+  const crossCurrency =
+    direction === 'TRANSFER' &&
+    !!fromAccount &&
+    !!toAccount &&
+    fromAccount.currency !== toAccount.currency
+
+  // The converted amount for a cross-currency transfer — auto-filled from a
+  // live rate lookup, but always editable by hand, since the rate the app
+  // finds might not match whatever rate actually applied to the real
+  // transfer (a bank or remittance service's own rate, say).
+  const [destinationAmount, setDestinationAmount] = useState('')
+  const [destinationTouched, setDestinationTouched] = useState(false)
+  const [rate, setRate] = useState<{ value: number; fromCache: boolean } | null>(
+    null,
+  )
+  const [rateLoading, setRateLoading] = useState(false)
+  const [rateError, setRateError] = useState('')
+  const [rateNonce, setRateNonce] = useState(0)
+
+  const fromCurrency = fromAccount?.currency
+  const toCurrency = toAccount?.currency
+
+  useEffect(() => {
+    // Resets the "did the person edit this by hand" flag whenever the pair
+    // itself changes, so a manual override from a previous pair doesn't
+    // linger onto a new one.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDestinationTouched(false)
+  }, [fromCurrency, toCurrency])
+
+  useEffect(() => {
+    if (!crossCurrency || !fromCurrency || !toCurrency) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRate(null)
+      setRateError('')
+      return
+    }
+    let cancelled = false
+    setRateLoading(true)
+    setRateError('')
+    fetchExchangeRate(fromCurrency, toCurrency)
+      .then((r) => {
+        if (cancelled) return
+        setRate({ value: r.rate, fromCache: r.fromCache })
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setRate(null)
+        setRateError(
+          err instanceof Error ? err.message : 'Could not get a rate',
+        )
+      })
+      .finally(() => {
+        if (!cancelled) setRateLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [crossCurrency, fromCurrency, toCurrency, rateNonce])
+
+  useEffect(() => {
+    if (!crossCurrency || !rate || destinationTouched || !fromCurrency || !toCurrency) {
+      return
+    }
+    const amountMinor = parseAmountToMinor(amount, fromCurrency)
+    if (amountMinor === null || amountMinor <= 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDestinationAmount('')
+      return
+    }
+    const sourceMajor = amountMinor / minorPerMajor(fromCurrency)
+    const destMinor = Math.round(sourceMajor * rate.value * minorPerMajor(toCurrency))
+    setDestinationAmount(minorToDecimalString(destMinor, toCurrency))
+  }, [amount, rate, crossCurrency, destinationTouched, fromCurrency, toCurrency])
+
+  if (!canEdit || activeAccounts.length === 0) return null
 
   const batchMode =
     direction === 'EXPENSE' &&
@@ -134,7 +219,7 @@ const QuickAdd = () => {
       return
     }
 
-    const amountMinor = parseAmountToMinor(amount)
+    const amountMinor = parseAmountToMinor(amount, fromAccount?.currency)
     if (amountMinor === null || amountMinor <= 0) {
       setError('Enter an amount greater than zero')
       return
@@ -143,6 +228,18 @@ const QuickAdd = () => {
     if (direction === 'TRANSFER' && toAccountId === accountId) {
       setError('Pick two different accounts')
       return
+    }
+
+    let destinationAmountMinor: number | null = null
+    if (direction === 'TRANSFER' && crossCurrency && toAccount) {
+      destinationAmountMinor = parseAmountToMinor(
+        destinationAmount,
+        toAccount.currency,
+      )
+      if (destinationAmountMinor === null || destinationAmountMinor <= 0) {
+        setError('Enter how much this is worth in the destination currency')
+        return
+      }
     }
 
     setBusy(true)
@@ -154,12 +251,18 @@ const QuickAdd = () => {
         accountId,
         categoryId: direction === 'TRANSFER' ? null : categoryId || null,
         destinationAccountId: direction === 'TRANSFER' ? toAccountId : undefined,
+        destinationAmountMinor:
+          direction === 'TRANSFER' ? destinationAmountMinor : undefined,
+        exchangeRate:
+          direction === 'TRANSFER' && crossCurrency ? rate?.value ?? null : undefined,
         occurredAt,
       })
       setAmount('')
       setTitle('')
       setCategoryId('')
       setDestinationAccountId('')
+      setDestinationAmount('')
+      setDestinationTouched(false)
       setDate(today())
       setSaved(true)
     } catch (err) {
@@ -269,12 +372,53 @@ const QuickAdd = () => {
               onChange={changeCategory}
             />
           )}
-          {!batchMode && (
+          {!batchMode && !crossCurrency && (
             <Button type="submit" variant="primary" disabled={busy}>
               {busy ? 'Saving…' : 'Add'}
             </Button>
           )}
         </div>
+
+        {crossCurrency && toAccount && fromAccount && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-panel-2 p-2 text-sm">
+            <span className="text-muted">
+              {rateLoading
+                ? 'Getting today’s rate…'
+                : rate
+                  ? `1 ${fromAccount.currency} ≈ ${rate.value.toFixed(4)} ${toAccount.currency}${rate.fromCache ? ' (last known)' : ''}`
+                  : rateError || 'Rate unavailable — enter the converted amount by hand'}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              iconOnly
+              aria-label="Refresh rate"
+              title="Refresh rate"
+              disabled={rateLoading}
+              onClick={() => setRateNonce((n) => n + 1)}
+            >
+              <IconRotateCcw size={14} />
+            </Button>
+            <span className="ml-auto inline-flex items-center gap-1">
+              <span className="text-muted">Lands as</span>
+              <span className="text-muted">{currencySymbol(toAccount.currency)}</span>
+              <input
+                value={destinationAmount}
+                onChange={(e) => {
+                  setDestinationAmount(e.target.value)
+                  setDestinationTouched(true)
+                }}
+                inputMode="decimal"
+                placeholder="Converted amount"
+                className="input w-32"
+              />
+            </span>
+            <Button type="submit" variant="primary" disabled={busy}>
+              {busy ? 'Saving…' : 'Add'}
+            </Button>
+          </div>
+        )}
 
         {batchMode && (
           <>
@@ -292,7 +436,7 @@ const QuickAdd = () => {
               <span className="text-sm text-muted">
                 Total:{' '}
                 <span className="font-medium text-ink">
-                  {formatMoney(computedTotalMinor)}
+                  {formatMoney(computedTotalMinor, fromAccount?.currency)}
                 </span>
               </span>
               <Button type="submit" variant="primary" disabled={busy}>

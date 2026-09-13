@@ -21,14 +21,20 @@ export const billRepository = {
     return rows.filter((bill) => bill.active)
   },
 
-  /** Active bills in a space due on or before `beforeIso`, earliest first (§15). */
+  /** Active bills in a space due on or before `beforeIso`, earliest first
+   *  (§15). A NONE bill has no due date to compare, so it's never included
+   *  here — the dashboard/upcoming views that want it shown unconditionally
+   *  (it's always payable) filter for it separately. */
   async listUpcoming(
     spaceId: string,
     beforeIso: string,
   ): Promise<Bill[]> {
     const rows = await bills.getAllByIndex('by-spaceId', spaceId)
     return rows
-      .filter((bill) => bill.active && bill.nextDueDate <= beforeIso)
+      .filter(
+        (bill): bill is Bill & { nextDueDate: string } =>
+          bill.active && bill.nextDueDate != null && bill.nextDueDate <= beforeIso,
+      )
       .sort((a, b) => a.nextDueDate.localeCompare(b.nextDueDate))
   },
 

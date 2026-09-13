@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useBills } from '../hooks/useBills'
 import { dueSoonBills } from '../domain/bills'
+import { IconX } from './icons'
 
 /**
  * "Bills due soon" banner (Roadmap: in-app notifications, tier 1) — shown
@@ -41,7 +42,7 @@ const BillReminders = () => {
               aria-label={`Dismiss ${r.name} reminder`}
               className="text-muted hover:text-ink"
             >
-              ×
+              <IconX size={12} />
             </button>
           </span>
         ))}

@@ -46,6 +46,7 @@ export async function cacheSpaces(
       name: space.name,
       type: space.type,
       ownerId: space.ownerId,
+      currency: space.currency,
       createdAt: space.createdAt,
       updatedAt: space.updatedAt,
       deletedAt: null,
@@ -84,6 +85,9 @@ export async function loadCachedSpaces(
       name: space.name,
       type: space.type,
       ownerId: space.ownerId,
+      // Cached from before this field existed — fall back to Fico's
+      // long-standing default rather than leaving it unset.
+      currency: space.currency ?? 'PHP',
       role: membership.role,
       createdAt: space.createdAt,
       updatedAt: space.updatedAt,

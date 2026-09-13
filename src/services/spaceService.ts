@@ -22,6 +22,13 @@ export const renameSpace = (spaceId: string, name: string) =>
     body: { name },
   })
 
+/** Owner-only, enforced server-side: change what currency this Finance uses. */
+export const updateSpaceCurrency = (spaceId: string, currency: string) =>
+  api<SpaceResponse>(`/spaces/${spaceId}`, {
+    method: 'PATCH',
+    body: { currency },
+  })
+
 export const deleteSpace = (spaceId: string) =>
   api<{ success: boolean; message: string }>(`/spaces/${spaceId}`, {
     method: 'DELETE',

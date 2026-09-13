@@ -45,6 +45,19 @@ describe('balanceEffect', () => {
     expect(balanceEffect(t, 'b')).toBe(1000)
     expect(balanceEffect(t, 'c')).toBe(0)
   })
+
+  it('a cross-currency transfer debits amountMinor but credits destinationAmountMinor', () => {
+    const t = {
+      ...base,
+      type: 'TRANSFER' as const,
+      accountId: 'a',
+      destinationAccountId: 'b',
+      // 1000 AED sent, 18000 PHP actually landed.
+      destinationAmountMinor: 18000,
+    }
+    expect(balanceEffect(t, 'a')).toBe(-1000)
+    expect(balanceEffect(t, 'b')).toBe(18000)
+  })
 })
 
 describe('validateTransactionInput', () => {
@@ -105,20 +118,52 @@ describe('validateTransactionInput', () => {
       ),
     ).toBeTruthy()
   })
+
+  it('accepts a cross-currency transfer once a destination amount is given', () => {
+    expect(
+      validateTransactionInput(
+        {
+          type: 'TRANSFER',
+          amountMinor: 1000,
+          title: 'Mom sent money',
+          accountId: 'a',
+          destinationAccountId: 'b',
+          destinationAmountMinor: 1800,
+        },
+        accounts,
+      ),
+    ).toBeNull()
+  })
+
+  it('rejects a cross-currency transfer with a zero or missing destination amount', () => {
+    expect(
+      validateTransactionInput(
+        {
+          type: 'TRANSFER',
+          amountMinor: 1000,
+          title: 'x',
+          accountId: 'a',
+          destinationAccountId: 'b',
+          destinationAmountMinor: 0,
+        },
+        accounts,
+      ),
+    ).toBeTruthy()
+  })
 })
 
 describe('bill recurrence', () => {
   it('advances monthly, clamping short months', () => {
     expect(
-      advanceDueDate('2026-01-31T00:00:00.000Z', 'MONTHLY').slice(0, 10),
+      advanceDueDate('2026-01-31T00:00:00.000Z', 'MONTHLY')!.slice(0, 10),
     ).toBe('2026-02-28')
     expect(
-      advanceDueDate('2026-01-15T00:00:00.000Z', 'MONTHLY').slice(0, 10),
+      advanceDueDate('2026-01-15T00:00:00.000Z', 'MONTHLY')!.slice(0, 10),
     ).toBe('2026-02-15')
   })
   it('advances yearly', () => {
     expect(
-      advanceDueDate('2026-01-15T00:00:00.000Z', 'YEARLY').slice(0, 10),
+      advanceDueDate('2026-01-15T00:00:00.000Z', 'YEARLY')!.slice(0, 10),
     ).toBe('2027-01-15')
   })
   it('periodKey dedupes an occurrence', () => {
@@ -167,6 +212,50 @@ describe('bill recurrence', () => {
     expect(billPayableFrom('2026-10-01T00:00:00.000Z').slice(0, 10)).toBe(
       '2026-09-24',
     )
+  })
+
+  it('advanceDueDate for SCHEDULED finds the earliest later date, or null once exhausted', () => {
+    expect(
+      advanceDueDate('2026-09-15T00:00:00.000Z', 'SCHEDULED', [
+        '2026-09-15T00:00:00.000Z',
+        '2026-11-03T00:00:00.000Z',
+        '2027-01-20T00:00:00.000Z',
+      ]),
+    ).toBe('2026-11-03T00:00:00.000Z')
+    // Nothing left after the current one.
+    expect(
+      advanceDueDate('2027-01-20T00:00:00.000Z', 'SCHEDULED', [
+        '2027-01-20T00:00:00.000Z',
+      ]),
+    ).toBeNull()
+    // No list at all.
+    expect(advanceDueDate('2026-09-15T00:00:00.000Z', 'SCHEDULED')).toBeNull()
+  })
+
+  it('advanceDueDate for NONE is always null — there is no date to advance', () => {
+    expect(advanceDueDate('2026-09-15T00:00:00.000Z', 'NONE')).toBeNull()
+  })
+
+  it('periodKey for SCHEDULED is the exact date — each one is its own occurrence', () => {
+    expect(periodKey('2026-09-15T00:00:00.000Z', 'SCHEDULED')).toBe(
+      '2026-09-15',
+    )
+    expect(periodKey('2026-11-03T00:00:00.000Z', 'SCHEDULED')).toBe(
+      '2026-11-03',
+    )
+  })
+
+  it('dueSoonBills skips a bill with no due date at all (NONE, or an exhausted SCHEDULED)', () => {
+    const now = '2026-09-11T00:00:00.000Z'
+    const rows = dueSoonBills(
+      [
+        { id: 'b1', name: 'Gas', active: true, nextDueDate: null },
+        { id: 'b2', name: 'Tuition', active: true, nextDueDate: null },
+        { id: 'b3', name: 'Wifi', active: true, nextDueDate: '2026-09-08T00:00:00.000Z' },
+      ],
+      now,
+    )
+    expect(rows.map((r) => r.billId)).toEqual(['b3'])
   })
 })
 

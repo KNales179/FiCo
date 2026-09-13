@@ -72,6 +72,8 @@ export interface Space extends SyncableEntity {
   name: string
   type: SpaceType
   ownerId: string
+  /** Cached copy of the Finance's currency, for the offline space switcher. */
+  currency?: string
 }
 
 /** No view-only role — every member is a full participant; the owner alone
@@ -140,6 +142,15 @@ export interface Transaction extends SyncableEntity {
   accountId: string
   /** Destination account — only for TRANSFER. */
   destinationAccountId?: string | null
+  /**
+   * Only meaningful for a cross-currency TRANSFER: how much actually lands
+   * in the destination account, in the destination account's own currency.
+   * Omitted (or ignored) when both accounts share a currency — the
+   * destination simply receives the same `amountMinor` that left the source.
+   */
+  destinationAmountMinor?: number | null
+  /** The rate used to compute `destinationAmountMinor` (source→destination), kept for transparency. */
+  exchangeRate?: number | null
   occurredAt: string
   /** Category name captured when the transaction was created; never rewritten (§10). */
   categoryName?: string | null
@@ -228,7 +239,12 @@ export interface PriceHistory extends BaseEntity {
 // Bills
 // ---------------------------------------------------------------------------
 
-export type BillRecurrence = 'MONTHLY' | 'YEARLY'
+/** SCHEDULED: one or more specific, irregular dates set by hand (a tuition
+ *  fee due on whatever dates the school actually sets, not a fixed
+ *  interval). NONE: no due date at all — genuinely bought whenever it runs
+ *  out (gas), tracked for history only, with no due-date-driven payability
+ *  window (§ isBillPayable in domain/bills.ts skips the window entirely). */
+export type BillRecurrence = 'MONTHLY' | 'YEARLY' | 'SCHEDULED' | 'NONE'
 export type BillType = 'FIXED' | 'VARIABLE'
 
 export interface Bill extends SyncableEntity {
@@ -237,7 +253,14 @@ export interface Bill extends SyncableEntity {
   recurrence: BillRecurrence
   billType: BillType
   expectedAmountMinor?: number | null
-  nextDueDate: string
+  /** Null for a NONE bill always, and for a SCHEDULED bill once every date
+   *  entered for it has been paid and none newer has been added yet. */
+  nextDueDate: string | null
+  /** SCHEDULED only — every still-unpaid date, including whichever one
+   *  `nextDueDate` currently points at (the earliest of these). Paying an
+   *  occurrence removes it from this list rather than computing a new date
+   *  from an interval. Ignored for every other recurrence. */
+  scheduledDates?: string[] | null
   categoryId?: string | null
   categoryName?: string | null
   paymentAccountId?: string | null

@@ -22,6 +22,8 @@ export interface RecordTransactionInput extends TransactionInput {
   /** Where this transaction came from — defaults to MANUAL. */
   sourceType?: TransactionSourceType
   sourceId?: string | null
+  /** The rate used to compute `destinationAmountMinor` (source→destination), kept for transparency. */
+  exchangeRate?: number | null
 }
 
 export interface ListTransactionsOptions {
@@ -114,6 +116,10 @@ export const recordTransaction = async (
     accountId: input.accountId,
     destinationAccountId:
       input.type === 'TRANSFER' ? input.destinationAccountId : null,
+    destinationAmountMinor:
+      input.type === 'TRANSFER' ? input.destinationAmountMinor ?? null : null,
+    exchangeRate:
+      input.type === 'TRANSFER' ? input.exchangeRate ?? null : null,
     occurredAt: input.occurredAt ?? new Date().toISOString(),
     sourceType: input.sourceType ?? 'MANUAL',
     sourceId: input.sourceId ?? null,
@@ -140,6 +146,7 @@ export interface UpdateTransactionInput {
   amountMinor?: number
   accountId?: string
   destinationAccountId?: string | null
+  destinationAmountMinor?: number | null
   categoryId?: string | null
   categoryName?: string | null
   occurredAt?: string
@@ -186,6 +193,13 @@ export const updateTransaction = async (
       patch.destinationAccountId !== undefined
         ? patch.destinationAccountId
         : existing.destinationAccountId,
+    // Falls back to whatever was already recorded so re-saving a
+    // cross-currency transfer without touching its accounts doesn't trip
+    // the "needs a destination amount" check below.
+    destinationAmountMinor:
+      patch.destinationAmountMinor !== undefined
+        ? patch.destinationAmountMinor
+        : existing.destinationAmountMinor,
   }
 
   const error = validateTransactionInput(merged, accountsById)
@@ -199,6 +213,9 @@ export const updateTransaction = async (
     ...(patch.accountId !== undefined ? { accountId: patch.accountId } : {}),
     ...(patch.destinationAccountId !== undefined
       ? { destinationAccountId: patch.destinationAccountId }
+      : {}),
+    ...(patch.destinationAmountMinor !== undefined
+      ? { destinationAmountMinor: patch.destinationAmountMinor }
       : {}),
     ...(patch.categoryId !== undefined ? { categoryId: patch.categoryId } : {}),
     ...(patch.categoryName !== undefined

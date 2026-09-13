@@ -1,6 +1,11 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useMoney } from '../../hooks/useMoney'
-import { formatMoney, parseAmountToMinor } from '../../domain/money'
+import { useSpace } from '../../hooks/useSpace'
+import {
+  SUPPORTED_CURRENCIES,
+  formatMoney,
+  parseAmountToMinor,
+} from '../../domain/money'
 import type { AccountType } from '../../types/models'
 import { Button } from '../ui'
 import { IconArchive, IconPlus, IconStar, IconTrash, IconX } from '../icons'
@@ -23,20 +28,31 @@ const AccountsCard = () => {
     removeAccount,
     makeDefaultAccount,
   } = useMoney()
+  const { activeSpace } = useSpace()
+  const spaceCurrency = activeSpace?.currency ?? 'PHP'
 
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [type, setType] = useState<AccountType>('CASH')
+  const [currency, setCurrency] = useState(spaceCurrency)
   const [opening, setOpening] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+
+  // Follows the Finance's own currency until the person picks a different
+  // one for this account — e.g. an AED account inside an otherwise-PHP
+  // family space for money that arrives from abroad.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCurrency(spaceCurrency)
+  }, [spaceCurrency])
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
 
     const openingBalanceMinor =
-      opening.trim() === '' ? 0 : parseAmountToMinor(opening)
+      opening.trim() === '' ? 0 : parseAmountToMinor(opening, currency)
     if (openingBalanceMinor === null) {
       setError('Opening balance is not a valid amount')
       return
@@ -44,10 +60,11 @@ const AccountsCard = () => {
 
     setBusy(true)
     try {
-      await addAccount({ name, type, openingBalanceMinor })
+      await addAccount({ name, type, currency, openingBalanceMinor })
       setName('')
       setOpening('')
       setType('CASH')
+      setCurrency(spaceCurrency)
       setOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add account')
@@ -171,6 +188,18 @@ const AccountsCard = () => {
               {ACCOUNT_TYPES.map((t) => (
                 <option key={t} value={t}>
                   {t.toLowerCase()}
+                </option>
+              ))}
+            </select>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="select w-auto"
+              title="Currency"
+            >
+              {SUPPORTED_CURRENCIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
                 </option>
               ))}
             </select>

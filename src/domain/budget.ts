@@ -46,7 +46,13 @@ export const projectBillsForPeriod = (
   bills: Array<
     Pick<
       Bill,
-      'id' | 'name' | 'active' | 'nextDueDate' | 'recurrence' | 'expectedAmountMinor'
+      | 'id'
+      | 'name'
+      | 'active'
+      | 'nextDueDate'
+      | 'recurrence'
+      | 'expectedAmountMinor'
+      | 'scheduledDates'
     >
   >,
   period: string,
@@ -56,12 +62,15 @@ export const projectBillsForPeriod = (
   const paidAhead: PaidAheadBill[] = []
 
   for (const bill of bills) {
-    if (!bill.active) continue
+    // NONE has no due date to project at all; a SCHEDULED bill with
+    // nothing left on its calendar (nextDueDate null) has nothing to
+    // project either until a date is actually added to it.
+    if (!bill.active || !bill.nextDueDate) continue
 
-    let cursor = bill.nextDueDate
+    let cursor: string | null = bill.nextDueDate
     // Walk forward at most two years — plenty for any recurrence this app
     // supports, and a hard stop so bad data can't loop forever.
-    for (let i = 0; i < 24; i += 1) {
+    for (let i = 0; i < 24 && cursor; i += 1) {
       const duePeriod = cursor.slice(0, 7)
       if (duePeriod === period) {
         due.push({
@@ -89,7 +98,7 @@ export const projectBillsForPeriod = (
         }
         break
       }
-      cursor = advanceDueDate(cursor, bill.recurrence)
+      cursor = advanceDueDate(cursor, bill.recurrence, bill.scheduledDates)
     }
   }
 
@@ -112,7 +121,11 @@ export const findOverdueBills = (
   recommendedAmountByBillId: Record<string, number> = {},
 ): OverdueBill[] =>
   bills
-    .filter((bill) => bill.active && bill.nextDueDate < todayIso)
+    // NONE has no due date to be "overdue" against.
+    .filter(
+      (bill): bill is typeof bill & { nextDueDate: string } =>
+        bill.active && bill.nextDueDate != null && bill.nextDueDate < todayIso,
+    )
     .map((bill) => ({
       billId: bill.id,
       name: bill.name,

@@ -7,6 +7,7 @@ import {
 
 import { ensureDeviceId } from '../features/auth/localAuth'
 import {
+  addScheduledDate as addScheduledDateFeature,
   createBill as createBillFeature,
   deleteBill as deleteBillFeature,
   deleteBillPayment as deleteBillPaymentFeature,
@@ -111,7 +112,10 @@ export const BillsProvider = ({ children }: { children: ReactNode }) => {
     },
     updateBill: async (
       id: string,
-      patch: Partial<NewBillInput> & { active?: boolean },
+      patch: Partial<Omit<NewBillInput, 'scheduledDates'>> & {
+        active?: boolean
+        scheduledDates?: string[] | null
+      },
     ) => {
       await updateBillFeature(requireCtx(), id, patch)
       await load()
@@ -134,6 +138,10 @@ export const BillsProvider = ({ children }: { children: ReactNode }) => {
       await deleteBillPaymentFeature(requireCtx(), paymentId)
       await load()
       await refreshMoney()
+    },
+    addScheduledDate: async (billId: string, dateIso: string) => {
+      await addScheduledDateFeature(requireCtx(), billId, dateIso)
+      await load()
     },
   }
 

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  SUPPORTED_CURRENCIES,
   combineDateAndTime,
+  currencySymbol,
   formatMoney,
   minorToDecimalString,
   parseAmountToMinor,
@@ -33,6 +35,23 @@ describe('formatMoney', () => {
     expect(formatMoney(125050, 'PHP')).toBe('₱1,250.50')
     expect(formatMoney(-5000, 'PHP')).toBe('-₱50.00')
     expect(formatMoney(0, 'PHP')).toBe('₱0.00')
+  })
+
+  it('formats the international currencies Fico added for multi-currency Finances', () => {
+    expect(formatMoney(180000, 'AED')).toBe('AED 1,800.00')
+    expect(formatMoney(500, 'KRW')).toBe('₩500')
+  })
+})
+
+describe('SUPPORTED_CURRENCIES', () => {
+  it('every listed currency has a real, non-empty symbol', () => {
+    for (const code of SUPPORTED_CURRENCIES) {
+      expect(currencySymbol(code).trim().length).toBeGreaterThan(0)
+    }
+  })
+
+  it('includes AED — the owner asked for it by name for cross-border transfers', () => {
+    expect(SUPPORTED_CURRENCIES).toContain('AED')
   })
 })
 

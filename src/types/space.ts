@@ -6,6 +6,8 @@ export interface SpaceSummary {
   name: string
   type: SpaceType
   ownerId: string
+  /** This Finance's currency — the default for accounts created in it. Only its owner may change it. */
+  currency: string
   role: MembershipRole
   createdAt: string
   updatedAt: string

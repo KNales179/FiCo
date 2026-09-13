@@ -35,7 +35,11 @@ export interface NewBillInput {
   name: string
   recurrence: BillRecurrence
   billType: BillType
-  nextDueDate: string
+  /** Required for MONTHLY/YEARLY, and for SCHEDULED (the earliest of
+   *  `scheduledDates`). Ignored for NONE — always stored as null. */
+  nextDueDate?: string | null
+  /** SCHEDULED only — one or more specific dates, in any order. */
+  scheduledDates?: string[]
   expectedAmountMinor?: number | null
   categoryId?: string | null
   categoryName?: string | null
@@ -76,13 +80,29 @@ export const createBill = async (
   ctx: MutationContext,
   input: NewBillInput,
 ): Promise<Bill> => {
+  const scheduledDates =
+    input.recurrence === 'SCHEDULED'
+      ? [...(input.scheduledDates ?? [])].sort()
+      : null
+  const nextDueDate =
+    input.recurrence === 'NONE'
+      ? null
+      : input.recurrence === 'SCHEDULED'
+        ? scheduledDates![0] ?? null
+        : input.nextDueDate ?? null
+
+  if (input.recurrence !== 'NONE' && !nextDueDate) {
+    throw new Error('Pick at least one date')
+  }
+
   const bill = await billRepository.create({
     spaceId: ctx.spaceId,
     name: input.name.trim(),
     recurrence: input.recurrence,
     billType: input.billType,
     expectedAmountMinor: input.expectedAmountMinor ?? null,
-    nextDueDate: input.nextDueDate,
+    nextDueDate,
+    scheduledDates,
     categoryId: input.categoryId ?? null,
     categoryName: input.categoryName ?? null,
     paymentAccountId: input.paymentAccountId ?? null,
@@ -108,9 +128,11 @@ export const updateBill = async (
       | 'billType'
       | 'expectedAmountMinor'
       | 'nextDueDate'
+      | 'scheduledDates'
       | 'categoryId'
       | 'categoryName'
       | 'paymentAccountId'
+      | 'tracksElectricity'
       | 'active'
     >
   >,
@@ -126,6 +148,31 @@ export const updateBill = async (
   })
   await enqueueMutation(ctx, 'bill', id, 'UPDATE', bill)
   return bill
+}
+
+/**
+ * Adds one more date to a SCHEDULED bill's calendar — for adding next
+ * month's (or any future) tuition date, say, whenever it's actually known,
+ * rather than requiring every date to be entered up front. If nothing was
+ * scheduled at all (an exhausted list, or a freshly-created bill with none
+ * yet), this becomes the bill's `nextDueDate`.
+ */
+export const addScheduledDate = async (
+  ctx: MutationContext,
+  billId: string,
+  dateIso: string,
+): Promise<Bill> => {
+  const bill = await billRepository.get(billId)
+  if (!bill || bill.deletedAt) throw new Error('Bill not found')
+  if (bill.recurrence !== 'SCHEDULED') {
+    throw new Error('Only a scheduled bill can have dates added to it')
+  }
+
+  const dates = [...(bill.scheduledDates ?? []), dateIso].sort()
+  return updateBill(ctx, billId, {
+    scheduledDates: dates,
+    nextDueDate: dates[0],
+  })
 }
 
 export const deleteBill = async (
@@ -172,21 +219,32 @@ export const payBill = async (
     throw new Error('Bill not found')
   }
 
-  const key = periodKey(bill.nextDueDate, bill.recurrence)
-  const priorPayments = await billPaymentRepository.listByBill(billId)
-  if (priorPayments.some((p) => p.periodKey === key && !p.deletedAt)) {
-    throw new Error('This bill period has already been paid')
-  }
-
   const paidAt = input.paidAt ?? new Date().toISOString()
+  const isNone = bill.recurrence === 'NONE'
 
-  // Paying far ahead of schedule is what made an already-paid bill look
-  // unpaid until someone checked the date and history (owner feedback) —
-  // so this is refused, unless the bill is already overdue.
-  if (!isBillPayable(bill.nextDueDate, paidAt)) {
-    throw new Error(
-      `Not payable yet — this bill can be paid starting ${billPayableFrom(bill.nextDueDate).slice(0, 10)}`,
-    )
+  // NONE (bought whenever it runs out — gas) has no due date and no
+  // periods to dedupe against at all: every payment is its own occurrence,
+  // so its "period key" is just the moment it happened, always unique.
+  const key = isNone ? paidAt : periodKey(bill.nextDueDate!, bill.recurrence)
+
+  if (!isNone) {
+    const priorPayments = await billPaymentRepository.listByBill(billId)
+    if (priorPayments.some((p) => p.periodKey === key && !p.deletedAt)) {
+      throw new Error('This bill period has already been paid')
+    }
+
+    // Paying far ahead of schedule is what made an already-paid bill look
+    // unpaid until someone checked the date and history (owner feedback) —
+    // so this is refused, unless the bill is already overdue. NONE has no
+    // date to gate against, so it's always payable, any time.
+    if (!bill.nextDueDate) {
+      throw new Error('Nothing scheduled to pay yet — add a date first')
+    }
+    if (!isBillPayable(bill.nextDueDate, paidAt)) {
+      throw new Error(
+        `Not payable yet — this bill can be paid starting ${billPayableFrom(bill.nextDueDate).slice(0, 10)}`,
+      )
+    }
   }
 
   const txn = await recordTransaction(ctx, {
@@ -241,7 +299,24 @@ export const payBill = async (
   }
 
   const updatedBill = await billRepository.update(billId, {
-    nextDueDate: advanceDueDate(bill.nextDueDate, bill.recurrence),
+    ...(isNone
+      ? {}
+      : {
+          nextDueDate: advanceDueDate(
+            bill.nextDueDate!,
+            bill.recurrence,
+            bill.scheduledDates,
+          ),
+          // SCHEDULED: the just-paid date comes off the pending list —
+          // advanceDueDate above already looked past it for the next one.
+          ...(bill.recurrence === 'SCHEDULED'
+            ? {
+                scheduledDates: (bill.scheduledDates ?? []).filter(
+                  (d) => d !== bill.nextDueDate,
+                ),
+              }
+            : {}),
+        }),
     ...(bill.billType === 'FIXED'
       ? { expectedAmountMinor: input.amountMinor }
       : {}),
@@ -277,11 +352,39 @@ export const deleteBillPayment = async (
     throw new Error('Bill not found')
   }
 
-  const rolledBackDueDate = retreatDueDate(bill.nextDueDate, bill.recurrence)
-  if (periodKey(rolledBackDueDate, bill.recurrence) !== payment.periodKey) {
-    throw new Error(
-      'Only the most recent payment on this bill can be undone',
+  // NONE has no due-date cursor for a payment to roll back at all — every
+  // payment is independent, so any one of them can be removed freely.
+  let dueDatePatch: Pick<Bill, 'nextDueDate' | 'scheduledDates'> | null = null
+
+  if (bill.recurrence === 'SCHEDULED') {
+    // No date-sequence math to verify against here — a consumed date is
+    // gone from `scheduledDates` once paid, so "most recent" is judged by
+    // payment order instead: this must be the latest one recorded.
+    const siblings = (await billPaymentRepository.listByBill(bill.id)).filter(
+      (p) => !p.deletedAt,
     )
+    const latest = siblings.sort((a, b) => b.paidAt.localeCompare(a.paidAt))[0]
+    if (!latest || latest.id !== payment.id) {
+      throw new Error('Only the most recent payment on this bill can be undone')
+    }
+    // `periodKey` for SCHEDULED is only the date portion ("2026-09-15"),
+    // not the full ISO string `scheduledDates`/`nextDueDate` actually
+    // hold — every scheduled date in this app is canonically midnight
+    // UTC (`${date}T00:00:00.000Z`, both here and in Bills.tsx), so
+    // reconstructing it this way recovers the exact original value.
+    const restoredDate = `${payment.periodKey}T00:00:00.000Z`
+    dueDatePatch = {
+      nextDueDate: restoredDate,
+      scheduledDates: [...(bill.scheduledDates ?? []), restoredDate].sort(),
+    }
+  } else if (bill.recurrence !== 'NONE') {
+    const rolledBackDueDate = retreatDueDate(bill.nextDueDate!, bill.recurrence)
+    if (periodKey(rolledBackDueDate, bill.recurrence) !== payment.periodKey) {
+      throw new Error(
+        'Only the most recent payment on this bill can be undone',
+      )
+    }
+    dueDatePatch = { nextDueDate: rolledBackDueDate, scheduledDates: null }
   }
 
   if (payment.transactionId) {
@@ -305,7 +408,7 @@ export const deleteBillPayment = async (
   await enqueueMutation(ctx, 'billPayment', paymentId, 'DELETE', { id: paymentId })
 
   const updatedBill = await billRepository.update(bill.id, {
-    nextDueDate: rolledBackDueDate,
+    ...(dueDatePatch ?? {}),
     syncStatus: 'PENDING',
   })
   await enqueueMutation(ctx, 'bill', bill.id, 'UPDATE', updatedBill)

@@ -6,6 +6,7 @@ import {
 } from '../services/feedbackService'
 import { PageHeader, Card, Button, Alert, SkeletonLines } from '../components/ui'
 import { IconCheck, IconRotateCcw } from '../components/icons'
+import { markSeenNow } from '../features/seen'
 
 const formatDate = (iso: string) => new Date(iso).toLocaleString()
 
@@ -28,6 +29,14 @@ const AdminFeedback = () => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
   }, [load])
+
+  // Clears the "new suggestion" nav badge — the same 'admin' pseudo-space
+  // key AppLayout's useUnseenBadge reads from for this area.
+  useEffect(() => {
+    return () => {
+      void markSeenNow('feedback', 'admin')
+    }
+  }, [])
 
   const toggle = async (row: FeedbackEntry) => {
     setBusyId(row.id)

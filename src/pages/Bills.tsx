@@ -11,14 +11,31 @@ import { PageHeader, Button, Input, Select, Alert, SkeletonCard } from '../compo
 import {
   IconCheck,
   IconChevronDown,
+  IconEdit,
   IconPlus,
   IconRotateCcw,
   IconTrash,
+  IconX,
 } from '../components/icons'
 import CategoryPicker from '../components/money/CategoryPicker'
 import type { Bill, BillPayment, BillRecurrence, BillType } from '../types/models'
 
 const SEEN_AREA = 'bills'
+
+/** Recurrence-aware — NONE never has a date, and a SCHEDULED bill can
+ *  genuinely have nothing lined up until someone adds a date to it. */
+const dueDateLabel = (bill: Bill): string => {
+  if (bill.recurrence === 'NONE') return 'no fixed due date'
+  if (!bill.nextDueDate) return 'nothing scheduled yet'
+  return new Date(bill.nextDueDate).toLocaleDateString()
+}
+
+const RECURRENCE_LABEL: Record<BillRecurrence, string> = {
+  MONTHLY: 'monthly',
+  YEARLY: 'yearly',
+  SCHEDULED: 'scheduled',
+  NONE: 'no fixed schedule',
+}
 
 /**
  * The most recent payment on a bill, shown inline right on its row — not
@@ -105,6 +122,300 @@ const BillCategoryPicker = ({ bill }: { bill: Bill }) => {
   )
 }
 
+/** SCHEDULED only — appends one more date to a bill's calendar whenever
+ *  it's actually known (next semester's tuition date isn't set until the
+ *  school sets it), instead of requiring every date up front. */
+const AddScheduledDate = ({ bill }: { bill: Bill }) => {
+  const { addScheduledDate } = useBills()
+  const [open, setOpen] = useState(false)
+  const [date, setDate] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const pendingCount = bill.scheduledDates?.length ?? 0
+
+  if (!open) {
+    return (
+      <Button size="sm" onClick={() => setOpen(true)}>
+        <IconPlus size={13} />
+        Date
+        {pendingCount > 0 && (
+          <span className="chip">{pendingCount} pending</span>
+        )}
+      </Button>
+    )
+  }
+
+  const submit = async () => {
+    if (!date) return
+    setBusy(true)
+    setError('')
+    try {
+      await addScheduledDate(bill.id, new Date(`${date}T00:00:00.000Z`).toISOString())
+      setDate('')
+      setOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not add that date')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <span className="flex items-center gap-1">
+      <Input
+        type="date"
+        value={date}
+        onChange={(e) => setDate(e.target.value)}
+        className="w-auto py-1 text-xs"
+      />
+      <Button size="sm" variant="primary" onClick={() => void submit()} disabled={busy || !date}>
+        {busy ? 'Adding…' : 'Add'}
+      </Button>
+      <Button size="sm" onClick={() => setOpen(false)}>
+        <IconX size={13} />
+      </Button>
+      {error && <span className="text-xs text-danger">{error}</span>}
+    </span>
+  )
+}
+
+/**
+ * Full edit of an existing bill — name, price type, and the recurrence
+ * itself together with whatever dates that recurrence needs (owner
+ * request: "add a function to edit bills"). Recurrence and its dates are
+ * edited as one unit since switching, say, MONTHLY to SCHEDULED changes
+ * what "the date" even means for this bill.
+ */
+const EditBillForm = ({
+  bill,
+  onDone,
+}: {
+  bill: Bill
+  onDone: () => void
+}) => {
+  const { updateBill } = useBills()
+  const { categories } = useMoney()
+
+  const [name, setName] = useState(bill.name)
+  const [recurrence, setRecurrence] = useState<BillRecurrence>(bill.recurrence)
+  const [billType, setBillType] = useState<BillType>(bill.billType)
+  const [expected, setExpected] = useState(
+    bill.expectedAmountMinor != null
+      ? String(bill.expectedAmountMinor / 100)
+      : '',
+  )
+  const [dueDate, setDueDate] = useState(
+    bill.recurrence !== 'SCHEDULED' && bill.nextDueDate
+      ? bill.nextDueDate.slice(0, 10)
+      : '',
+  )
+  // SCHEDULED only — the bill's current dates, editable here (add or
+  // remove), not just appended to one at a time like the row's own
+  // "+ Date" button.
+  const [scheduledDraft, setScheduledDraft] = useState<string[]>(
+    bill.scheduledDates ?? [],
+  )
+  const [scheduledInput, setScheduledInput] = useState('')
+  const [tracksElectricity, setTracksElectricity] = useState(
+    bill.tracksElectricity,
+  )
+  const [categoryId, setCategoryId] = useState(bill.categoryId ?? '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const addDraftDate = () => {
+    if (!scheduledInput) return
+    const iso = new Date(`${scheduledInput}T00:00:00.000Z`).toISOString()
+    setScheduledDraft((dates) =>
+      dates.includes(iso) ? dates : [...dates, iso].sort(),
+    )
+    setScheduledInput('')
+  }
+
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setError('')
+
+    if (!name.trim()) {
+      setError('Give the bill a name')
+      return
+    }
+
+    let expectedMinor: number | null = null
+    if (expected.trim() !== '') {
+      expectedMinor = parseAmountToMinor(expected)
+      if (expectedMinor === null) {
+        setError('Expected amount is not valid')
+        return
+      }
+    }
+
+    let nextDueDate: string | null = null
+    let scheduledDates: string[] | null = null
+
+    if (recurrence === 'SCHEDULED') {
+      if (scheduledDraft.length === 0) {
+        setError('Add at least one date')
+        return
+      }
+      scheduledDates = [...scheduledDraft].sort()
+      nextDueDate = scheduledDates[0]
+    } else if (recurrence !== 'NONE') {
+      if (!dueDate) {
+        setError('Pick the next due date')
+        return
+      }
+      nextDueDate = new Date(`${dueDate}T00:00:00.000Z`).toISOString()
+    }
+
+    setBusy(true)
+    try {
+      await updateBill(bill.id, {
+        name: name.trim(),
+        recurrence,
+        billType,
+        expectedAmountMinor: expectedMinor,
+        nextDueDate,
+        scheduledDates,
+        tracksElectricity,
+        categoryId: categoryId || null,
+        categoryName: categoryId
+          ? categories.find((c) => c.id === categoryId)?.name ?? null
+          : null,
+      })
+      onDone()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save changes')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form
+      onSubmit={submit}
+      className="mt-2 space-y-3 rounded-lg border border-line bg-panel-2 p-3"
+    >
+      <div className="flex flex-wrap gap-2 text-sm">
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Name"
+          required
+          maxLength={80}
+          className="min-w-[10rem] flex-1"
+        />
+        <Select
+          value={recurrence}
+          onChange={(e) => setRecurrence(e.target.value as BillRecurrence)}
+          className="w-auto"
+        >
+          <option value="MONTHLY">monthly</option>
+          <option value="YEARLY">yearly</option>
+          <option value="SCHEDULED">scheduled (specific dates)</option>
+          <option value="NONE">no fixed date</option>
+        </Select>
+        <Select
+          value={billType}
+          onChange={(e) => setBillType(e.target.value as BillType)}
+          className="w-auto"
+        >
+          <option value="FIXED">fixed</option>
+          <option value="VARIABLE">variable</option>
+        </Select>
+        <Input
+          value={expected}
+          onChange={(e) => setExpected(e.target.value)}
+          inputMode="decimal"
+          placeholder="Expected amount"
+          className="w-32"
+        />
+        {(recurrence === 'MONTHLY' || recurrence === 'YEARLY') && (
+          <Input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className="w-auto"
+          />
+        )}
+        <CategoryPicker
+          kind="EXPENSE"
+          value={categoryId}
+          onChange={setCategoryId}
+          className="select w-auto"
+        />
+        <label className="flex items-center gap-1.5 text-sm text-muted">
+          <input
+            type="checkbox"
+            checked={tracksElectricity}
+            onChange={(e) => setTracksElectricity(e.target.checked)}
+          />
+          Track kWh
+        </label>
+      </div>
+
+      {recurrence === 'SCHEDULED' && (
+        <div className="border-t border-line pt-3">
+          <p className="field-label">Dates</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              type="date"
+              value={scheduledInput}
+              onChange={(e) => setScheduledInput(e.target.value)}
+              className="w-auto"
+            />
+            <Button type="button" size="sm" onClick={addDraftDate}>
+              <IconPlus size={13} />
+              Add date
+            </Button>
+          </div>
+          {scheduledDraft.length > 0 && (
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {scheduledDraft.map((d) => (
+                <li key={d} className="chip">
+                  {new Date(d).toLocaleDateString()}
+                  <button
+                    type="button"
+                    aria-label="Remove date"
+                    onClick={() =>
+                      setScheduledDraft((dates) => dates.filter((x) => x !== d))
+                    }
+                    className="ml-1 text-muted hover:text-danger"
+                  >
+                    <IconX size={11} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {recurrence === 'NONE' && (
+        <p className="border-t border-line pt-3 text-xs text-muted">
+          No due date needed — this bill can be paid any time.
+        </p>
+      )}
+
+      {error && (
+        <p role="alert" className="text-xs text-danger">
+          {error}
+        </p>
+      )}
+
+      <div className="flex items-center gap-2">
+        <Button type="submit" variant="primary" size="sm" disabled={busy}>
+          {busy ? 'Saving…' : 'Save changes'}
+        </Button>
+        <Button type="button" size="sm" onClick={onDone}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  )
+}
+
 const PayRow = ({
   bill,
   lastSeenAt,
@@ -131,8 +442,12 @@ const PayRow = ({
   // Paying far ahead of schedule is what made an already-paid bill look
   // unpaid until someone checked the date and history (owner feedback) —
   // so the pay form itself doesn't show up until it's actually due soon,
-  // or already overdue.
-  const payable = isBillPayable(bill.nextDueDate, new Date().toISOString())
+  // or already overdue. NONE (bought whenever it runs out) has no date to
+  // gate against, so it's always payable.
+  const payable =
+    bill.recurrence === 'NONE' ||
+    (bill.nextDueDate != null &&
+      isBillPayable(bill.nextDueDate, new Date().toISOString()))
 
   const submit = async () => {
     setError('')
@@ -165,8 +480,8 @@ const PayRow = ({
         <span className="min-w-[7rem] flex-1">
           {bill.name}
           <span className="ml-2 text-xs text-muted">
-            due {new Date(bill.nextDueDate).toLocaleDateString()} ·{' '}
-            {bill.recurrence.toLowerCase()} · {bill.billType.toLowerCase()}
+            {bill.recurrence === 'NONE' ? dueDateLabel(bill) : `due ${dueDateLabel(bill)}`} ·{' '}
+            {RECURRENCE_LABEL[bill.recurrence]} · {bill.billType.toLowerCase()}
           </span>
         </span>
         {payable ? (
@@ -211,7 +526,9 @@ const PayRow = ({
           </>
         ) : (
           <span className="text-xs text-muted">
-            Payable starting {new Date(billPayableFrom(bill.nextDueDate)).toLocaleDateString()}
+            {bill.nextDueDate
+              ? `Payable starting ${new Date(billPayableFrom(bill.nextDueDate)).toLocaleDateString()}`
+              : 'Nothing scheduled — add a date below'}
           </span>
         )}
       </div>
@@ -321,6 +638,7 @@ const Bills = () => {
   const [electricityError, setElectricityError] = useState('')
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const [lastSeenAt, setLastSeenAt] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   // "Seen" cursor for this section (Roadmap feedback: a bill someone else
   // added, or a payment someone else made, stays highlighted until you
@@ -359,6 +677,9 @@ const Bills = () => {
   const [billType, setBillType] = useState<BillType>('FIXED')
   const [expected, setExpected] = useState('')
   const [dueDate, setDueDate] = useState('')
+  // SCHEDULED only — one or more specific dates, built up before submit.
+  const [scheduledDraft, setScheduledDraft] = useState<string[]>([])
+  const [scheduledInput, setScheduledInput] = useState('')
   const [tracksElectricity, setTracksElectricity] = useState(false)
   const [categoryId, setCategoryId] = useState(
     () => categories.find((c) => c.name === 'Bills')?.id ?? '',
@@ -371,33 +692,61 @@ const Bills = () => {
     return d.toISOString()
   }, [])
 
+  // NONE has no date to compare against at all — always shown here rather
+  // than making "pay the gas bill" require digging into "All bills" every
+  // time. A SCHEDULED bill with nothing left on its calendar (nextDueDate
+  // null) has genuinely nothing "upcoming" and is correctly left out.
   const upcoming = bills.filter(
-    (b) => b.active && b.nextDueDate <= horizon,
+    (b) =>
+      b.active &&
+      (b.recurrence === 'NONE' ||
+        (b.nextDueDate != null && b.nextDueDate <= horizon)),
   )
   const active = bills.filter((b) => b.active)
+
+  const addScheduledDraftDate = () => {
+    if (!scheduledInput) return
+    const iso = new Date(`${scheduledInput}T00:00:00.000Z`).toISOString()
+    setScheduledDraft((dates) =>
+      dates.includes(iso) ? dates : [...dates, iso].sort(),
+    )
+    setScheduledInput('')
+  }
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setFormError('')
     const expectedMinor =
       expected.trim() === '' ? null : parseAmountToMinor(expected)
-    if (expectedMinor === undefined) {
+    if (expected.trim() !== '' && expectedMinor === null) {
       setFormError('Expected amount is not valid')
       return
     }
-    const due = dueDate
-      ? new Date(dueDate + 'T00:00:00.000Z').toISOString()
-      : null
-    if (!due) {
-      setFormError('Pick the next due date')
-      return
+
+    let nextDueDate: string | null = null
+    let scheduledDates: string[] | undefined
+
+    if (recurrence === 'SCHEDULED') {
+      if (scheduledDraft.length === 0) {
+        setFormError('Add at least one date')
+        return
+      }
+      scheduledDates = scheduledDraft
+    } else if (recurrence !== 'NONE') {
+      if (!dueDate) {
+        setFormError('Pick the next due date')
+        return
+      }
+      nextDueDate = new Date(`${dueDate}T00:00:00.000Z`).toISOString()
     }
+
     try {
       await createBill({
         name,
         recurrence,
         billType,
-        nextDueDate: due,
+        nextDueDate,
+        scheduledDates,
         expectedAmountMinor: expectedMinor,
         tracksElectricity,
         categoryId: categoryId || null,
@@ -408,6 +757,8 @@ const Bills = () => {
       setName('')
       setExpected('')
       setDueDate('')
+      setScheduledDraft([])
+      setScheduledInput('')
       setTracksElectricity(false)
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Could not create bill')
@@ -468,13 +819,32 @@ const Bills = () => {
                     )}
                     {bill.name}
                     <span className="ml-2 text-xs text-muted">
-                      next {new Date(bill.nextDueDate).toLocaleDateString()}
+                      {bill.recurrence === 'NONE' || !bill.nextDueDate
+                        ? dueDateLabel(bill)
+                        : `next ${dueDateLabel(bill)}`}
                       {bill.expectedAmountMinor != null &&
                         ` · ~${formatMoney(bill.expectedAmountMinor)}`}
                     </span>
                   </span>
                   <span className="flex items-center gap-2">
+                    {canEdit && bill.recurrence === 'SCHEDULED' && (
+                      <AddScheduledDate bill={bill} />
+                    )}
                     {canEdit && <BillCategoryPicker bill={bill} />}
+                    {canEdit && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        aria-label="Edit bill"
+                        title="Edit bill"
+                        onClick={() =>
+                          setEditingId((id) => (id === bill.id ? null : bill.id))
+                        }
+                      >
+                        <IconEdit size={14} />
+                      </Button>
+                    )}
                     {canEdit && (
                       <Button
                         variant="ghost"
@@ -497,8 +867,17 @@ const Bills = () => {
                     )}
                   </span>
                 </div>
-                <LastPaid bill={bill} lastSeenAt={lastSeenAt} currentUserId={user?.id} />
-                <History billId={bill.id} canEdit={canEdit} />
+                {editingId === bill.id ? (
+                  <EditBillForm
+                    bill={bill}
+                    onDone={() => setEditingId(null)}
+                  />
+                ) : (
+                  <>
+                    <LastPaid bill={bill} lastSeenAt={lastSeenAt} currentUserId={user?.id} />
+                    <History billId={bill.id} canEdit={canEdit} />
+                  </>
+                )}
               </li>
             )
           })}
@@ -521,7 +900,9 @@ const Bills = () => {
                 <span>
                   {bill.name}
                   <span className="ml-2 text-xs text-muted">
-                    was due {new Date(bill.nextDueDate).toLocaleDateString()}
+                    {bill.recurrence === 'NONE' || !bill.nextDueDate
+                      ? dueDateLabel(bill)
+                      : `was due ${dueDateLabel(bill)}`}
                   </span>
                 </span>
                 <Button
@@ -619,13 +1000,16 @@ const Bills = () => {
             />
             <Select
               value={recurrence}
-              onChange={(e) =>
+              onChange={(e) => {
                 setRecurrence(e.target.value as BillRecurrence)
-              }
+                setFormError('')
+              }}
               className="w-auto"
             >
               <option value="MONTHLY">monthly</option>
               <option value="YEARLY">yearly</option>
+              <option value="SCHEDULED">scheduled (specific dates)</option>
+              <option value="NONE">no fixed date</option>
             </Select>
             <Select
               value={billType}
@@ -642,12 +1026,14 @@ const Bills = () => {
               placeholder="Expected amount"
               className="w-32"
             />
-            <Input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-auto"
-            />
+            {(recurrence === 'MONTHLY' || recurrence === 'YEARLY') && (
+              <Input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-auto"
+              />
+            )}
             <CategoryPicker
               kind="EXPENSE"
               value={categoryId}
@@ -667,6 +1053,53 @@ const Bills = () => {
               Add bill
             </Button>
           </div>
+
+          {recurrence === 'SCHEDULED' && (
+            <div className="mt-3 border-t border-line pt-3">
+              <p className="field-label">
+                Dates (e.g. this term's tuition — add as many as you already know)
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  type="date"
+                  value={scheduledInput}
+                  onChange={(e) => setScheduledInput(e.target.value)}
+                  className="w-auto"
+                />
+                <Button type="button" size="sm" onClick={addScheduledDraftDate}>
+                  <IconPlus size={13} />
+                  Add date
+                </Button>
+              </div>
+              {scheduledDraft.length > 0 && (
+                <ul className="mt-2 flex flex-wrap gap-1.5">
+                  {scheduledDraft.map((d) => (
+                    <li key={d} className="chip">
+                      {new Date(d).toLocaleDateString()}
+                      <button
+                        type="button"
+                        aria-label="Remove date"
+                        onClick={() =>
+                          setScheduledDraft((dates) => dates.filter((x) => x !== d))
+                        }
+                        className="ml-1 text-muted hover:text-danger"
+                      >
+                        <IconX size={11} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {recurrence === 'NONE' && (
+            <p className="mt-3 border-t border-line pt-3 text-xs text-muted">
+              No due date needed — this bill can be paid any time, with no
+              payability window. You'll still get a running payment history.
+            </p>
+          )}
+
           {formError && (
             <p role="alert" className="mt-2 text-xs text-danger">
               {formError}

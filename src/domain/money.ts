@@ -16,11 +16,39 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: '€',
   GBP: '£',
   JPY: '¥',
+  AED: 'AED ',
+  SAR: 'SAR ',
+  SGD: 'S$',
+  HKD: 'HK$',
+  AUD: 'A$',
+  CAD: 'C$',
+  CNY: 'CN¥',
+  INR: '₹',
+  KRW: '₩',
 }
 
-/** Minor units per major unit. JPY has none; most currencies have 100. */
+/** Every currency Fico's pickers offer, in the order they're listed. */
+export const SUPPORTED_CURRENCIES: string[] = [
+  'PHP',
+  'USD',
+  'EUR',
+  'GBP',
+  'JPY',
+  'AED',
+  'SAR',
+  'SGD',
+  'HKD',
+  'AUD',
+  'CAD',
+  'CNY',
+  'INR',
+  'KRW',
+]
+
+/** Minor units per major unit. JPY/KRW have none; most currencies have 100. */
 const MINOR_PER_MAJOR: Record<string, number> = {
   JPY: 1,
+  KRW: 1,
 }
 
 export const minorPerMajor = (currency: string): number =>

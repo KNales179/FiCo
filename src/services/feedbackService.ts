@@ -9,6 +9,7 @@ export interface FeedbackEntry {
   message: string
   status: FeedbackStatus
   createdAt: string
+  createdBy: string | null
   reporter: {
     username: string
     displayName: string | null

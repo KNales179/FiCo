@@ -67,6 +67,44 @@ describe('money engine (Roadmap Phase 6 integrity)', () => {
     expect(totalsByCurrency.PHP).toBe(1050000)
   })
 
+  it('a cross-currency transfer credits the converted amount, in the destination currency', async () => {
+    const aed = await createAccount(c, {
+      name: "Mom's AED account",
+      type: 'BANK',
+      currency: 'AED',
+      openingBalanceMinor: 500000, // AED 5,000.00
+    })
+    const php = await createAccount(c, {
+      name: 'My PHP account',
+      type: 'BANK',
+      currency: 'PHP',
+      openingBalanceMinor: 0,
+    })
+
+    await recordTransaction(c, {
+      type: 'TRANSFER',
+      amountMinor: 100000, // AED 1,000.00 sent
+      title: 'Mom sent money',
+      accountId: aed.id,
+      destinationAccountId: php.id,
+      destinationAmountMinor: 1800000, // PHP 18,000.00 landed
+      exchangeRate: 18,
+    })
+
+    const { accounts, totalsByCurrency } = await computeSpaceBalances(
+      c.spaceId,
+    )
+    const byName = Object.fromEntries(
+      accounts.map((a) => [a.name, a.balanceMinor]),
+    )
+
+    expect(byName["Mom's AED account"]).toBe(400000) // 5,000 − 1,000 AED
+    expect(byName['My PHP account']).toBe(1800000) // +18,000 PHP, not +1,000
+    // Each currency keeps its own total — a transfer never blends them.
+    expect(totalsByCurrency.AED).toBe(400000)
+    expect(totalsByCurrency.PHP).toBe(1800000)
+  })
+
   it('a transfer is not counted as an expense', async () => {
     const a = await createAccount(c, { name: 'A', type: 'CASH' })
     const b = await createAccount(c, { name: 'B', type: 'BANK' })

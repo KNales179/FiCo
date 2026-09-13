@@ -95,6 +95,37 @@ describe('projectBillsForPeriod', () => {
       { billId: 'b1', name: 'Bill', nextDueDate: '2026-11-05T00:00:00.000Z' },
     ])
   })
+
+  it('never crashes on a bill with no due date at all (NONE, or an exhausted SCHEDULED) — just contributes nothing', () => {
+    const { due, paidAhead } = projectBillsForPeriod(
+      [
+        bill({ recurrence: 'NONE', nextDueDate: null }),
+        bill({ id: 'b2', recurrence: 'SCHEDULED', nextDueDate: null }),
+      ],
+      '2026-10',
+    )
+    expect(due).toHaveLength(0)
+    expect(paidAhead).toHaveLength(0)
+  })
+
+  it('walks a SCHEDULED bill forward through its own specific dates, not a fixed interval', () => {
+    const { due } = projectBillsForPeriod(
+      [
+        bill({
+          recurrence: 'SCHEDULED',
+          nextDueDate: '2026-09-15T00:00:00.000Z',
+          scheduledDates: [
+            '2026-09-15T00:00:00.000Z',
+            '2026-11-03T00:00:00.000Z',
+          ],
+        }),
+      ],
+      '2026-11',
+    )
+    expect(due).toEqual([
+      { billId: 'b1', name: 'Bill', amountMinor: 10000, dueDate: '2026-11-03T00:00:00.000Z' },
+    ])
+  })
 })
 
 describe('findOverdueBills', () => {
@@ -115,6 +146,15 @@ describe('findOverdueBills', () => {
     expect(
       findOverdueBills(
         [bill({ active: false, nextDueDate: '2026-09-01T00:00:00.000Z' })],
+        '2026-10-05T00:00:00.000Z',
+      ),
+    ).toHaveLength(0)
+  })
+
+  it('a bill with no due date at all is never "overdue" — there is nothing to be late for', () => {
+    expect(
+      findOverdueBills(
+        [bill({ recurrence: 'NONE', nextDueDate: null })],
         '2026-10-05T00:00:00.000Z',
       ),
     ).toHaveLength(0)
