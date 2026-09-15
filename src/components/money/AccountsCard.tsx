@@ -3,6 +3,7 @@ import { useMoney } from '../../hooks/useMoney'
 import { useSpace } from '../../hooks/useSpace'
 import {
   SUPPORTED_CURRENCIES,
+  currencyName,
   formatMoney,
   parseAmountToMinor,
 } from '../../domain/money'
@@ -195,10 +196,10 @@ const AccountsCard = () => {
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
               className="select w-auto"
-              title="Currency"
+              title={currencyName(currency)}
             >
               {SUPPORTED_CURRENCIES.map((c) => (
-                <option key={c} value={c}>
+                <option key={c} value={c} title={currencyName(c)}>
                   {c}
                 </option>
               ))}

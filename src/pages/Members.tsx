@@ -14,7 +14,7 @@ import {
   type PendingInvitation,
 } from '../services/spaceService'
 import { isNetworkError } from '../lib/api'
-import { SUPPORTED_CURRENCIES } from '../domain/money'
+import { SUPPORTED_CURRENCIES, currencyName } from '../domain/money'
 import type { SpaceMember, SpaceSummary } from '../types/space'
 import { PageHeader, Card, Button, Input, Alert, EmptyState, SkeletonRow } from '../components/ui'
 import { IconAward, IconLogOut, IconUserPlus, IconX } from '../components/icons'
@@ -77,9 +77,10 @@ const CurrencyCard = ({
           onChange={(e) => setCurrency(e.target.value)}
           disabled={!isOwner}
           className="select w-auto"
+          title={currencyName(currency)}
         >
           {SUPPORTED_CURRENCIES.map((c) => (
-            <option key={c} value={c}>
+            <option key={c} value={c} title={currencyName(c)}>
               {c}
             </option>
           ))}

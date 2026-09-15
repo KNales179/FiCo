@@ -45,6 +45,29 @@ export const SUPPORTED_CURRENCIES: string[] = [
   'KRW',
 ]
 
+/** The full name behind each code — a currency picker is a wall of
+ *  three-letter codes otherwise, so every one is shown with this on hover. */
+const CURRENCY_NAMES: Record<string, string> = {
+  PHP: 'Philippine Peso',
+  USD: 'US Dollar',
+  EUR: 'Euro',
+  GBP: 'British Pound',
+  JPY: 'Japanese Yen',
+  AED: 'UAE Dirham',
+  SAR: 'Saudi Riyal',
+  SGD: 'Singapore Dollar',
+  HKD: 'Hong Kong Dollar',
+  AUD: 'Australian Dollar',
+  CAD: 'Canadian Dollar',
+  CNY: 'Chinese Yuan',
+  INR: 'Indian Rupee',
+  KRW: 'South Korean Won',
+}
+
+/** The full name for a currency code, e.g. `currencyName('AED')` → "UAE Dirham". */
+export const currencyName = (currency: string): string =>
+  CURRENCY_NAMES[currency.toUpperCase()] ?? currency.toUpperCase()
+
 /** Minor units per major unit. JPY/KRW have none; most currencies have 100. */
 const MINOR_PER_MAJOR: Record<string, number> = {
   JPY: 1,

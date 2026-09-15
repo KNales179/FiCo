@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   SUPPORTED_CURRENCIES,
   combineDateAndTime,
+  currencyName,
   currencySymbol,
   formatMoney,
   minorToDecimalString,
@@ -52,6 +53,27 @@ describe('SUPPORTED_CURRENCIES', () => {
 
   it('includes AED — the owner asked for it by name for cross-border transfers', () => {
     expect(SUPPORTED_CURRENCIES).toContain('AED')
+  })
+
+  it('every listed currency has a real name — the pickers show only the code, so hovering it must say what it is', () => {
+    for (const code of SUPPORTED_CURRENCIES) {
+      const name = currencyName(code)
+      expect(name.length).toBeGreaterThan(0)
+      // A real name, not just an echo of the 3-letter code back.
+      expect(name).not.toBe(code)
+    }
+  })
+})
+
+describe('currencyName', () => {
+  it('names a few by example', () => {
+    expect(currencyName('PHP')).toBe('Philippine Peso')
+    expect(currencyName('AED')).toBe('UAE Dirham')
+    expect(currencyName('aed')).toBe('UAE Dirham')
+  })
+
+  it('falls back to the code itself for an unknown currency', () => {
+    expect(currencyName('XYZ')).toBe('XYZ')
   })
 })
 
