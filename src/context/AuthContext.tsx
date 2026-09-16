@@ -81,6 +81,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return
       }
 
+      // Local-first boot (Architecture: "usable offline without ever
+      // requiring a fresh login"): if this device has signed in before,
+      // open with that cached session right away — the app must never sit
+      // blocked behind a server round trip just to show data that's
+      // already sitting in IndexedDB, and a free-tier host waking a
+      // sleeping instance can easily take 20-50s. The server is still
+      // asked to reconcile below, just without the UI waiting on it.
+      const local = await loadLocalAuth()
+      if (cancelled) return
+      if (local) {
+        setUser({
+          id: local.user.id,
+          username: local.user.username,
+          email: local.user.email ?? '',
+          displayName: local.user.displayName ?? null,
+        })
+        setOffline(true) // optimistic — applyServerAuth below clears it once confirmed
+        setLoading(false)
+      }
+
       try {
         const response = await getMe(COLD_START_TIMEOUT_MS)
         if (cancelled) return
@@ -89,19 +109,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (cancelled) return
 
         if (isNetworkError(error)) {
-          const local = await loadLocalAuth()
-          if (cancelled) return
-          if (local) {
-            setUser({
-              id: local.user.id,
-              username: local.user.username,
-              email: local.user.email ?? '',
-              displayName: local.user.displayName ?? null,
-            })
-            setOffline(true)
-          } else {
-            setUser(null)
-          }
+          // Already showing the local session above (if there was one) —
+          // nothing more to do here but keep running on it.
+          if (!local) setUser(null)
         } else {
           // The server rejected the session — this device is no longer trusted.
           await dropAuth()
