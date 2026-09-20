@@ -31,7 +31,7 @@ const BACKOFF = [5_000, 15_000, 45_000, 120_000, 300_000]
 export const SyncProvider = ({ children }: { children: ReactNode }) => {
   const { user, isAuthenticated } = useAuth()
   const { activeSpaceId } = useSpace()
-  const { online, navigatorOnline } = useConnectivity()
+  const { online, navigatorOnline, serverReachable } = useConnectivity()
 
   const [deviceId, setDeviceId] = useState<string | null>(null)
   const [phase, setPhase] = useState<SyncPhase>('IDLE')
@@ -126,6 +126,19 @@ export const SyncProvider = ({ children }: { children: ReactNode }) => {
       void syncNow()
     }
   }, [ctx, online, refreshCounts, syncNow])
+
+  // The server just started answering after a stretch of not — a sleeping
+  // free-tier host finishing its wake-up, say. Don't sit out whatever backoff
+  // the failed attempts built up: sync right now, so what was saved on this
+  // device while it slept goes up the moment it can.
+  const wasReachable = useRef<boolean | null>(null)
+  useEffect(() => {
+    if (serverReachable === true && wasReachable.current === false) {
+      failures.current = 0
+      void syncNow()
+    }
+    wasReachable.current = serverReachable
+  }, [serverReachable, syncNow])
 
   // Debounced sync after a local mutation.
   useEffect(() => {

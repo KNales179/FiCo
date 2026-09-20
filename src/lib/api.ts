@@ -68,6 +68,18 @@ export const isNetworkError = (error: unknown): error is NetworkError =>
  */
 const REQUEST_TIMEOUT_MS = 8000
 
+/**
+ * Patient enough to survive a free-tier host waking a sleeping instance
+ * (Render's free plan can take 20-50s) — used only where that's actually
+ * plausible and there's nothing local to fall back on: the check at app
+ * boot, reconnecting, and signing in or registering (a brand-new device has
+ * no cached session, so giving up after 8s just makes someone tap "Sign in"
+ * again and again while the server is still starting). Everything else
+ * keeps the short default so an ordinary action while genuinely offline
+ * still fails fast.
+ */
+export const COLD_START_TIMEOUT_MS = 45_000
+
 export const api = async <T>(
   endpoint: string,
   options: ApiOptions = {},

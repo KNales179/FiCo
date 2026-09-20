@@ -1,25 +1,35 @@
 import { useConnectivity } from '../hooks/useConnectivity'
 
 /**
- * A thin banner shown only when Fico genuinely can't reach its server, making
- * it obvious that the app is still usable and that changes are kept locally.
- * It distinguishes "no network" from "server not answering" so a running app
- * with a working connection never gets mislabelled as offline.
+ * A thin banner shown only when Fico can't reach its server, making it
+ * obvious that the app is still usable and that changes are kept locally.
+ *
+ * It tells three situations apart, because they call for different reactions:
+ * genuinely offline; online but the server is still waking up (a free-tier
+ * host can take up to a minute — nothing is wrong, the app is retrying on its
+ * own); and online but the server has stayed silent long enough that it's
+ * probably really down.
  */
 const ConnectionStatus = () => {
-  const { navigatorOnline, serverReachable } = useConnectivity()
+  const { serverState } = useConnectivity()
 
-  // Still checking, or the server answered — nothing to show.
-  if (serverReachable === null || serverReachable) return null
+  if (serverState === 'checking' || serverState === 'reachable') return null
+
+  const waking = serverState === 'waking'
 
   return (
     <div
       role="status"
-      className="w-full bg-amber-500 px-4 py-1.5 text-center text-sm font-medium text-white"
+      className={`w-full px-4 py-1.5 text-center text-sm font-medium text-white ${
+        waking ? 'bg-sky-600' : 'bg-amber-500'
+      }`}
     >
-      {navigatorOnline
-        ? "Can't reach the Fico server — changes are saved on this device and will sync when it's back"
-        : 'Offline — changes are saved on this device and will sync later'}
+      {serverState === 'offline' &&
+        'Offline — changes are saved on this device and will sync later'}
+      {waking &&
+        "You're online — waking up the Fico server. Keep using the app; changes are saved and will sync on their own"}
+      {serverState === 'unreachable' &&
+        "Can't reach the Fico server — still trying. Changes are saved on this device and will sync when it's back"}
     </div>
   )
 }

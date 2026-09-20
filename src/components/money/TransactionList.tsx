@@ -8,7 +8,7 @@ import { listTransactions } from '../../features/money'
 import { getLastSeenAt, isUnseen, markSeenNow } from '../../features/seen'
 import { onDataChanged } from '../../features/sync/events'
 import { loadAppearance } from '../../features/theme'
-import { SkeletonRow, Button } from '../ui'
+import { SkeletonLines, SkeletonRow, Button } from '../ui'
 import {
   IconArrowDownRight,
   IconArrowUpRight,
@@ -70,7 +70,7 @@ const ItemizedPurchase = ({ transactionId }: { transactionId: string }) => {
     }
   }, [transactionId])
 
-  if (items === null) return <p className="mt-2 text-xs text-muted">Loading items…</p>
+  if (items === null) return <SkeletonLines count={2} className="mt-2" />
   if (items.length === 0) return null
 
   return (

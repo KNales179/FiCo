@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 
-import { isNetworkError } from '../lib/api'
+import { COLD_START_TIMEOUT_MS, isNetworkError } from '../lib/api'
 import type { SessionInfo, User } from '../types/auth'
 import {
   getMe,
@@ -19,15 +19,6 @@ import {
 import { useConnectivity } from '../hooks/useConnectivity'
 import { AuthContext } from './auth-context'
 
-/**
- * Patient enough to survive a free-tier host waking a sleeping instance
- * (Render's free plan can take 20-50s) — used only where that's actually
- * plausible: the very first check at app boot, and reconnecting after being
- * offline. Everywhere else keeps `api()`'s normal, much shorter default, so
- * an interactive action while genuinely offline still fails fast.
- */
-const COLD_START_TIMEOUT_MS = 45_000
-
 const toUser = (user: User): User => ({
   id: user.id,
   username: user.username,
@@ -44,7 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [offline, setOffline] = useState(false)
-  const { online } = useConnectivity()
+  const { serverReachable } = useConnectivity()
   const revalidating = useRef(false)
 
   const applyServerAuth = useCallback(
@@ -128,9 +119,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [applyServerAuth, dropAuth])
 
-  // Reconnected while running on an offline session — re-confirm with the server.
+  // Running on the cached local session, and the server has now actually
+  // answered (not just "the device has a network") — re-confirm with it.
+  // Keyed on the server answering rather than on `navigator.onLine`, since a
+  // sleeping backend leaves the device "online" the whole time it wakes up.
   useEffect(() => {
-    if (!online || !offline || !user || revalidating.current) return
+    if (serverReachable !== true || !offline || !user || revalidating.current) return
 
     revalidating.current = true
     void getMe(COLD_START_TIMEOUT_MS)
@@ -143,7 +137,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .finally(() => {
         revalidating.current = false
       })
-  }, [online, offline, user, applyServerAuth, dropAuth])
+  }, [serverReachable, offline, user, applyServerAuth, dropAuth])
 
   const login = async (identifier: string, password: string) => {
     const deviceId = await ensureDeviceId().catch(() => undefined)

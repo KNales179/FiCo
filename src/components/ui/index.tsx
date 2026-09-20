@@ -184,6 +184,50 @@ export const SkeletonRow = () => (
   </div>
 )
 
+/**
+ * A whole page's worth of placeholder — title, subtitle, and a few cards.
+ * The stand-in for a lazily-loaded route while its code downloads, so the
+ * content area never falls back to a bare "Loading…" line or a spinner.
+ */
+export const PageSkeleton = () => (
+  <div className="space-y-4" role="status" aria-label="Loading page">
+    <div className="space-y-2">
+      <Skeleton className="h-7 w-40" />
+      <Skeleton className="h-3.5 w-56 max-w-full" />
+    </div>
+    <SkeletonCard lines={1} />
+    <SkeletonCard lines={3} />
+    <SkeletonCard lines={4} />
+  </div>
+)
+
+/**
+ * The whole app frame as placeholders — top bar with brand, nav pills and
+ * avatar, then a page skeleton — shown while the very first check of who's
+ * signed in is still running, so there's no blank screen or spinner before
+ * the real layout appears.
+ */
+export const AppShellSkeleton = () => (
+  <div className="min-h-screen">
+    <div className="border-b border-line bg-panel shadow-sm">
+      <div className="mx-auto flex max-w-5xl items-center gap-3 px-3 py-2.5 sm:px-4">
+        <Skeleton className="h-6 w-16" />
+        <div className="hidden flex-1 items-center gap-2 md:flex">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-7 w-20" />
+          ))}
+        </div>
+        <div className="ml-auto">
+          <Skeleton className="h-8 w-8 rounded-full" />
+        </div>
+      </div>
+    </div>
+    <main className="mx-auto max-w-5xl px-3 py-5 sm:px-4">
+      <PageSkeleton />
+    </main>
+  </div>
+)
+
 /** A centered dialog over a dimmed backdrop — click the backdrop, or the ✕, to close. */
 /**
  * A centered dialog over a dimmed backdrop — click the backdrop, the ✕, or

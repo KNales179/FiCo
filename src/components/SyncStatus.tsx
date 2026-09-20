@@ -1,11 +1,18 @@
 import { useSync } from '../hooks/useSync'
+import { useConnectivity, type ServerState } from '../hooks/useConnectivity'
 
 const LABELS: Record<string, string> = {
   IDLE: 'All changes synced',
   SYNCING: 'Syncing…',
   OFFLINE: 'Offline — saved on this device',
-  UNREACHABLE: "Can't reach the server — retrying",
   ERROR: 'Sync failed — will retry',
+}
+
+/** The server not answering isn't always "down" — usually it's still waking up. */
+const unreachableLabel = (state: ServerState): string => {
+  if (state === 'waking') return 'Online — waking up the server…'
+  if (state === 'reachable') return 'Server is back — syncing…'
+  return "Can't reach the server — still trying"
 }
 
 const DOT: Record<string, string> = {
@@ -20,6 +27,7 @@ const DOT: Record<string, string> = {
 const SyncStatus = () => {
   const { phase, pendingCount, failedCount, syncNow, retryFailed, discardFailed } =
     useSync()
+  const { serverState } = useConnectivity()
 
   if (failedCount > 0) {
     return (
@@ -54,9 +62,11 @@ const SyncStatus = () => {
   }
 
   const label =
-    pendingCount > 0 && phase !== 'SYNCING'
-      ? `${pendingCount} change${pendingCount === 1 ? '' : 's'} pending`
-      : LABELS[phase]
+    phase === 'UNREACHABLE'
+      ? `${unreachableLabel(serverState)}${pendingCount > 0 ? ` · ${pendingCount} pending` : ''}`
+      : pendingCount > 0 && phase !== 'SYNCING'
+        ? `${pendingCount} change${pendingCount === 1 ? '' : 's'} pending`
+        : LABELS[phase]
 
   return (
     <button

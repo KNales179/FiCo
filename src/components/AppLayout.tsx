@@ -1,4 +1,4 @@
-import { useCallback, useState, type ComponentType } from 'react'
+import { Suspense, useCallback, useState, type ComponentType } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useSpace } from '../hooks/useSpace'
@@ -29,6 +29,8 @@ import SpaceSwitcher from './SpaceSwitcher'
 import SyncStatus from './SyncStatus'
 import BillReminders from './BillReminders'
 import WelcomeModal from './WelcomeModal'
+import PullToRefresh from './PullToRefresh'
+import { PageSkeleton } from './ui'
 
 type IconComponent = ComponentType<IconProps>
 
@@ -263,9 +265,15 @@ const AppLayout = () => {
 
       <BillReminders />
       <WelcomeModal />
+      <PullToRefresh />
 
       <main className="mx-auto max-w-5xl px-3 py-5 pb-24 sm:px-4 md:pb-5">
-        <Outlet />
+        {/* Suspense here (not just at the app root) so the header and nav
+            stay on screen while a page's code downloads — only the content
+            area shows a skeleton. */}
+        <Suspense fallback={<PageSkeleton />}>
+          <Outlet />
+        </Suspense>
 
         <footer className="mt-10 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
           <span>© {new Date().getFullYear()} IBell. All rights reserved.</span>

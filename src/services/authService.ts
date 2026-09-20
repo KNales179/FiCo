@@ -1,4 +1,4 @@
-import { api } from '../lib/api'
+import { api, COLD_START_TIMEOUT_MS } from '../lib/api'
 import type {
   AuthResponse,
   DeviceSession,
@@ -17,6 +17,7 @@ export const register = (
 ) => {
   return api<AuthResponse>('/auth/register', {
     method: 'POST',
+    timeoutMs: COLD_START_TIMEOUT_MS,
     body: {
       username,
       email,
@@ -34,6 +35,7 @@ export const login = (
 ) => {
   return api<AuthResponse | TwoFactorRequired>('/auth/login', {
     method: 'POST',
+    timeoutMs: COLD_START_TIMEOUT_MS,
     body: {
       identifier,
       password,
@@ -50,6 +52,7 @@ export const verifyTwoFactorLogin = (
 ) => {
   return api<AuthResponse>('/auth/login/verify-2fa', {
     method: 'POST',
+    timeoutMs: COLD_START_TIMEOUT_MS,
     body: { pendingToken, code, deviceId },
   })
 }

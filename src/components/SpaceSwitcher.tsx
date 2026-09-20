@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useSpace } from '../hooks/useSpace'
 import { IconPlus, IconX } from './icons'
+import { Skeleton } from './ui'
 
 const SpaceSwitcher = () => {
   const {
@@ -36,7 +37,7 @@ const SpaceSwitcher = () => {
   }
 
   if (loading && spaces.length === 0) {
-    return <span className="text-sm text-muted">Loading spaces…</span>
+    return <Skeleton className="h-7 w-24" />
   }
 
   return (
