@@ -170,6 +170,15 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
     [ctx, canEdit, load],
   )
 
+  const unarchiveAccount = useCallback(
+    async (id: string) => {
+      await setAccountStatus(requireCtx(), id, 'ACTIVE')
+      await load()
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ctx, canEdit, load],
+  )
+
   const removeAccount = useCallback(
     async (id: string) => {
       await deleteAccount(requireCtx(), id)
@@ -292,6 +301,7 @@ export const MoneyProvider = ({ children }: { children: ReactNode }) => {
         refresh: load,
         addAccount,
         archiveAccount,
+        unarchiveAccount,
         removeAccount,
         makeDefaultAccount,
         addTransaction,

@@ -8,7 +8,14 @@ import { suggestForName, type ItemSuggestion } from '../features/items'
 import { getLastSeenAt, isUnseen, markSeenNow } from '../features/seen'
 import { formatMoney, parseAmountToMinor } from '../domain/money'
 import { PageHeader, Button, Input, Select, Alert, SkeletonCard } from '../components/ui'
-import { IconCheck, IconPlus, IconTrash, IconX } from '../components/icons'
+import {
+  IconArchive,
+  IconCheck,
+  IconPlus,
+  IconRotateCcw,
+  IconTrash,
+  IconX,
+} from '../components/icons'
 import CategoryPicker from '../components/money/CategoryPicker'
 import type { ShoppingItem } from '../types/models'
 
@@ -137,6 +144,9 @@ const Shopping = () => {
   const { activeSpaceId } = useSpace()
   const [lastSeenAt, setLastSeenAt] = useState<string | null>(null)
   const [openedListIds, setOpenedListIds] = useState<Set<string>>(new Set())
+  const [showArchived, setShowArchived] = useState(false)
+  const shownLists = lists.filter((l) => !l.archived)
+  const archivedLists = lists.filter((l) => l.archived)
   const activeAccounts = useMemo(
     () => accounts.filter((a) => a.status === 'ACTIVE'),
     [accounts],
@@ -305,9 +315,9 @@ const Shopping = () => {
         </form>
       )}
 
-      {lists.length > 0 && (
+      {shownLists.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {lists.map((list) => {
+          {shownLists.map((list) => {
             const unseen =
               !openedListIds.has(list.id) &&
               isUnseen(list.createdAt, list.createdBy, lastSeenAt, user?.id)
@@ -338,7 +348,7 @@ const Shopping = () => {
         </div>
       )}
 
-      {selectedList && totals && (
+      {selectedList && !selectedList.archived && totals && (
         <section className="card">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">
@@ -524,7 +534,15 @@ const Shopping = () => {
           )}
 
           {canEdit && !listIsActive && (
-            <div className="mt-4">
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button
+                onClick={() =>
+                  void updateList(selectedList.id, { archived: true })
+                }
+              >
+                <IconArchive size={14} />
+                Archive list
+              </Button>
               <Button
                 variant="danger"
                 onClick={() => {
@@ -546,10 +564,82 @@ const Shopping = () => {
         </section>
       )}
 
-      {lists.length === 0 && (
+      {shownLists.length === 0 && (
         <p className="text-sm text-muted">
-          No shopping lists yet.
+          {archivedLists.length > 0
+            ? 'No open shopping lists — older ones are in the archive below.'
+            : 'No shopping lists yet.'}
         </p>
+      )}
+
+      {archivedLists.length > 0 && (
+        <section className="card">
+          <button
+            type="button"
+            onClick={() => setShowArchived((v) => !v)}
+            aria-expanded={showArchived}
+            className="flex items-center gap-1.5 text-sm font-semibold text-ink"
+          >
+            <IconArchive size={15} />
+            Archived lists ({archivedLists.length})
+            <span className="text-xs font-normal text-muted">
+              {showArchived ? 'hide' : 'show'}
+            </span>
+          </button>
+          {showArchived && (
+            <ul className="mt-2 divide-y">
+              {archivedLists.map((list) => (
+                <li
+                  key={list.id}
+                  className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+                >
+                  <span className="text-muted">
+                    {list.title}
+                    <span className="ml-2 text-xs">
+                      {list.status.toLowerCase()}
+                      {list.completedAt &&
+                        ` · ${new Date(list.completedAt).toLocaleDateString()}`}
+                    </span>
+                  </span>
+                  {canEdit && (
+                    <span className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          await updateList(list.id, { archived: false })
+                          selectList(list.id)
+                        }}
+                      >
+                        <IconRotateCcw size={14} />
+                        Restore
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        aria-label="Delete list"
+                        title="Delete list"
+                        className="hover:text-danger"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              list.status === 'COMPLETED'
+                                ? `Delete "${list.title}"? This removes the list and its items only — the expense it recorded stays in your transactions untouched.`
+                                : `Delete "${list.title}"?`,
+                            )
+                          )
+                            void deleteList(list.id)
+                        }}
+                      >
+                        <IconTrash size={14} />
+                      </Button>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
     </div>
   )

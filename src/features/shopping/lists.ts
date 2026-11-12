@@ -47,7 +47,7 @@ export const updateShoppingList = async (
   patch: Partial<
     Pick<
       ShoppingList,
-      'title' | 'plannedBudgetMinor' | 'status' | 'visibility'
+      'title' | 'plannedBudgetMinor' | 'status' | 'visibility' | 'archived'
     >
   >,
 ): Promise<ShoppingList> => {

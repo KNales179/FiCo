@@ -9,6 +9,7 @@ import { billPayableFrom, isBillPayable } from '../features/bills'
 import { getLastSeenAt, isUnseen, markSeenNow } from '../features/seen'
 import { PageHeader, Button, Input, Select, Alert, SkeletonCard } from '../components/ui'
 import {
+  IconArchive,
   IconCheck,
   IconChevronDown,
   IconEdit,
@@ -627,6 +628,7 @@ const Bills = () => {
     error,
     canEdit,
     createBill,
+    updateBill,
     deleteBill,
     restoreBill,
     deletePayment,
@@ -703,6 +705,9 @@ const Bills = () => {
         (b.nextDueDate != null && b.nextDueDate <= horizon)),
   )
   const active = bills.filter((b) => b.active)
+  // Archived = `active: false` — kept with its full payment history, just
+  // out of Upcoming, All bills, reminders and the budget until restored.
+  const archived = bills.filter((b) => !b.active)
 
   const addScheduledDraftDate = () => {
     if (!scheduledInput) return
@@ -850,6 +855,21 @@ const Bills = () => {
                         variant="ghost"
                         size="sm"
                         iconOnly
+                        aria-label="Archive bill"
+                        title="Archive bill"
+                        onClick={() => {
+                          if (editingId === bill.id) setEditingId(null)
+                          void updateBill(bill.id, { active: false })
+                        }}
+                      >
+                        <IconArchive size={14} />
+                      </Button>
+                    )}
+                    {canEdit && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
                         aria-label="Delete bill"
                         title="Delete bill"
                         className="hover:text-danger"
@@ -886,6 +906,51 @@ const Bills = () => {
           )}
         </ul>
       </section>
+
+      {archived.length > 0 && (
+        <section className="card">
+          <h2 className="text-lg font-semibold">Archived bills</h2>
+          <p className="mt-1 text-xs text-muted">
+            Archived bills don't show as upcoming or count toward your
+            budget. Restore one to start tracking it again — its payment
+            history is kept.
+          </p>
+          <ul className="mt-2 divide-y">
+            {archived.map((bill) => (
+              <li key={bill.id} className="py-2 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-muted">
+                    {bill.name}
+                    <span className="ml-2 text-xs">
+                      {bill.recurrence.toLowerCase()}
+                      {bill.expectedAmountMinor != null &&
+                        ` · ~${formatMoney(bill.expectedAmountMinor)}`}
+                    </span>
+                  </span>
+                  {canEdit && (
+                    <Button
+                      size="sm"
+                      disabled={restoringId === bill.id}
+                      onClick={async () => {
+                        setRestoringId(bill.id)
+                        try {
+                          await updateBill(bill.id, { active: true })
+                        } finally {
+                          setRestoringId(null)
+                        }
+                      }}
+                    >
+                      <IconRotateCcw size={14} />
+                      {restoringId === bill.id ? 'Restoring…' : 'Restore'}
+                    </Button>
+                  )}
+                </div>
+                <History billId={bill.id} canEdit={canEdit} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {canEdit && deletedBills.length > 0 && (
         <section className="card">

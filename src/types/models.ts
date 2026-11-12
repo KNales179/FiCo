@@ -187,6 +187,9 @@ export interface ShoppingList extends SyncableEntity {
   plannedBudgetMinor?: number | null
   plannedAt?: string | null
   completedAt?: string | null
+  /** Tucked away out of the list switcher; restorable. Optional so lists
+   *  from before archiving existed simply read as not archived. */
+  archived?: boolean
   visibility: RecordVisibility
   createdBy: string
 }

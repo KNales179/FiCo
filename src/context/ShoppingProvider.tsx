@@ -89,10 +89,13 @@ export const ShoppingProvider = ({
         (l) => l.visibility !== 'PRIVATE' || l.createdBy === user?.id,
       )
       setLists(next)
+      // Archived lists live in their own section on the page and are never
+      // auto-opened — archiving the open list moves selection to another.
+      const shown = next.filter((l) => !l.archived)
       setSelectedListId((current) => {
-        if (current && next.some((l) => l.id === current)) return current
-        const active = next.find((l) => l.status === 'ACTIVE')
-        return active?.id ?? next[0]?.id ?? null
+        if (current && shown.some((l) => l.id === current)) return current
+        const active = shown.find((l) => l.status === 'ACTIVE')
+        return active?.id ?? shown[0]?.id ?? null
       })
     } catch (err) {
       setError(

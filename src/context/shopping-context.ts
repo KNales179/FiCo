@@ -18,7 +18,7 @@ export interface ShoppingContextValue {
     patch: Partial<
       Pick<
         ShoppingList,
-        'title' | 'plannedBudgetMinor' | 'status' | 'visibility'
+        'title' | 'plannedBudgetMinor' | 'status' | 'visibility' | 'archived'
       >
     >,
   ) => Promise<void>

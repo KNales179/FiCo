@@ -27,6 +27,8 @@ export interface MoneyContextValue {
     input: NewAccountInput & { isDefault?: boolean },
   ) => Promise<void>
   archiveAccount: (id: string) => Promise<void>
+  /** Brings an archived account back so it can be picked for new records again. */
+  unarchiveAccount: (id: string) => Promise<void>
   removeAccount: (id: string) => Promise<void>
   makeDefaultAccount: (id: string) => Promise<void>
   addTransaction: (input: RecordTransactionInput) => Promise<void>

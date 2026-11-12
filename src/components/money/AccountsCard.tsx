@@ -9,7 +9,14 @@ import {
 } from '../../domain/money'
 import type { AccountType } from '../../types/models'
 import { Button } from '../ui'
-import { IconArchive, IconPlus, IconStar, IconTrash, IconX } from '../icons'
+import {
+  IconArchive,
+  IconPlus,
+  IconRotateCcw,
+  IconStar,
+  IconTrash,
+  IconX,
+} from '../icons'
 
 const ACCOUNT_TYPES: AccountType[] = [
   'CASH',
@@ -26,6 +33,7 @@ const AccountsCard = () => {
     canEdit,
     addAccount,
     archiveAccount,
+    unarchiveAccount,
     removeAccount,
     makeDefaultAccount,
   } = useMoney()
@@ -39,6 +47,13 @@ const AccountsCard = () => {
   const [opening, setOpening] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
+
+  // Archived accounts keep their balance and history but can't be picked
+  // for new records, so they live in their own list below — restoring one
+  // makes it selectable in Spent / Received again.
+  const activeAccounts = accounts.filter((a) => a.status === 'ACTIVE')
+  const archivedAccounts = accounts.filter((a) => a.status === 'ARCHIVED')
 
   // Follows the Finance's own currency until the person picks a different
   // one for this account — e.g. an AED account inside an otherwise-PHP
@@ -86,14 +101,16 @@ const AccountsCard = () => {
         )}
       </div>
 
-      {accounts.length === 0 && (
+      {activeAccounts.length === 0 && (
         <p className="mt-3 text-sm text-muted">
-          No accounts yet. {canEdit && 'Add one to start recording money.'}
+          {archivedAccounts.length > 0
+            ? 'No active accounts — restore one from the archive below, or add a new one.'
+            : `No accounts yet. ${canEdit ? 'Add one to start recording money.' : ''}`}
         </p>
       )}
 
       <ul className="mt-3 divide-y divide-line">
-        {accounts.map((account) => (
+        {activeAccounts.map((account) => (
           <li
             key={account.id}
             className="flex flex-wrap items-center justify-between gap-2 py-2.5"
@@ -103,7 +120,6 @@ const AccountsCard = () => {
               <span className="ml-2 text-xs text-muted">
                 {account.type.toLowerCase()}
                 {account.isDefault && ' · default'}
-                {account.status === 'ARCHIVED' && ' · archived'}
               </span>
             </span>
 
@@ -115,9 +131,7 @@ const AccountsCard = () => {
               >
                 {formatMoney(account.balanceMinor, account.currency)}
               </span>
-              {canEdit &&
-                account.status === 'ACTIVE' &&
-                !account.isDefault && (
+              {canEdit && !account.isDefault && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -129,7 +143,7 @@ const AccountsCard = () => {
                     <IconStar size={14} />
                   </Button>
                 )}
-              {canEdit && account.status === 'ACTIVE' && (
+              {canEdit && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -158,6 +172,66 @@ const AccountsCard = () => {
           </li>
         ))}
       </ul>
+
+      {archivedAccounts.length > 0 && (
+        <div className="mt-3 border-t border-line pt-2">
+          <button
+            type="button"
+            onClick={() => setShowArchived((v) => !v)}
+            aria-expanded={showArchived}
+            className="flex items-center gap-1.5 text-xs font-medium text-muted hover:text-ink"
+          >
+            <IconArchive size={13} />
+            {showArchived ? 'Hide' : 'Show'} archived ({archivedAccounts.length})
+          </button>
+          {showArchived && (
+            <ul className="mt-2 divide-y divide-line">
+              {archivedAccounts.map((account) => (
+                <li
+                  key={account.id}
+                  className="flex flex-wrap items-center justify-between gap-2 py-2.5"
+                >
+                  <span className="text-sm text-muted">
+                    {account.name}
+                    <span className="ml-2 text-xs">
+                      {account.type.toLowerCase()} · archived
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <span className="tabular-nums text-muted">
+                      {formatMoney(account.balanceMinor, account.currency)}
+                    </span>
+                    {canEdit && (
+                      <Button
+                        size="sm"
+                        onClick={() => void unarchiveAccount(account.id)}
+                      >
+                        <IconRotateCcw size={14} />
+                        Restore
+                      </Button>
+                    )}
+                    {canEdit && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        aria-label="Delete"
+                        title="Delete"
+                        className="hover:text-danger"
+                        onClick={() =>
+                          void removeAccount(account.id).catch(() => {})
+                        }
+                      >
+                        <IconTrash size={14} />
+                      </Button>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {Object.entries(totalsByCurrency).length > 0 && (
         <div className="mt-3 border-t border-line pt-2 text-right text-sm font-semibold tabular-nums">
