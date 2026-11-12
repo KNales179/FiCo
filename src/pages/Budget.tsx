@@ -18,7 +18,7 @@ import { BarChart, DonutChart, EmptyChart } from '../components/charts'
 import { CATEGORY_COLORS } from '../components/charts/palette'
 import { monthlyInOut } from '../domain/insights'
 import { useAllTransactions } from '../hooks/useAllTransactions'
-import { IconAward, IconCalendar, IconChart, IconChevronLeft, IconChevronRight, IconWallet } from '../components/icons'
+import { IconAward, IconCalendar, IconChart, IconChevronLeft, IconChevronRight, IconEdit, IconWallet } from '../components/icons'
 import CollapsibleCard from '../components/CollapsibleCard'
 import BirthdayBudgetCard from '../components/budget/BirthdayBudgetCard'
 import Approx from '../components/Approx'
@@ -54,6 +54,7 @@ const EditableAmountList = ({
   items,
   onAdd,
   onRemove,
+  onEdit,
   addPlaceholder,
   emptyLabel,
   amountSuffix = '',
@@ -61,12 +62,30 @@ const EditableAmountList = ({
   items: BudgetPlanItem[]
   onAdd: (name: string, amountMinor: number) => void
   onRemove: (id: string) => void
+  /** Change a row's name and amount in place. */
+  onEdit?: (id: string, name: string, amountMinor: number) => void
   addPlaceholder: string
   emptyLabel: string
   amountSuffix?: string
 }) => {
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editAmount, setEditAmount] = useState('')
+
+  const startEdit = (item: BudgetPlanItem) => {
+    setEditingId(item.id)
+    setEditName(item.name)
+    setEditAmount((item.amountMinor / 100).toFixed(2))
+  }
+
+  const saveEdit = () => {
+    const amountMinor = parseAmountToMinor(editAmount)
+    if (!editingId || !editName.trim() || amountMinor === null || amountMinor <= 0) return
+    onEdit?.(editingId, editName.trim(), amountMinor)
+    setEditingId(null)
+  }
 
   const add = () => {
     const amountMinor = parseAmountToMinor(amount)
@@ -79,27 +98,71 @@ const EditableAmountList = ({
   return (
     <div>
       <ul className="divide-y divide-line">
-        {items.map((item) => (
-          <li
-            key={item.id}
-            className="flex items-center justify-between py-1.5 text-sm"
-          >
-            <span>{item.name}</span>
-            <span className="flex items-center gap-2">
-              <span className="tabular-nums">
-                {formatMoney(item.amountMinor)}
-                {amountSuffix}
-              </span>
-              <button
-                type="button"
-                onClick={() => onRemove(item.id)}
-                className="text-xs text-muted underline hover:text-ink"
+        {items.map((item) =>
+          editingId === item.id ? (
+            <li key={item.id} className="py-1.5">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  saveEdit()
+                }}
+                className="flex flex-wrap items-center gap-2"
               >
-                remove
-              </button>
-            </span>
-          </li>
-        ))}
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  aria-label="Name"
+                  autoFocus
+                  className="input min-w-[8rem] flex-1 py-1.5 text-sm"
+                />
+                <input
+                  value={editAmount}
+                  onChange={(e) => setEditAmount(e.target.value)}
+                  inputMode="decimal"
+                  aria-label={amountSuffix ? 'Amount per week' : 'Amount'}
+                  className="input w-28 py-1.5 text-sm"
+                />
+                <Button type="submit" size="sm" variant="primary">
+                  Save
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                  Cancel
+                </Button>
+              </form>
+            </li>
+          ) : (
+            <li
+              key={item.id}
+              className="flex items-center justify-between py-1.5 text-sm"
+            >
+              <span>{item.name}</span>
+              <span className="flex items-center gap-2">
+                <span className="tabular-nums">
+                  {formatMoney(item.amountMinor)}
+                  {amountSuffix}
+                </span>
+                {onEdit && (
+                  <button
+                    type="button"
+                    onClick={() => startEdit(item)}
+                    className="inline-flex items-center gap-0.5 text-xs text-muted underline hover:text-ink"
+                    aria-label={`Edit ${item.name}`}
+                  >
+                    <IconEdit size={12} />
+                    edit
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onRemove(item.id)}
+                  className="text-xs text-muted underline hover:text-ink"
+                >
+                  remove
+                </button>
+              </span>
+            </li>
+          ),
+        )}
         {items.length === 0 && (
           <li className="py-1.5 text-sm text-muted">{emptyLabel}</li>
         )}
@@ -375,6 +438,18 @@ const Budget = () => {
       void persist({ weeklyStaples: next })
       return next
     })
+  const editStaple = (id: string, name: string, amountMinor: number) =>
+    setWeeklyStaples((rows) => {
+      const next = rows.map((r) => (r.id === id ? { ...r, name, amountMinor } : r))
+      void persist({ weeklyStaples: next })
+      return next
+    })
+  const editPlannedItem = (id: string, name: string, amountMinor: number) =>
+    setPlannedItems((rows) => {
+      const next = rows.map((r) => (r.id === id ? { ...r, name, amountMinor } : r))
+      void persist({ plannedItems: next })
+      return next
+    })
 
   const setBillOverride = (billId: string, amountMinor: number) =>
     setBillAmountOverrides((prev) => {
@@ -577,6 +652,7 @@ const Budget = () => {
                   items={plannedItems}
                   onAdd={addPlannedItem}
                   onRemove={removePlannedItem}
+                  onEdit={canEdit ? editPlannedItem : undefined}
                   addPlaceholder="What for?"
                   emptyLabel="Nothing planned yet."
                 />
@@ -597,6 +673,7 @@ const Budget = () => {
                   items={weeklyStaples}
                   onAdd={addStaple}
                   onRemove={removeStaple}
+                  onEdit={canEdit ? editStaple : undefined}
                   addPlaceholder="Category"
                   emptyLabel="Nothing recognized as a weekly habit yet."
                   amountSuffix="/wk"

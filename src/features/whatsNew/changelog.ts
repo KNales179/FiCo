@@ -32,6 +32,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.5.1',
+    date: '2026-11-13',
+    title: 'Edit your weekly staples',
+    highlights: [
+      {
+        icon: 'wallet',
+        title: 'Tweak a staple without starting over',
+        body: 'On the Budget page, each weekly staple (and each planned expense) now has an “edit” button — change its name or amount right where it is, no more removing and re-adding.',
+      },
+    ],
+  },
+  {
     version: '2.5.0',
     date: '2026-11-13',
     title: 'Fair chances, and a smoother sign-in',
