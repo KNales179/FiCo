@@ -4,13 +4,20 @@ import {
   listUsers,
   revokeUserSession,
   setUserPassword,
+  resetUserTwoFactor,
   setUserRole,
   type AdminUser,
 } from '../services/adminService'
 import { Link } from 'react-router-dom'
 import type { DeviceSession } from '../types/auth'
 import { PageHeader, Card, Button, Input, Alert, SkeletonRow } from '../components/ui'
-import { IconChevronDown, IconLogOut, IconMessage, IconShield } from '../components/icons'
+import {
+  IconChevronDown,
+  IconLogOut,
+  IconMessage,
+  IconShield,
+  IconLock,
+} from '../components/icons'
 
 const formatDate = (iso: string) => new Date(iso).toLocaleString()
 
@@ -18,6 +25,7 @@ const ManagePanel = ({ user, onChanged }: { user: AdminUser; onChanged: () => vo
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [rolePassword, setRolePassword] = useState('')
+  const [twoFactorPassword, setTwoFactorPassword] = useState('')
   const [sessions, setSessions] = useState<DeviceSession[] | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -83,6 +91,33 @@ const ManagePanel = ({ user, onChanged }: { user: AdminUser; onChanged: () => vo
     }
   }
 
+  const resetTwoFactor = async () => {
+    if (
+      !window.confirm(
+        `Turn off two-step sign-in for ${user.username}? Only do this if they've lost their phone AND their backup codes. They'll sign in with just their password, and every device of theirs is signed out.`,
+      )
+    )
+      return
+    if (!twoFactorPassword) {
+      setError('Enter your own password to confirm')
+      return
+    }
+    setError('')
+    setNotice('')
+    setBusy(true)
+    try {
+      const res = await resetUserTwoFactor(user.id, twoFactorPassword)
+      setTwoFactorPassword('')
+      setNotice(res.message)
+      onChanged()
+      await loadSessions()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not turn off 2FA')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const revoke = async (sessionId: string) => {
     if (!window.confirm(`Sign ${user.username} out of this device?`)) return
     setBusy(true)
@@ -143,6 +178,30 @@ const ManagePanel = ({ user, onChanged }: { user: AdminUser; onChanged: () => vo
           </Button>
         </div>
       </div>
+
+      {user.totpEnabled && (
+        <div>
+          <h3 className="text-sm font-medium">Two-step sign-in</h3>
+          <p className="mt-0.5 text-xs text-muted">
+            On for this account. Locked out (lost phone and backup codes)? Turn it off so they can
+            sign in with just their password.
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Input
+              type="password"
+              placeholder="Your own current password, to confirm"
+              autoComplete="current-password"
+              value={twoFactorPassword}
+              onChange={(e) => setTwoFactorPassword(e.target.value)}
+              className="max-w-xs"
+            />
+            <Button size="sm" variant="danger" onClick={() => void resetTwoFactor()} disabled={busy}>
+              <IconLock size={13} />
+              Turn off 2FA
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div>
         <h3 className="text-sm font-medium">Devices</h3>

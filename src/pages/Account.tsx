@@ -12,19 +12,21 @@ import {
   uploadAvatar,
 } from '../services/authService'
 import { isNetworkError } from '../lib/api'
+import { detectBrowser, installGuideFor, type BrowserKind } from '../features/pwa/installGuide'
 import type { DeviceSession } from '../types/auth'
 import { PageHeader, Card, Button, Input, Alert, SkeletonRow } from '../components/ui'
 import {
   IconCamera,
   IconDownload,
+  IconChevronDown,
   IconLogOut,
-  IconShare,
   IconTrash,
   IconX,
   IconUserCircle,
 } from '../components/icons'
 import {
   installPlatform,
+  isRunningInstalled,
   onInstallAvailabilityChange,
   promptInstall,
   type InstallPlatform,
@@ -343,6 +345,8 @@ const DevicesSection = () => {
 }
 
 /** Only ever shown to an admin — 2FA is enforced for that role specifically. */
+const NEWLINE = String.fromCharCode(10)
+
 const TwoFactorSection = () => {
   const { user, refreshUser } = useAuth()
   const [step, setStep] = useState<'idle' | 'settingUp' | 'confirmed' | 'disabling'>('idle')
@@ -354,6 +358,22 @@ const TwoFactorSection = () => {
   const [disableCode, setDisableCode] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [qr, setQr] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  // A scannable QR code for the setup link — far easier than typing the key.
+  useEffect(() => {
+    if (!uri) return
+    let cancelled = false
+    void import('qrcode').then((QRCode) =>
+      QRCode.toDataURL(uri, { margin: 1, width: 220 }).then((url) => {
+        if (!cancelled) setQr(url)
+      }),
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [uri])
 
   const beginSetup = async () => {
     setError('')
@@ -404,14 +424,21 @@ const TwoFactorSection = () => {
     }
   }
 
-  if (user?.role !== 'ADMIN') return null
+  if (!user) return null
 
   return (
-    <Card>
-      <h2 className="section-title">Two-factor authentication</h2>
+    <Card data-tour="account-2fa">
+      <h2 className="section-title flex flex-wrap items-center gap-2">
+        Two-step sign-in (2FA)
+        <span className="rounded-md bg-panel-2 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
+          Optional
+        </span>
+      </h2>
       <p className="mt-1 text-xs text-muted">
-        Required to actually log in once it's on — admin accounts are worth
-        the extra step.
+        An extra lock on your account: after your password, Fico also asks for a 6-digit code
+        from an authenticator app on your phone. Totally optional — turn it on only if you’re
+        comfortable using an authenticator app. Lost your phone and your backup codes? Ask the
+        Fico admin to turn it off for you.
       </p>
 
       {error && <Alert>{error}</Alert>}
@@ -447,13 +474,30 @@ const TwoFactorSection = () => {
 
       {step === 'settingUp' && (
         <form onSubmit={confirmSetup} className="mt-3 space-y-3">
-          <p className="text-sm">
-            Add this key to an authenticator app (Google Authenticator, Authy,
-            1Password, …), then enter the 6-digit code it shows.
-          </p>
-          <div className="rounded-lg border border-line bg-panel-2 p-3">
-            <p className="break-all font-mono text-sm">{secret}</p>
-            <p className="mt-2 break-all text-xs text-muted">{uri}</p>
+          <ol className="list-decimal space-y-1 pl-5 text-sm">
+            <li>
+              Install an authenticator app on your phone — Google Authenticator, Microsoft
+              Authenticator or Authy all work (free).
+            </li>
+            <li>In the app, tap “+” / “Add account” and scan this QR code.</li>
+            <li>Type the 6-digit code the app shows below, then tap Confirm.</li>
+          </ol>
+          <div className="flex flex-wrap items-center gap-4 rounded-lg border border-line bg-panel-2 p-3">
+            {qr ? (
+              <img
+                src={qr}
+                alt="QR code to add Fico to your authenticator app"
+                width={180}
+                height={180}
+                className="rounded-md bg-white p-1"
+              />
+            ) : (
+              <div className="h-[180px] w-[180px] animate-pulse rounded-md bg-panel" />
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted">Can’t scan? Choose “Enter a setup key” in the app and type:</p>
+              <p className="mt-1 break-all font-mono text-sm text-ink">{secret}</p>
+            </div>
           </div>
           <Input
             value={code}
@@ -486,6 +530,40 @@ const TwoFactorSection = () => {
               <li key={c}>{c}</li>
             ))}
           </ul>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              onClick={() => {
+                void navigator.clipboard?.writeText(backupCodes.join(NEWLINE)).then(() => setCopied(true))
+              }}
+            >
+              {copied ? 'Copied' : 'Copy codes'}
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                const blob = new Blob(
+                  [
+                    [
+                      `Fico backup codes for ${user.username}`,
+                      'Each code works once.',
+                      '',
+                      ...backupCodes,
+                      '',
+                    ].join(NEWLINE),
+                  ],
+                  { type: 'text/plain' },
+                )
+                const a = document.createElement('a')
+                a.href = URL.createObjectURL(blob)
+                a.download = 'fico-backup-codes.txt'
+                a.click()
+                URL.revokeObjectURL(a.href)
+              }}
+            >
+              Download as a file
+            </Button>
+          </div>
           <Button variant="primary" onClick={() => setStep('idle')}>
             I've saved these
           </Button>
@@ -538,13 +616,15 @@ const InstallAppSection = () => {
   const [platform, setPlatform] = useState<InstallPlatform>(installPlatform)
   const [busy, setBusy] = useState(false)
   const [declined, setDeclined] = useState(false)
+  const [showOthers, setShowOthers] = useState(false)
+  const kind = detectBrowser()
+  const guide = installGuideFor(kind)
+  const installed = isRunningInstalled()
 
   useEffect(
     () => onInstallAvailabilityChange(() => setPlatform(installPlatform())),
     [],
   )
-
-  if (platform === 'unavailable') return null
 
   const install = async () => {
     setBusy(true)
@@ -557,33 +637,75 @@ const InstallAppSection = () => {
     }
   }
 
+  const others: BrowserKind[] = (
+    ['desktop-chrome', 'desktop-edge', 'android-chrome', 'ios', 'android-samsung', 'mac-safari'] as BrowserKind[]
+  ).filter((k) => k !== kind)
+
   return (
-    <Card>
-      <h2 className="section-title">Install as an app</h2>
+    <Card data-tour="account-install">
+      <h2 className="section-title flex items-center gap-2">
+        <IconDownload size={16} className="text-brand" />
+        Install Fico as an app
+      </h2>
       <p className="mt-1 text-xs text-muted">
-        Puts Fico on your home screen like a normal app — its own icon, no
-        browser bar, works offline. Free, and nothing to download from a
-        store.
+        Puts Fico on your home screen or desktop like a normal app — its own icon, its own
+        window, works offline. Free, nothing to download from a store.
       </p>
-      {platform === 'promptable' && (
+
+      {installed ? (
+        <p className="mt-3 text-sm text-success">You’re using the installed app — you’re all set.</p>
+      ) : (
         <>
-          <Button className="mt-3" variant="primary" onClick={() => void install()} disabled={busy}>
-            <IconDownload size={16} />
-            {busy ? 'Opening…' : 'Install Fico'}
-          </Button>
-          {declined && (
-            <p className="mt-2 text-xs text-muted">
-              No problem — you can install it later from here, or from your
-              browser's own menu.
-            </p>
+          {platform === 'promptable' && (
+            <div className="mt-3">
+              <Button variant="primary" onClick={() => void install()} disabled={busy}>
+                <IconDownload size={16} />
+                {busy ? 'Opening…' : 'Install Fico'}
+              </Button>
+              <p className="mt-1 text-xs text-muted">One tap, then confirm “Install” in the little box that appears.</p>
+              {declined && (
+                <p className="mt-1 text-xs text-muted">No problem — you can install it any time from here.</p>
+              )}
+            </div>
           )}
+          <div className="mt-3 rounded-xl border border-line bg-panel-2 p-3">
+            <p className="text-xs font-semibold text-ink">
+              {platform === 'promptable' ? 'Or do it yourself' : 'How to install'} — {guide.where}
+            </p>
+            <ol className={`mt-1.5 space-y-1 pl-5 text-sm ${guide.unsupported ? 'list-none pl-0 text-warning' : 'list-decimal'}`}>
+              {guide.steps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+          </div>
         </>
       )}
-      {platform === 'ios-manual' && (
-        <p className="mt-3 flex items-start gap-1.5 text-sm text-ink">
-          <IconShare size={16} className="mt-0.5 shrink-0 text-muted" />
-          Tap the Share button in Safari, then "Add to Home Screen."
-        </p>
+
+      <button
+        type="button"
+        onClick={() => setShowOthers((v) => !v)}
+        aria-expanded={showOthers}
+        className="mt-3 flex items-center gap-1 text-xs font-medium text-muted hover:text-ink"
+      >
+        Using a different device?
+        <IconChevronDown size={13} className={`transition-transform ${showOthers ? 'rotate-180' : ''}`} />
+      </button>
+      {showOthers && (
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          {others.map((k) => {
+            const g = installGuideFor(k)
+            return (
+              <div key={k} className="rounded-xl border border-line p-3">
+                <p className="text-xs font-semibold text-ink">{g.where}</p>
+                <ol className="mt-1 list-decimal space-y-0.5 pl-4 text-xs text-muted">
+                  {g.steps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ol>
+              </div>
+            )
+          })}
+        </div>
       )}
     </Card>
   )

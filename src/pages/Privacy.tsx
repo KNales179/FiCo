@@ -168,8 +168,9 @@ const Privacy = () => (
         <p className="mt-2">
           Passwords are hashed with argon2, never stored or logged in
           plain text. Sessions are httpOnly cookies checked against a
-          server-side session record, with two-factor authentication
-          available (and required for an admin account). Rate limiting is
+          server-side session record, with optional two-factor
+          authentication (an authenticator-app code) available to every
+          account. Rate limiting is
           applied to login, password reset, and other sensitive actions to
           slow down abuse. No system is perfectly secure, and Fico can't
           guarantee against every possible attack — but reasonable,

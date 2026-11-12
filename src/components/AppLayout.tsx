@@ -32,6 +32,7 @@ import BillReminders from './BillReminders'
 import WelcomeModal from './WelcomeModal'
 import WhatsNewModal from './WhatsNewModal'
 import NotificationPrompt from './NotificationPrompt'
+import InstallPrompt from './InstallPrompt'
 import { APP_VERSION } from '../features/whatsNew/changelog'
 import PullToRefresh from './PullToRefresh'
 import { PageSkeleton } from './ui'
@@ -50,20 +51,29 @@ const PRIMARY: { to: string; label: string; icon: IconComponent; end?: boolean }
   { to: '/analytics', label: 'Analytics', icon: IconChart },
 ]
 
-/** Secondary destinations — behind the account menu. */
-const SECONDARY: { to: string; label: string; icon: IconComponent }[] = [
+type MenuItem = { to: string; label: string; icon: IconComponent }
+
+/**
+ * Secondary destinations — behind the account menu, in three groups split
+ * by dividers: you (account, settings, admin, log out), your Finance's
+ * people and structure, and help & info.
+ */
+const MENU_YOU: MenuItem[] = [
   { to: '/account', label: 'Account', icon: IconUserCircle },
   { to: '/settings', label: 'Settings', icon: IconSettings },
+]
+const MENU_FINANCE: MenuItem[] = [
   { to: '/members', label: 'Members', icon: IconUsers },
   { to: '/categories', label: 'Categories', icon: IconTag },
   { to: '/activity', label: 'Activity', icon: IconClock },
+]
+const MENU_HELP: MenuItem[] = [
   { to: '/tutorial', label: 'How Fico works', icon: IconCompass },
   { to: '/updates', label: 'Updates', icon: IconSparkles },
   { to: '/credits', label: 'Credits', icon: IconInfo },
   { to: '/feedback', label: 'Report & feedback', icon: IconMessage },
 ]
 
-/** Only shown to a system-wide admin — separate from a Finance's own owner. */
 const ADMIN_ITEM = { to: '/admin', label: 'Admin', icon: IconShield }
 
 const primaryLink = ({ isActive }: { isActive: boolean }) =>
@@ -141,7 +151,7 @@ const AppLayout = () => {
   }
 
   const initial = (user?.displayName || user?.username || '?').charAt(0).toUpperCase()
-  const menuItems = user?.role === 'ADMIN' ? [...SECONDARY, ADMIN_ITEM] : SECONDARY
+  const youItems = user?.role === 'ADMIN' ? [...MENU_YOU, ADMIN_ITEM] : MENU_YOU
 
   return (
     <TourProvider>
@@ -239,48 +249,57 @@ const AppLayout = () => {
                     role="menu"
                     className="absolute right-0 z-20 mt-1.5 w-52 overflow-hidden rounded-lg border border-line bg-panel py-1 shadow-lg"
                   >
-                    {menuItems.map((item) => {
-                      const ItemIcon = item.icon
-                      return (
-                        <NavLink
-                          key={item.to}
-                          to={item.to}
-                          role="menuitem"
-                          onClick={() => setMenuOpen(false)}
-                          className={({ isActive }) =>
-                            `flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
-                              isActive
-                                ? 'bg-brand/10 text-brand'
-                                : 'text-muted hover:bg-panel-2 hover:text-ink'
-                            }`
-                          }
-                        >
-                          <span className="relative inline-flex">
-                            <ItemIcon size={17} />
-                            {badges[item.to] && (
-                              <span
-                                aria-label="New, not yet seen"
-                                className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-danger"
-                              />
-                            )}
-                          </span>
-                          {item.label}
-                        </NavLink>
-                      )
-                    })}
-                    <div className="my-1 border-t border-line" />
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setMenuOpen(false)
-                        void logout()
-                      }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-muted transition-colors hover:bg-danger/10 hover:text-danger"
-                    >
-                      <IconLogOut size={17} />
-                      Log out
-                    </button>
+                    {[youItems, MENU_FINANCE, MENU_HELP].map((group, groupIndex) => (
+                      <div
+                        key={groupIndex}
+                        role="group"
+                        className={groupIndex > 0 ? 'mt-1 border-t border-line pt-1' : undefined}
+                      >
+                        {group.map((item) => {
+                          const ItemIcon = item.icon
+                          return (
+                            <NavLink
+                              key={item.to}
+                              to={item.to}
+                              role="menuitem"
+                              onClick={() => setMenuOpen(false)}
+                              className={({ isActive }) =>
+                                `flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                                  isActive
+                                    ? 'bg-brand/10 text-brand'
+                                    : 'text-muted hover:bg-panel-2 hover:text-ink'
+                                }`
+                              }
+                            >
+                              <span className="relative inline-flex">
+                                <ItemIcon size={17} />
+                                {badges[item.to] && (
+                                  <span
+                                    aria-label="New, not yet seen"
+                                    className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-danger"
+                                  />
+                                )}
+                              </span>
+                              {item.label}
+                            </NavLink>
+                          )
+                        })}
+                        {groupIndex === 0 && (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setMenuOpen(false)
+                              void logout()
+                            }}
+                            className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+                          >
+                            <IconLogOut size={17} />
+                            Log out
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </>
               )}
@@ -298,6 +317,7 @@ const AppLayout = () => {
       <BillReminders />
       <WelcomeModal />
       <WhatsNewModal />
+      <InstallPrompt />
       <NotificationPrompt />
       <PullToRefresh />
 

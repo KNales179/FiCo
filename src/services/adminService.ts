@@ -29,6 +29,13 @@ export const setUserPassword = (
     { method: 'POST', body: { newPassword, confirmPassword } },
   )
 
+/** Turns off someone's two-step sign-in (they lost their phone and backup codes). */
+export const resetUserTwoFactor = (userId: string, confirmPassword: string) =>
+  api<{ success: boolean; message: string }>(`/admin/users/${userId}/2fa/reset`, {
+    method: 'POST',
+    body: { confirmPassword },
+  })
+
 export const setUserRole = (
   userId: string,
   role: UserRole,

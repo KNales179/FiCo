@@ -32,6 +32,40 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.2.0',
+    date: '2026-11-12',
+    title: 'Install in a tap, lock it up tight',
+    highlights: [
+      {
+        icon: 'layout',
+        title: 'Fico, as a real app',
+        body: 'Fico now offers to install itself — one tap where your browser allows it, simple steps where it doesn’t. Its own icon, its own window, works offline.',
+      },
+      {
+        icon: 'key',
+        title: 'Two-step sign-in for everyone',
+        body: 'Want an extra lock? Account → Two-step sign-in. Scan a QR code with an authenticator app and you’re set. Totally optional!',
+      },
+      {
+        icon: 'compass',
+        title: 'New tour: Install & security',
+        body: 'Not sure how? How Fico works → Install & security walks you through both.',
+      },
+    ],
+  },
+  {
+    version: '2.1.1',
+    date: '2026-11-12',
+    title: 'A tidier menu',
+    highlights: [
+      {
+        icon: 'users',
+        title: 'Everything in its place',
+        body: 'Your menu is now grouped: you stuff (Account, Settings, Log out), your Finance (Members, Categories, Activity), and help (tours, Updates, Credits, feedback).',
+      },
+    ],
+  },
+  {
     version: '2.1.0',
     date: '2026-11-12',
     title: 'Tidy, cozy, and stays logged in',

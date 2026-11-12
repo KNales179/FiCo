@@ -56,6 +56,14 @@ const Terms = () => (
           be old enough, under the law that applies to you, to agree to
           these terms on your own.
         </p>
+        <p className="mt-2">
+          Two-step sign-in (2FA) is optional and available to every
+          account. If you turn it on, keep your backup codes somewhere
+          safe — they're the way back in if you lose your phone. If you
+          lose both, a Fico admin can turn two-step sign-in off for your
+          account after you confirm it's you; that signs your account out
+          everywhere, and you sign in again with just your password.
+        </p>
       </section>
 
       <section>

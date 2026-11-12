@@ -5,6 +5,7 @@ import { hasSeenTutorial } from '../features/onboarding'
 import { seenVersion, APP_VERSION } from '../features/whatsNew/changelog'
 import { useTour } from '../hooks/useTour'
 import { gsap, prefersReducedMotion } from '../lib/motion'
+import { claimPromptSlot } from '../lib/promptSlot'
 import { IconBell, IconX } from './icons'
 
 const SNOOZE_KEY = 'fico.pushPromptAt'
@@ -49,7 +50,7 @@ const NotificationPrompt = () => {
       if (!hasSeenTutorial() || seenVersion() !== APP_VERSION) return
       if (!navigator.onLine) return
       const subscription = await getCurrentPushSubscription().catch(() => null)
-      if (!subscription) setShow(true)
+      if (!subscription && claimPromptSlot()) setShow(true)
     }, DELAY_MS)
     return () => window.clearTimeout(timer)
   }, [])
