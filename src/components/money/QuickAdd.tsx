@@ -11,7 +11,7 @@ import {
 import { fetchExchangeRate } from '../../features/currency/exchangeRate'
 import { recordItemizedExpense } from '../../features/receipts'
 import { Button } from '../ui'
-import { IconRotateCcw } from '../icons'
+import { IconPlus, IconRotateCcw } from '../icons'
 import CategoryPicker from './CategoryPicker'
 import ItemRowsEditor from './ItemRowsEditor'
 import { newBlankItem, sumItemPricesMinor, toScannedReceiptItems } from './draftItems'
@@ -273,10 +273,18 @@ const QuickAdd = () => {
   }
 
   return (
-    <section className="card">
-      <div className="flex items-center justify-between">
-        <h2 className="section-title">Quick add</h2>
-        <div className="inline-flex overflow-hidden rounded-lg border border-line text-xs font-medium">
+    <section className="card" data-tour="quick-add">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="section-title flex items-center gap-2">
+          <span className="card-icon">
+            <IconPlus size={16} />
+          </span>
+          Quick add
+        </h2>
+        <div
+          data-tour="quick-add-type"
+          className="inline-flex overflow-hidden rounded-lg border border-line text-xs font-medium"
+        >
           {(['EXPENSE', 'INCOME', 'TRANSFER'] as const).map((d) => (
             <button
               key={d}
@@ -294,7 +302,7 @@ const QuickAdd = () => {
         </div>
       </div>
 
-      <form onSubmit={submit} className="mt-3 space-y-3">
+      <form onSubmit={submit} className="mt-3 space-y-3" data-tour="quick-add-fields">
         <div className="flex flex-wrap items-center gap-2">
           {!batchMode && (
             <input

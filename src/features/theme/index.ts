@@ -25,12 +25,15 @@ export type Palette =
   | 'crimson'
   | 'brown'
 export type FontSize = 'sm' | 'md' | 'lg'
+/** Bundled typefaces (src/fonts.css) — all work offline. */
+export type FontFamily = 'jakarta' | 'inter' | 'manrope' | 'nunito' | 'system'
 export type Density = 'comfortable' | 'compact'
 
 export interface Appearance {
   theme: ThemeMode
   palette: Palette
   fontSize: FontSize
+  font: FontFamily
   /** Row/list spacing — "compact" fits more on screen, e.g. a long Records table. */
   density: Density
   /** How many rows the Records list opens with — still changeable per-visit there. */
@@ -41,6 +44,7 @@ export const DEFAULT_APPEARANCE: Appearance = {
   theme: 'system',
   palette: 'purple',
   fontSize: 'md',
+  font: 'jakarta',
   density: 'comfortable',
   defaultPageSize: 25,
 }
@@ -61,6 +65,39 @@ export const PALETTES: { value: Palette; label: string; swatch: string }[] = [
   { value: 'lime', label: 'Lime', swatch: '#4d7c0f' },
   { value: 'crimson', label: 'Crimson', swatch: '#b91c1c' },
   { value: 'brown', label: 'Brown', swatch: '#78350f' },
+]
+
+export const FONTS: { value: FontFamily; label: string; hint: string; stack: string }[] = [
+  {
+    value: 'jakarta',
+    label: 'Jakarta',
+    hint: 'Modern and friendly — the default',
+    stack: "'Plus Jakarta Sans Variable', system-ui, sans-serif",
+  },
+  {
+    value: 'inter',
+    label: 'Inter',
+    hint: 'Neutral and very readable',
+    stack: "'Inter Variable', system-ui, sans-serif",
+  },
+  {
+    value: 'manrope',
+    label: 'Manrope',
+    hint: 'Clean and geometric',
+    stack: "'Manrope Variable', system-ui, sans-serif",
+  },
+  {
+    value: 'nunito',
+    label: 'Nunito',
+    hint: 'Soft and rounded',
+    stack: "'Nunito Variable', system-ui, sans-serif",
+  },
+  {
+    value: 'system',
+    label: 'System',
+    hint: "Your device's own font",
+    stack: "system-ui, 'Segoe UI', Roboto, sans-serif",
+  },
 ]
 
 const STORAGE_KEY = 'fico.appearance'
@@ -87,6 +124,9 @@ export const applyAppearance = (appearance: Appearance): void => {
 
   if (appearance.fontSize === 'md') root.removeAttribute('data-font-size')
   else root.setAttribute('data-font-size', appearance.fontSize)
+
+  if (appearance.font === 'jakarta') root.removeAttribute('data-font')
+  else root.setAttribute('data-font', appearance.font)
 
   if (appearance.density === 'comfortable') root.removeAttribute('data-density')
   else root.setAttribute('data-density', appearance.density)

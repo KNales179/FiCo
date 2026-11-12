@@ -278,6 +278,13 @@ export const IconArchive = (props: IconProps) => (
   </Icon>
 )
 
+export const IconWallet = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M18.5 7.5V6a1.5 1.5 0 0 0-1.5-1.5H5.5A2 2 0 0 0 3.5 6.5v11a2 2 0 0 0 2 2h13a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 18.5 7.5H5.5" />
+    <path d="M20 11.5h-3.5a1.75 1.75 0 0 0 0 3.5H20" />
+  </Icon>
+)
+
 export const IconStar = (props: IconProps) => (
   <Icon {...props}>
     <path d="M12 4l2.4 5.1 5.6.7-4.1 3.9 1.1 5.5L12 16.4l-5 2.8 1.1-5.5-4.1-3.9 5.6-.7Z" />

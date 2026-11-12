@@ -18,7 +18,8 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
 
-  --radius-card: 0.75rem;
+  --radius-card: 1rem;
+  --font-sans: var(--font-ui);
 }
 
 /**
@@ -284,6 +285,26 @@
   --brand-ink: #2b1608;
 }
 
+/**
+ * Font (Settings page). Plus Jakarta Sans is the default and needs no
+ * attribute; every face is bundled in src/fonts.css so it works offline.
+ */
+:root {
+  --font-ui: "Plus Jakarta Sans Variable", system-ui, "Segoe UI", Roboto, sans-serif;
+}
+html[data-font="inter"] {
+  --font-ui: "Inter Variable", system-ui, "Segoe UI", Roboto, sans-serif;
+}
+html[data-font="manrope"] {
+  --font-ui: "Manrope Variable", system-ui, "Segoe UI", Roboto, sans-serif;
+}
+html[data-font="nunito"] {
+  --font-ui: "Nunito Variable", system-ui, "Segoe UI", Roboto, sans-serif;
+}
+html[data-font="system"] {
+  --font-ui: system-ui, "Segoe UI", Roboto, sans-serif;
+}
+
 html[data-font-size="sm"] {
   font-size: 14px;
 }
@@ -315,9 +336,14 @@ body,
 
 body {
   margin: 0;
+  /* Safety net: nothing may make the page wider than the screen. On a phone
+     that zooms the whole page out and makes the fixed top/bottom bars jump
+     around (owner report on Bills). `clip`, not `hidden` — hidden would
+     turn body into a scroll container and break the sticky header. */
+  overflow-x: clip;
   background: var(--surface);
   color: var(--ink);
-  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -337,19 +363,79 @@ body {
   }
 }
 
+/**
+ * The faint grid behind every page — fixed to the viewport, above the page
+ * colour and below all content. Purely decorative: no hover, no pointer
+ * events. Fades out toward the bottom so long pages don't feel like graph
+ * paper, and a soft glow of the active accent sits at the top.
+ */
+.app-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60rem 28rem at 50% -8rem, color-mix(in srgb, var(--brand) 16%, transparent), transparent 70%);
+}
+.app-backdrop::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--ink) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--ink) 6%, transparent) 1px, transparent 1px);
+  background-size: 36px 36px;
+  background-position: center top;
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 100%);
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.015em;
+}
+
 @layer components {
+  /* A soft lift instead of a flat outline — an inner top highlight plus a
+     wide, low shadow, so cards read as surfaces sitting over the grid. */
   .card {
-    @apply rounded-[var(--radius-card)] border border-line bg-panel p-4 shadow-sm;
+    @apply rounded-[var(--radius-card)] border border-line bg-panel p-4 sm:p-5;
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, white 5%, transparent),
+      0 1px 2px rgb(0 0 0 / 0.04),
+      0 12px 32px -20px rgb(0 0 0 / 0.35);
+  }
+
+  /* A card's title row: an accent icon chip, then the title. */
+  .card-icon {
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand;
+  }
+
+  /* The dashboard's headline card — brand-tinted, big numbers. */
+  .hero-card {
+    @apply relative overflow-hidden rounded-[var(--radius-card)] border p-5 sm:p-6;
+    border-color: color-mix(in srgb, var(--brand) 30%, var(--line));
+    background:
+      radial-gradient(28rem 14rem at 100% 0%, color-mix(in srgb, var(--brand) 28%, transparent), transparent 70%),
+      linear-gradient(160deg, color-mix(in srgb, var(--brand) 12%, var(--panel)), var(--panel) 65%);
+    box-shadow: 0 18px 40px -24px color-mix(in srgb, var(--brand) 60%, transparent);
+  }
+
+  .stat-tile {
+    @apply rounded-xl border border-line bg-panel/70 px-3 py-2.5 backdrop-blur;
   }
 
   .btn {
     @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-line
-      bg-panel px-3 py-1.5 text-sm font-medium text-ink transition-colors
-      hover:bg-panel-2 disabled:cursor-not-allowed disabled:opacity-50;
+      bg-panel px-3 py-1.5 text-sm font-medium text-ink transition
+      hover:bg-panel-2 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50
+      disabled:active:scale-100;
   }
 
   .btn-primary {
     @apply border-transparent bg-brand text-brand-ink hover:opacity-90 hover:bg-brand;
+    box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--brand) 70%, transparent);
   }
 
   .btn-sm {
@@ -381,11 +467,11 @@ body {
   }
 
   .page-title {
-    @apply text-xl font-semibold tracking-tight text-ink;
+    @apply text-2xl font-bold tracking-tight text-ink sm:text-[1.7rem];
   }
 
   .section-title {
-    @apply text-sm font-semibold text-ink;
+    @apply text-[0.95rem] font-semibold text-ink;
   }
 
   .muted {
@@ -399,9 +485,16 @@ body {
 
   /* A real data table (Records, member lists) — a scroll container so a
      wide table never forces the page itself to scroll sideways. */
+  /* On a phone it bleeds to the edge of whatever it sits in: a card's
+     padding (1rem) inside a card, the page's own gutter (0.75rem) when it
+     sits directly on the page (Members) — bleeding a full 1rem there pushed
+     the page 4px wider than the screen. */
   .table-wrap {
-    @apply -mx-4 overflow-x-auto px-4 sm:mx-0 sm:rounded-[var(--radius-card)]
+    @apply -mx-3 overflow-x-auto px-3 sm:mx-0 sm:rounded-[var(--radius-card)]
       sm:border sm:border-line sm:px-0;
+  }
+  .card .table-wrap {
+    @apply -mx-4 px-4 sm:mx-0 sm:px-0;
   }
 
   /* No forced min-width — a table shrinks to fit a narrow phone screen by
@@ -437,5 +530,78 @@ body {
 
   .table tbody tr:last-child td {
     @apply border-b-0;
+  }
+}
+
+/* ---- Guided tour (components/tour) ---- */
+/* The spotlight is a see-through box whose giant shadow is the dim layer,
+   so moving/resizing one element moves the "hole" in the dark. */
+.tour-spot {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-radius: 14px;
+  pointer-events: none;
+  box-shadow: 0 0 0 200vmax rgb(5 5 10 / 0.74);
+  outline: 2px solid color-mix(in srgb, var(--brand) 75%, white);
+  outline-offset: 2px;
+}
+.tour-spot[data-empty="true"] {
+  outline-color: transparent;
+}
+.tour-spot::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 18px;
+  border: 2px solid var(--brand);
+  opacity: 0;
+  animation: tour-pulse 1.8s ease-out infinite;
+}
+.tour-spot[data-empty="true"]::after {
+  display: none;
+}
+@keyframes tour-pulse {
+  0% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+}
+
+.tour-bubble {
+  position: fixed;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: 16px;
+  box-shadow: 0 28px 70px -18px rgb(0 0 0 / 0.6);
+}
+.tour-arrow {
+  position: absolute;
+  display: none;
+  width: 26px;
+  margin-left: -13px;
+  color: color-mix(in srgb, var(--brand) 80%, white);
+  filter: drop-shadow(0 2px 6px rgb(0 0 0 / 0.5));
+}
+.tour-bubble[data-placement="below"] .tour-arrow {
+  display: block;
+  top: -36px;
+}
+.tour-bubble[data-placement="above"] .tour-arrow {
+  display: block;
+  bottom: -36px;
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-spot::after {
+    animation: none;
   }
 }

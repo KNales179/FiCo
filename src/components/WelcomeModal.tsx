@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useTour } from '../hooks/useTour'
 import { hasSeenTutorial, markTutorialSeen } from '../features/onboarding'
 import { Modal, Button } from './ui'
 import { IconCompass } from './icons'
@@ -11,7 +11,7 @@ import { IconCompass } from './icons'
  * from the menu ("How Fico works").
  */
 const WelcomeModal = () => {
-  const navigate = useNavigate()
+  const { startTour } = useTour()
   const [show, setShow] = useState(false)
 
   useEffect(() => {
@@ -29,18 +29,17 @@ const WelcomeModal = () => {
   return (
     <Modal title="Welcome to Fico" onClose={dismiss}>
       <p className="text-sm text-muted">
-        A quick look at how recording money, shopping, and bills works here —
-        takes about two minutes, and you can always come back to it later
-        from the menu.
+        Want a quick guided tour? We'll point out each part of the dashboard
+        and what it's for — about a minute. You can replay it any time from
+        the menu under “How Fico works”.
       </p>
       <div className="mt-4 flex justify-end gap-2">
         <Button onClick={dismiss}>Skip for now</Button>
         <Button
           variant="primary"
           onClick={() => {
-            markTutorialSeen()
             setShow(false)
-            navigate('/tutorial')
+            startTour()
           }}
         >
           <IconCompass size={15} />

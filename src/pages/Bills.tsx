@@ -814,8 +814,12 @@ const Bills = () => {
                 key={bill.id}
                 className={`py-2 text-sm ${billUnseen ? 'bg-danger/5' : ''}`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span>
+                {/* Wraps on a phone: the name on one line, its buttons on the
+                    next. Kept on one unbreakable line, the buttons pushed the
+                    page wider than the screen, which zoomed the page out and
+                    made the fixed top/bottom bars jump. */}
+                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                  <span className="min-w-0">
                     {billUnseen && (
                       <span
                         aria-label="New, not yet seen"
@@ -831,7 +835,7 @@ const Bills = () => {
                         ` · ~${formatMoney(bill.expectedAmountMinor)}`}
                     </span>
                   </span>
-                  <span className="flex items-center gap-2">
+                  <span className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
                     {canEdit && bill.recurrence === 'SCHEDULED' && (
                       <AddScheduledDate bill={bill} />
                     )}

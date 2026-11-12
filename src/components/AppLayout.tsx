@@ -1,5 +1,5 @@
-import { Suspense, useCallback, useState, type ComponentType } from 'react'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Suspense, useCallback, useRef, useState, type ComponentType } from 'react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useSpace } from '../hooks/useSpace'
 import { useUnseenBadge } from '../hooks/useUnseenBadge'
@@ -31,6 +31,8 @@ import BillReminders from './BillReminders'
 import WelcomeModal from './WelcomeModal'
 import PullToRefresh from './PullToRefresh'
 import { PageSkeleton } from './ui'
+import TourProvider from './tour/TourProvider'
+import { useStaggerIn } from '../lib/motion'
 
 type IconComponent = ComponentType<IconProps>
 
@@ -69,6 +71,10 @@ const AppLayout = () => {
   const { user, logout } = useAuth()
   const { activeSpaceId } = useSpace()
   const [menuOpen, setMenuOpen] = useState(false)
+  const location = useLocation()
+  const pageRef = useRef<HTMLDivElement>(null)
+  // Each page eases in when you arrive on it.
+  useStaggerIn(pageRef, location.pathname, { y: 10 })
 
   const fetchShoppingLists = useCallback(
     () => (activeSpaceId ? listShoppingLists(activeSpaceId) : Promise.resolve([])),
@@ -118,7 +124,9 @@ const AppLayout = () => {
   const menuItems = user?.role === 'ADMIN' ? [...SECONDARY, ADMIN_ITEM] : SECONDARY
 
   return (
-    <div className="min-h-screen">
+    <TourProvider>
+    <div className="relative isolate min-h-screen">
+      <div className="app-backdrop" aria-hidden="true" />
       <header className="sticky top-0 z-20 border-b border-line bg-panel/90 shadow-sm backdrop-blur">
         {/* Always flex-nowrap, on every width — wrapping just traded "the
             profile button clips off-screen" for "the header grows a second
@@ -130,14 +138,16 @@ const AppLayout = () => {
             anything but visible forces overflow-y to clip too (the two axes
             can't be mixed), which was silently clipping the profile
             dropdown menu below the row instead of showing it. */}
-        <div className="mx-auto flex max-w-5xl flex-nowrap items-center gap-x-2 px-3 py-2.5 sm:px-4">
+        <div className="mx-auto flex max-w-6xl flex-nowrap items-center gap-x-2 px-3 py-2.5 sm:px-4 lg:px-6">
           <span className="flex shrink-0 items-center gap-1.5 text-base font-semibold tracking-tight text-brand">
             <img src="/icon-192.png" alt="" className="h-7 w-7 rounded-md" />
             <span className="hidden sm:inline">Fico</span>
           </span>
-          <SpaceSwitcher />
+          <div data-tour="space" className="flex min-w-0 items-center">
+            <SpaceSwitcher />
+          </div>
 
-          <nav className="ml-1 hidden items-center gap-1 md:flex">
+          <nav data-tour="nav" className="ml-1 hidden items-center gap-1 md:flex">
             {PRIMARY.map((item) => {
               const ItemIcon = item.icon
               return (
@@ -168,6 +178,7 @@ const AppLayout = () => {
             <div className="relative">
               <button
                 type="button"
+                data-tour="profile"
                 onClick={() => setMenuOpen((v) => !v)}
                 className="flex items-center gap-2 rounded-lg border border-line bg-panel py-1 pl-1 pr-2 text-sm font-medium text-ink transition-colors hover:bg-panel-2"
                 aria-haspopup="menu"
@@ -258,7 +269,7 @@ const AppLayout = () => {
 
         {/* Its own row, always — never sharing space with (or wrapping onto
             the same line as) the nav or the profile button above. */}
-        <div className="mx-auto max-w-5xl px-3 pb-2 sm:px-4">
+        <div className="mx-auto max-w-6xl px-3 pb-2 sm:px-4 lg:px-6">
           <SyncStatus />
         </div>
       </header>
@@ -267,13 +278,15 @@ const AppLayout = () => {
       <WelcomeModal />
       <PullToRefresh />
 
-      <main className="mx-auto max-w-5xl px-3 py-5 pb-24 sm:px-4 md:pb-5">
+      <main className="mx-auto max-w-6xl px-3 py-5 pb-24 sm:px-4 md:pb-8 lg:px-6 lg:py-7">
         {/* Suspense here (not just at the app root) so the header and nav
             stay on screen while a page's code downloads — only the content
             area shows a skeleton. */}
-        <Suspense fallback={<PageSkeleton />}>
-          <Outlet />
-        </Suspense>
+        <div ref={pageRef}>
+          <Suspense fallback={<PageSkeleton />}>
+            <Outlet />
+          </Suspense>
+        </div>
 
         <footer className="mt-10 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
           <span>© {new Date().getFullYear()} IBell. All rights reserved.</span>
@@ -290,7 +303,11 @@ const AppLayout = () => {
       </main>
 
       {/* Mobile bottom navigation */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-panel/95 backdrop-blur md:hidden">
+      <nav
+        data-tour="nav"
+        data-bottom-nav
+        className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-panel/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      >
         {PRIMARY.map((item) => {
           const ItemIcon = item.icon
           return (
@@ -327,6 +344,7 @@ const AppLayout = () => {
         })}
       </nav>
     </div>
+    </TourProvider>
   )
 }
 

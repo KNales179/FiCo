@@ -19,6 +19,7 @@ import {
   IconLock,
   IconSearch,
   IconTrash,
+  IconClock,
 } from '../icons'
 import Attachments from '../Attachments'
 import CategoryPicker from './CategoryPicker'
@@ -726,15 +727,23 @@ const TransactionList = () => {
   }
 
   return (
-    <section className="card">
+    <section className="card min-w-0" data-tour="records">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">Records</h2>
+        <h2 className="section-title flex items-center gap-2">
+          <span className="card-icon">
+            <IconClock size={16} />
+          </span>
+          Records
+        </h2>
         <span className="text-xs text-muted">
           {filtered.length} of {all.length}
         </span>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-b border-line pb-3 text-sm">
+      <div
+        data-tour="records-filters"
+        className="mt-3 flex flex-wrap items-center gap-2 border-b border-line pb-3 text-sm"
+      >
         <span className="relative min-w-[9rem] flex-1">
           <IconSearch
             size={15}

@@ -15,6 +15,7 @@ import {
   IconRotateCcw,
   IconStar,
   IconTrash,
+  IconWallet,
   IconX,
 } from '../icons'
 
@@ -90,11 +91,16 @@ const AccountsCard = () => {
   }
 
   return (
-    <section className="card">
+    <section className="card" data-tour="accounts">
       <div className="flex items-center justify-between">
-        <h2 className="section-title">Accounts</h2>
+        <h2 className="section-title flex items-center gap-2">
+          <span className="card-icon">
+            <IconWallet size={16} />
+          </span>
+          Accounts
+        </h2>
         {canEdit && (
-          <Button size="sm" onClick={() => setOpen((v) => !v)}>
+          <Button size="sm" data-tour="accounts-add" onClick={() => setOpen((v) => !v)}>
             {open ? <IconX size={14} /> : <IconPlus size={14} />}
             {open ? 'Cancel' : 'Account'}
           </Button>
@@ -110,7 +116,7 @@ const AccountsCard = () => {
       )}
 
       <ul className="mt-3 divide-y divide-line">
-        {activeAccounts.map((account) => (
+        {activeAccounts.map((account, index) => (
           <li
             key={account.id}
             className="flex flex-wrap items-center justify-between gap-2 py-2.5"
@@ -123,7 +129,10 @@ const AccountsCard = () => {
               </span>
             </span>
 
-            <span className="flex items-center gap-3">
+            <span
+              className="flex items-center gap-3"
+              data-tour={index === 0 ? 'account-row' : undefined}
+            >
               <span
                 className={`tabular-nums ${
                   account.balanceMinor < 0 ? 'text-danger' : 'text-ink'

@@ -210,7 +210,7 @@ export const PageSkeleton = () => (
 export const AppShellSkeleton = () => (
   <div className="min-h-screen">
     <div className="border-b border-line bg-panel shadow-sm">
-      <div className="mx-auto flex max-w-5xl items-center gap-3 px-3 py-2.5 sm:px-4">
+      <div className="mx-auto flex max-w-6xl items-center gap-3 px-3 py-2.5 sm:px-4 lg:px-6">
         <Skeleton className="h-6 w-16" />
         <div className="hidden flex-1 items-center gap-2 md:flex">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -222,7 +222,7 @@ export const AppShellSkeleton = () => (
         </div>
       </div>
     </div>
-    <main className="mx-auto max-w-5xl px-3 py-5 sm:px-4">
+    <main className="mx-auto max-w-6xl px-3 py-5 sm:px-4 lg:px-6">
       <PageSkeleton />
     </main>
   </div>

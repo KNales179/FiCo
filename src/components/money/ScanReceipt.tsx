@@ -261,10 +261,21 @@ const ScanReceipt = () => {
 
   if (!open) {
     return (
-      <Button onClick={() => setOpen(true)}>
-        <IconCamera size={16} />
-        Scan a receipt
-      </Button>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="card flex w-full items-center gap-3 text-left transition hover:border-brand/40 active:scale-[0.99]"
+      >
+        <span className="card-icon h-10 w-10">
+          <IconCamera size={18} />
+        </span>
+        <span className="min-w-0">
+          <span className="section-title block">Scan a receipt</span>
+          <span className="block text-xs text-muted">
+            Read a photo right on this device — it fills what it can and never guesses.
+          </span>
+        </span>
+      </button>
     )
   }
 

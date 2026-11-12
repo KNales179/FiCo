@@ -4,12 +4,14 @@ import { updateNotificationPreferences } from '../services/authService'
 import { ApiError, isNetworkError } from '../lib/api'
 import {
   DEFAULT_APPEARANCE,
+  FONTS,
   PALETTES,
   applyAppearance,
   loadAppearance,
   saveAppearance,
   type Appearance,
   type Density,
+  type FontFamily,
   type FontSize,
   type ThemeMode,
 } from '../features/theme'
@@ -101,6 +103,7 @@ const AppearanceSection = () => {
     appearance.theme === DEFAULT_APPEARANCE.theme &&
     appearance.palette === DEFAULT_APPEARANCE.palette &&
     appearance.fontSize === DEFAULT_APPEARANCE.fontSize &&
+    appearance.font === DEFAULT_APPEARANCE.font &&
     appearance.density === DEFAULT_APPEARANCE.density &&
     appearance.defaultPageSize === DEFAULT_APPEARANCE.defaultPageSize
 
@@ -162,6 +165,39 @@ const AppearanceSection = () => {
                 <span className="text-ink">{p.label}</span>
               </button>
             ))}
+          </div>
+        </div>
+
+        <div>
+          <span className="field-label">Font</span>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {FONTS.map((f) => {
+              const selected = appearance.font === f.value
+              return (
+                <button
+                  key={f.value}
+                  type="button"
+                  onClick={() => change({ ...appearance, font: f.value as FontFamily })}
+                  aria-pressed={selected}
+                  className={cx(
+                    'flex flex-col items-start rounded-xl border-2 px-3 py-2 text-left transition-colors',
+                    selected ? 'border-brand bg-brand/10' : 'border-line hover:bg-panel-2',
+                  )}
+                >
+                  <span
+                    className="text-2xl font-semibold leading-tight text-ink"
+                    style={{ fontFamily: f.stack }}
+                  >
+                    Aa ₱1,250
+                  </span>
+                  <span className="mt-1 flex items-center gap-1 text-sm font-medium text-ink">
+                    {selected && <IconCheck size={13} className="text-brand" />}
+                    {f.label}
+                  </span>
+                  <span className="text-xs text-muted">{f.hint}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
 
