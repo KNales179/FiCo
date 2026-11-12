@@ -1,4 +1,5 @@
 import { useConnectivity } from '../hooks/useConnectivity'
+import { isDemoMode } from '../features/demo/demoMode'
 
 /**
  * A thin banner shown only when Fico can't reach its server, making it
@@ -14,6 +15,8 @@ const ConnectionStatus = () => {
   const { serverState } = useConnectivity()
 
   if (serverState === 'checking' || serverState === 'reachable') return null
+  // The demo never uses the server, so its state isn't news there.
+  if (isDemoMode()) return null
 
   const waking = serverState === 'waking'
 

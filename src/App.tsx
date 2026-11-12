@@ -11,6 +11,8 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/AppLayout'
 import ConnectionStatus from './components/ConnectionStatus'
 import UpdateBanner from './components/UpdateBanner'
+import IntroSplash from './components/IntroSplash'
+import AuthLayout from './components/auth/AuthLayout'
 import { PageSkeleton } from './components/ui'
 
 import Login from './pages/Login'
@@ -35,6 +37,8 @@ const Settings = lazy(() => import('./pages/Settings'))
 const Tutorial = lazy(() => import('./pages/Tutorial'))
 const Credits = lazy(() => import('./pages/Credits'))
 const Updates = lazy(() => import('./pages/Updates'))
+const Notifications = lazy(() => import('./pages/Notifications'))
+const AdminUser = lazy(() => import('./pages/AdminUser'))
 const Admin = lazy(() => import('./pages/Admin'))
 const Feedback = lazy(() => import('./pages/Feedback'))
 const AdminFeedback = lazy(() => import('./pages/AdminFeedback'))
@@ -48,6 +52,8 @@ const RouteFallback = () => (
 const App = () => {
   return (
     <BrowserRouter>
+      {/* The opening animation plays over the app while it loads underneath. */}
+      <IntroSplash />
       <AuthProvider>
         <SpaceProvider>
           <SyncProvider>
@@ -59,10 +65,12 @@ const App = () => {
 
                   <Suspense fallback={<RouteFallback />}>
                     <Routes>
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/register" element={<Register />} />
-                      <Route path="/forgot-password" element={<ForgotPassword />} />
-                      <Route path="/reset-password" element={<ResetPassword />} />
+                      <Route element={<AuthLayout />}>
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/register" element={<Register />} />
+                        <Route path="/forgot-password" element={<ForgotPassword />} />
+                        <Route path="/reset-password" element={<ResetPassword />} />
+                      </Route>
                       <Route path="/verify-email" element={<VerifyEmail />} />
                       <Route path="/terms" element={<Terms />} />
                       <Route path="/privacy" element={<Privacy />} />
@@ -82,9 +90,11 @@ const App = () => {
                           <Route path="/tutorial" element={<Tutorial />} />
                           <Route path="/credits" element={<Credits />} />
                           <Route path="/updates" element={<Updates />} />
+                          <Route path="/notifications" element={<Notifications />} />
                           <Route path="/feedback" element={<Feedback />} />
                           <Route path="/admin" element={<Admin />} />
                           <Route path="/admin/feedback" element={<AdminFeedback />} />
+                          <Route path="/admin/users/:userId" element={<AdminUser />} />
                         </Route>
                       </Route>
 

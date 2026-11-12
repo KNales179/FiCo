@@ -52,7 +52,7 @@ export const TOURS: Tour[] = [
     demo: true,
     steps: [
       { target: null, title: 'Welcome to Fico', body: `A quick look around your dashboard. Tap Next to move along, or Skip any time. ${sampleNote}` },
-      { target: 'space', title: 'Your Finance', body: 'Everything you record lives in a Finance. Switch between your personal one and a family one here, or tap New to start another and invite people to it.' },
+      { target: 'space', title: 'Your Finance', body: 'Everything you record lives in a Finance. Tap here to switch between your personal one and a shared one — or pick “Add another Finance” at the bottom of the list (up to 3 of your own) and invite people to it.' },
       { target: 'summary', title: 'Your money at a glance', body: 'The total across all your active accounts, plus what went out and came in this month — worked out from what you record.' },
       { target: 'cash-check', title: 'Cash check', body: 'Count the cash in your wallet and type it in. Fico compares it with what it expected, so you can spot anything you forgot to record.' },
       { target: 'quick-add', title: 'Quick add', body: 'The fastest way to record money as it happens. Everything in Fico is typed by you — it never connects to a bank or e-wallet.' },
@@ -154,7 +154,7 @@ export const TOURS: Tour[] = [
     demo: false,
     steps: [
       { target: null, title: 'Share a Finance', body: 'A personal Finance is just you. A shared (family) Finance is one everyone in it can see and record into — great for household money.' },
-      { target: 'space', title: 'Pick or create a Finance', body: 'Members belong to one Finance. Tap New to create a shared one, then switch to it here before inviting people.' },
+      { target: 'space', title: 'Pick or create a Finance', body: 'Members belong to one Finance. Open this list and pick “Add another Finance” to create a shared one, then switch to it here before inviting people.' },
       { target: 'members-invite', title: 'Invite someone', body: 'Type their email and tap Invite. If they already use Fico they join right away; if not, they join automatically when they sign up with that email. Only the owner can invite.' },
       { target: 'members-list', title: 'Who’s in', body: 'Everyone in this Finance. The owner can hand over ownership (the award button) or remove someone (X). Removing someone stops their access — what they already recorded stays.' },
       { target: 'members-leave', title: 'Leaving', body: 'Not the owner? You can leave a shared Finance here any time.' },

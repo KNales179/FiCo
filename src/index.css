@@ -688,3 +688,255 @@ h3 {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ---- The in-app Fico logo (components/FicoLogo.tsx) ----
+   Same structure as the original artwork — letters from a deeper shade of
+   the accent to the accent itself, leaf a lighter tint — but built from the
+   active colour, so it follows Settings → Look → Colour and light/dark. */
+:root {
+  --logo-from: color-mix(in srgb, var(--brand) 62%, #000);
+  --logo-to: var(--brand);
+  --logo-leaf-from: color-mix(in srgb, var(--brand) 62%, #fff);
+  --logo-leaf-to: color-mix(in srgb, var(--brand) 38%, #fff);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --logo-from: color-mix(in srgb, var(--brand) 72%, #000);
+    --logo-to: var(--brand);
+    --logo-leaf-from: color-mix(in srgb, var(--brand) 70%, #fff);
+    --logo-leaf-to: color-mix(in srgb, var(--brand) 45%, #fff);
+  }
+}
+:root[data-theme="dark"] {
+  --logo-from: color-mix(in srgb, var(--brand) 72%, #000);
+  --logo-to: var(--brand);
+  --logo-leaf-from: color-mix(in srgb, var(--brand) 70%, #fff);
+  --logo-leaf-to: color-mix(in srgb, var(--brand) 45%, #fff);
+}
+/* White (monochrome) palette: ink letters with a grey leaf — near-white
+   letters on dark, where a "lighter tint" of white would vanish. */
+:root[data-palette="white"] {
+  --logo-from: #0f0f12;
+  --logo-to: #3f3f46;
+  --logo-leaf-from: #a1a1aa;
+  --logo-leaf-to: #d4d4d8;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"])[data-palette="white"] {
+    --logo-from: #d4d4d8;
+    --logo-to: #fafafa;
+    --logo-leaf-from: #71717a;
+    --logo-leaf-to: #a1a1aa;
+  }
+}
+:root[data-theme="dark"][data-palette="white"] {
+  --logo-from: #d4d4d8;
+  --logo-to: #fafafa;
+  --logo-leaf-from: #71717a;
+  --logo-leaf-to: #a1a1aa;
+}
+
+
+/* ───────────────────────── Sign-in screens ───────────────────────── */
+
+/* Gridded backdrop with slow-drifting colour behind the sign-in screens. */
+.auth-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1; /* under the "waking up the server" banner too */
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(50rem 30rem at 15% -10%, var(--glow), transparent 70%),
+    var(--surface-base);
+}
+.auth-backdrop::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 40px 40px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 30% 40%, black 30%, transparent 85%);
+  mask-image: radial-gradient(ellipse 80% 70% at 30% 40%, black 30%, transparent 85%);
+}
+.auth-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  opacity: 0.55;
+  animation: auth-drift 22s ease-in-out infinite alternate;
+}
+.auth-blob-1 {
+  width: 28rem;
+  height: 28rem;
+  left: -8rem;
+  top: 20%;
+  background: color-mix(in srgb, var(--brand) 30%, transparent);
+}
+.auth-blob-2 {
+  width: 22rem;
+  height: 22rem;
+  right: 10%;
+  bottom: -6rem;
+  background: color-mix(in srgb, var(--brand) 22%, transparent);
+  animation-duration: 26s;
+  animation-delay: -8s;
+}
+.auth-blob-3 {
+  width: 16rem;
+  height: 16rem;
+  left: 35%;
+  top: -5rem;
+  background: color-mix(in srgb, var(--logo-leaf-to) 25%, transparent);
+  animation-duration: 30s;
+  animation-delay: -14s;
+}
+@keyframes auth-drift {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(4rem, -2rem) scale(1.08); }
+  100% { transform: translate(-2rem, 3rem) scale(0.95); }
+}
+
+/* The big logo panel on wide screens. */
+.auth-panel {
+  container-type: size;
+  background:
+    radial-gradient(70% 55% at 50% 42%, color-mix(in srgb, var(--brand) 16%, transparent), transparent 75%),
+    linear-gradient(160deg,
+      color-mix(in srgb, var(--brand) 12%, var(--panel)),
+      color-mix(in srgb, var(--brand) 4%, var(--panel)) 60%,
+      color-mix(in srgb, var(--brand) 10%, var(--panel)));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 8%, transparent),
+    0 30px 60px -30px color-mix(in srgb, var(--brand) 35%, transparent);
+}
+.auth-panel-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--brand) 12%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--brand) 12%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+  -webkit-mask-image: radial-gradient(circle at 50% 42%, black 0%, transparent 70%);
+  mask-image: radial-gradient(circle at 50% 42%, black 0%, transparent 70%);
+}
+.auth-orbit {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  border-radius: 9999px;
+  border: 1px dashed color-mix(in srgb, var(--brand) 30%, transparent);
+  translate: -50% -50%;
+  animation: auth-spin 60s linear infinite;
+}
+.auth-orbit-1 { width: min(26rem, 75%); aspect-ratio: 1; }
+.auth-orbit-2 {
+  width: min(38rem, 105%);
+  aspect-ratio: 1;
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--brand) 14%, transparent);
+  animation-duration: 90s;
+  animation-direction: reverse;
+}
+.auth-orbit-1::after {
+  /* A small "coin" riding the inner orbit. */
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: var(--brand);
+  box-shadow: 0 0 12px var(--brand);
+}
+@keyframes auth-spin {
+  to { rotate: 360deg; }
+}
+
+/* Floating sample cards around the logo. */
+.auth-chip {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.85rem 0.6rem 0.6rem;
+  border-radius: 1rem;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  box-shadow: 0 14px 30px -18px color-mix(in srgb, black 45%, transparent);
+  animation: auth-float 7s ease-in-out infinite;
+}
+.auth-chip-icon {
+  display: flex;
+  height: 2rem;
+  width: 2rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+/* The lower cards sit between the tagline and the footer line; on a short
+   panel there's no room for them, so they step aside rather than cover text. */
+@container (max-height: 720px) {
+  .auth-chip-low { display: none; }
+  /* Household (shared finance) always stays — tucked lower to clear the tagline. */
+  .auth-chip-household { bottom: 12%; }
+  .auth-chip-tl { top: 4%; }
+  .auth-chip-tr { top: 7%; }
+}
+@keyframes auth-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+/* Password strength meter. */
+.strength-bar {
+  height: 4px;
+  flex: 1;
+  border-radius: 9999px;
+  background: var(--line);
+  transition: background-color 0.25s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-blob,
+  .auth-orbit,
+  .auth-chip {
+    animation: none;
+  }
+}
+
+/* ───────────────────────── Birthday ───────────────────────── */
+
+.birthday-card {
+  background:
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--brand) 20%, transparent), transparent 60%),
+    linear-gradient(135deg, color-mix(in srgb, var(--brand) 8%, var(--panel)), var(--panel));
+  box-shadow: 0 18px 40px -28px color-mix(in srgb, var(--brand) 60%, transparent);
+}
+/* A sprinkle of confetti dots in the corner. */
+.birthday-confetti {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 9rem;
+  height: 6rem;
+  pointer-events: none;
+  opacity: 0.55;
+  background-image:
+    radial-gradient(circle, var(--brand) 2.5px, transparent 3px),
+    radial-gradient(circle, var(--warning) 2px, transparent 2.5px),
+    radial-gradient(circle, var(--success) 2px, transparent 2.5px),
+    radial-gradient(circle, var(--logo-leaf-to) 3px, transparent 3.5px);
+  background-size: 38px 30px, 46px 36px, 30px 42px, 54px 26px;
+  background-position: 4px 6px, 20px 14px, 11px 2px, 30px 18px;
+  -webkit-mask-image: linear-gradient(225deg, black 10%, transparent 75%);
+  mask-image: linear-gradient(225deg, black 10%, transparent 75%);
+}

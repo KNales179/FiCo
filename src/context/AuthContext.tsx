@@ -18,6 +18,7 @@ import type { SessionInfo, User } from '../types/auth'
 import {
   getMe,
   login as loginRequest,
+  googleAuth as googleAuthRequest,
   logout as logoutRequest,
   register as registerRequest,
   verifyTwoFactorLogin as verifyTwoFactorRequest,
@@ -31,12 +32,17 @@ import {
 } from '../features/auth/localAuth'
 import { useConnectivity } from '../hooks/useConnectivity'
 import { AuthContext } from './auth-context'
+import { clearNotificationCache, seedDemoNotifications } from '../features/notifications'
+import { DEMO_USER_ID, enterDemoMode, isDemoMode, leaveDemoMode, loadDemoUser } from '../features/demo/demoMode'
+import { purgeDemoData, seedDemoData } from '../features/demo/seed'
 
 const toUser = (user: User): User => ({
   id: user.id,
   username: user.username,
   email: user.email,
   displayName: user.displayName ?? null,
+  birthday: user.birthday ?? null,
+  paydays: user.paydays ?? [],
   role: user.role,
   totpEnabled: user.totpEnabled,
   emailVerified: user.emailVerified,
@@ -63,6 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const dropAuth = useCallback(
     async (options?: { markSignedOut?: boolean }) => {
       await clearLocalAuth(options)
+      clearNotificationCache()
       setUser(null)
       setOffline(false)
     },
@@ -74,6 +81,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let cancelled = false
 
     const restore = async () => {
+      // The demo account never talks to the server — just open it.
+      if (isDemoMode()) {
+        setUser(loadDemoUser())
+        setLoading(false)
+        return
+      }
+
       // Honour an explicit sign-out even if the server cookie is still valid.
       if (await wasSignedOut()) {
         if (cancelled) return
@@ -100,6 +114,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           username: local.user.username,
           email: local.user.email ?? '',
           displayName: local.user.displayName ?? null,
+          birthday: local.user.birthday ?? null,
+          paydays: local.user.paydays ?? [],
         })
         setOffline(true) // optimistic — applyServerAuth below clears it once confirmed
         setLoading(false)
@@ -138,6 +154,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // sleeping backend leaves the device "online" the whole time it wakes up.
   useEffect(() => {
     if (serverReachable !== true || !offline || !user || revalidating.current) return
+    if (isDemoMode()) return
 
     revalidating.current = true
     void getMe(COLD_START_TIMEOUT_MS)
@@ -157,7 +174,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // foreground). Each check slides the expiry forward server-side, so a
   // session only ends after a long stretch of not using Fico at all.
   useEffect(() => {
-    if (!user) return
+    if (!user || isDemoMode()) return
     let last = Date.now()
     const ping = () => {
       if (document.visibilityState !== 'visible' || Date.now() - last < KEEPALIVE_MS) return
@@ -185,6 +202,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await applyServerAuth(response.user, response.session)
   }
 
+  const googleSignIn = async (credential: string, termsAccepted: boolean) => {
+    const deviceId = await ensureDeviceId().catch(() => undefined)
+    const response = await googleAuthRequest(credential, termsAccepted, deviceId)
+    if (!('user' in response)) {
+      return { requiresTwoFactor: true as const, pendingToken: response.pendingToken }
+    }
+    await applyServerAuth(response.user, response.session)
+  }
+
   const verifyTwoFactor = async (pendingToken: string, code: string) => {
     const deviceId = await ensureDeviceId().catch(() => undefined)
     const response = await verifyTwoFactorRequest(pendingToken, code, deviceId)
@@ -192,6 +218,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const refreshUser = async () => {
+    if (isDemoMode()) {
+      setUser(loadDemoUser())
+      return
+    }
     const response = await getMe()
     await applyServerAuth(response.user, response.session)
   }
@@ -213,7 +243,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await applyServerAuth(response.user, response.session)
   }
 
+  /** "Try the demo": a device-only account opened on the sample Finance. */
+  const startDemo = async () => {
+    const demoUser = enterDemoMode()
+    await seedDemoData(demoUser.id)
+    seedDemoNotifications()
+    setOffline(false)
+    setUser(demoUser)
+  }
+
   const logout = async () => {
+    if (isDemoMode()) {
+      // Leaving the demo wipes everything it made on this device.
+      await purgeDemoData().catch(() => undefined)
+      leaveDemoMode()
+      clearNotificationCache()
+      setUser(null)
+      return
+    }
     try {
       await logoutRequest()
     } catch {
@@ -231,10 +278,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAuthenticated: !!user,
         offline,
         login,
+        googleSignIn,
         verifyTwoFactor,
         register,
         logout,
         refreshUser,
+        demo: user?.id === DEMO_USER_ID,
+        startDemo,
       }}
     >
       {children}

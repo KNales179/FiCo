@@ -1,28 +1,29 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import {
   changePassword,
   confirmTwoFactorSetup,
-  deleteAvatar,
   disableTwoFactor,
   listMySessions,
   resendVerificationEmail,
   revokeMySession,
   startTwoFactorSetup,
-  uploadAvatar,
 } from '../services/authService'
 import { isNetworkError } from '../lib/api'
 import { detectBrowser, installGuideFor, type BrowserKind } from '../features/pwa/installGuide'
 import type { DeviceSession } from '../types/auth'
 import { PageHeader, Card, Button, Input, Alert, SkeletonRow } from '../components/ui'
+import PasswordInput from '../components/auth/PasswordInput'
+import ProfileHeader from '../components/account/ProfileHeader'
+import DetailsCard from '../components/account/DetailsCard'
+import AboutYouCard from '../components/account/AboutYouCard'
 import {
-  IconCamera,
   IconDownload,
   IconChevronDown,
   IconLogOut,
-  IconTrash,
   IconX,
   IconUserCircle,
+  IconShield,
 } from '../components/icons'
 import {
   installPlatform,
@@ -33,101 +34,6 @@ import {
 } from '../features/pwa/installPrompt'
 
 const formatDate = (iso: string) => new Date(iso).toLocaleString()
-
-const MAX_AVATAR_BYTES = 5 * 1024 * 1024
-
-/** A profile picture — shown here, and anywhere else in Fico a member is listed. */
-const AvatarSection = () => {
-  const { user, refreshUser } = useAuth()
-  const fileInput = useRef<HTMLInputElement>(null)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-
-  const initial = (user?.displayName || user?.username || '?').charAt(0).toUpperCase()
-
-  const pick = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (!file) return
-    if (file.size > MAX_AVATAR_BYTES) {
-      setError('Image is larger than 5 MB')
-      return
-    }
-    void upload(file)
-  }
-
-  const upload = async (file: File) => {
-    setError('')
-    setBusy(true)
-    try {
-      await uploadAvatar(file)
-      await refreshUser()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not upload that image')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const remove = async () => {
-    setError('')
-    setBusy(true)
-    try {
-      await deleteAvatar()
-      await refreshUser()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not remove that image')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Card>
-      <h2 className="section-title">Profile picture</h2>
-      <div className="mt-3 flex items-center gap-4">
-        {user?.avatarUrl ? (
-          <img
-            src={user.avatarUrl}
-            alt=""
-            className="h-16 w-16 shrink-0 rounded-full object-cover"
-          />
-        ) : (
-          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand text-xl font-semibold text-brand-ink">
-            {initial}
-          </span>
-        )}
-        <div className="flex flex-col gap-2">
-          <div className="flex gap-2">
-            <Button onClick={() => fileInput.current?.click()} disabled={busy}>
-              <IconCamera size={16} />
-              {busy ? 'Working…' : user?.avatarUrl ? 'Change photo' : 'Upload photo'}
-            </Button>
-            {user?.avatarUrl && (
-              <Button variant="danger" onClick={() => void remove()} disabled={busy}>
-                <IconTrash size={16} />
-                Remove
-              </Button>
-            )}
-          </div>
-          <span className="text-xs text-muted">JPEG, PNG, or WebP — up to 5 MB.</span>
-        </div>
-        <input
-          ref={fileInput}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          hidden
-          onChange={pick}
-        />
-      </div>
-      {error && (
-        <div className="mt-2">
-          <Alert>{error}</Alert>
-        </div>
-      )}
-    </Card>
-  )
-}
 
 /**
  * A dismissible nudge, not a gate — an unverified email never blocks
@@ -219,16 +125,14 @@ const PasswordSection = () => {
     <Card>
       <h2 className="section-title">Change password</h2>
       <form onSubmit={submit} className="mt-3 space-y-3">
-        <Input
-          type="password"
+        <PasswordInput
           placeholder="Current password"
           autoComplete="current-password"
           value={currentPassword}
           onChange={(e) => setCurrentPassword(e.target.value)}
           required
         />
-        <Input
-          type="password"
+        <PasswordInput
           placeholder="New password (min. 8 characters)"
           autoComplete="new-password"
           minLength={8}
@@ -575,8 +479,7 @@ const TwoFactorSection = () => {
           <p className="text-sm text-muted">
             Confirm with your password and a current code (or a backup code).
           </p>
-          <Input
-            type="password"
+          <PasswordInput
             placeholder="Password"
             autoComplete="current-password"
             value={disablePassword}
@@ -715,18 +618,32 @@ const Account = () => {
   const { user } = useAuth()
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div className="mx-auto max-w-5xl space-y-4">
       <PageHeader
         title="Account"
         icon={IconUserCircle}
-        description={user ? `Signed in as ${user.username}` : undefined}
+        description={user ? `Signed in as @${user.username}` : undefined}
       />
       <EmailVerificationBanner />
+      <ProfileHeader />
+
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <div className="min-w-0 space-y-4">
+          <h2 className="px-1 text-xs font-semibold uppercase tracking-wider text-muted">Profile</h2>
+          <DetailsCard />
+          <AboutYouCard />
+        </div>
+        <div className="min-w-0 space-y-4">
+          <h2 className="flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wider text-muted">
+            <IconShield size={13} /> Security
+          </h2>
+          <PasswordSection />
+          <TwoFactorSection />
+          <DevicesSection />
+        </div>
+      </div>
+
       <InstallAppSection />
-      <AvatarSection />
-      <PasswordSection />
-      <DevicesSection />
-      <TwoFactorSection />
     </div>
   )
 }

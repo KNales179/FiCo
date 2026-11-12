@@ -1,241 +1,13 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import {
-  listUserSessions,
-  listUsers,
-  revokeUserSession,
-  setUserPassword,
-  resetUserTwoFactor,
-  setUserRole,
-  type AdminUser,
-} from '../services/adminService'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { listUsers, type AdminUser } from '../services/adminService'
 import { Link } from 'react-router-dom'
-import type { DeviceSession } from '../types/auth'
-import { PageHeader, Card, Button, Input, Alert, SkeletonRow } from '../components/ui'
-import {
-  IconChevronDown,
-  IconLogOut,
-  IconMessage,
-  IconShield,
-  IconLock,
-} from '../components/icons'
-
-const formatDate = (iso: string) => new Date(iso).toLocaleString()
-
-const ManagePanel = ({ user, onChanged }: { user: AdminUser; onChanged: () => void }) => {
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [rolePassword, setRolePassword] = useState('')
-  const [twoFactorPassword, setTwoFactorPassword] = useState('')
-  const [sessions, setSessions] = useState<DeviceSession[] | null>(null)
-  const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  const loadSessions = useCallback(async () => {
-    try {
-      const res = await listUserSessions(user.id)
-      setSessions(res.sessions)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load devices')
-    }
-  }, [user.id])
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadSessions()
-  }, [loadSessions])
-
-  const submitPassword = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setError('')
-    setNotice('')
-    setBusy(true)
-    try {
-      await setUserPassword(user.id, newPassword, confirmPassword)
-      setNewPassword('')
-      setConfirmPassword('')
-      setNotice(`Password changed for ${user.username}. Every one of their devices was signed out.`)
-      await loadSessions()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not change password')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const toggleRole = async () => {
-    const nextRole = user.role === 'ADMIN' ? 'USER' : 'ADMIN'
-    if (
-      !window.confirm(
-        nextRole === 'ADMIN'
-          ? `Make ${user.username} an admin? They'll be able to manage every account.`
-          : `Remove ${user.username}'s admin access?`,
-      )
-    )
-      return
-    if (!rolePassword) {
-      setError('Enter your own password to confirm')
-      return
-    }
-    setError('')
-    setNotice('')
-    setBusy(true)
-    try {
-      await setUserRole(user.id, nextRole, rolePassword)
-      setRolePassword('')
-      onChanged()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not change role')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const resetTwoFactor = async () => {
-    if (
-      !window.confirm(
-        `Turn off two-step sign-in for ${user.username}? Only do this if they've lost their phone AND their backup codes. They'll sign in with just their password, and every device of theirs is signed out.`,
-      )
-    )
-      return
-    if (!twoFactorPassword) {
-      setError('Enter your own password to confirm')
-      return
-    }
-    setError('')
-    setNotice('')
-    setBusy(true)
-    try {
-      const res = await resetUserTwoFactor(user.id, twoFactorPassword)
-      setTwoFactorPassword('')
-      setNotice(res.message)
-      onChanged()
-      await loadSessions()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not turn off 2FA')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const revoke = async (sessionId: string) => {
-    if (!window.confirm(`Sign ${user.username} out of this device?`)) return
-    setBusy(true)
-    try {
-      await revokeUserSession(user.id, sessionId)
-      await loadSessions()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not sign out that device')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <div className="mt-3 space-y-4 border-t border-line pt-3">
-      {error && <Alert>{error}</Alert>}
-      {notice && <p className="text-sm text-success">{notice}</p>}
-
-      <div>
-        <h3 className="text-sm font-medium">Set a new password</h3>
-        <form onSubmit={submitPassword} className="mt-2 space-y-2">
-          <Input
-            type="password"
-            placeholder="New password (min. 8 characters)"
-            minLength={8}
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            required
-          />
-          <Input
-            type="password"
-            placeholder="Your own current password, to confirm"
-            autoComplete="current-password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-          />
-          <Button type="submit" size="sm" disabled={busy}>
-            {busy ? 'Saving…' : 'Change password'}
-          </Button>
-        </form>
-      </div>
-
-      <div>
-        <h3 className="text-sm font-medium">Admin role</h3>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Input
-            type="password"
-            placeholder="Your own current password, to confirm"
-            autoComplete="current-password"
-            value={rolePassword}
-            onChange={(e) => setRolePassword(e.target.value)}
-            className="max-w-xs"
-          />
-          <Button size="sm" onClick={() => void toggleRole()} disabled={busy}>
-            <IconShield size={14} />
-            {user.role === 'ADMIN' ? 'Remove admin access' : 'Make admin'}
-          </Button>
-        </div>
-      </div>
-
-      {user.totpEnabled && (
-        <div>
-          <h3 className="text-sm font-medium">Two-step sign-in</h3>
-          <p className="mt-0.5 text-xs text-muted">
-            On for this account. Locked out (lost phone and backup codes)? Turn it off so they can
-            sign in with just their password.
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Input
-              type="password"
-              placeholder="Your own current password, to confirm"
-              autoComplete="current-password"
-              value={twoFactorPassword}
-              onChange={(e) => setTwoFactorPassword(e.target.value)}
-              className="max-w-xs"
-            />
-            <Button size="sm" variant="danger" onClick={() => void resetTwoFactor()} disabled={busy}>
-              <IconLock size={13} />
-              Turn off 2FA
-            </Button>
-          </div>
-        </div>
-      )}
-
-      <div>
-        <h3 className="text-sm font-medium">Devices</h3>
-        {sessions === null && <SkeletonRow />}
-        {sessions && (
-          <ul className="mt-1 divide-y divide-line text-sm">
-            {sessions.length === 0 && (
-              <li className="py-1.5 text-xs text-muted">No active devices.</li>
-            )}
-            {sessions.map((s) => (
-              <li key={s.id} className="flex items-center justify-between gap-2 py-1.5">
-                <span className="text-xs">
-                  {s.userAgent || 'Unknown device'}
-                  <span className="block text-muted">
-                    last active {formatDate(s.lastUsedAt)}
-                  </span>
-                </span>
-                <Button size="sm" variant="danger" onClick={() => void revoke(s.id)} disabled={busy}>
-                  <IconLogOut size={13} />
-                  Sign out
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  )
-}
+import { PageHeader, Card, Alert, SkeletonRow } from '../components/ui'
+import { IconChevronRight, IconMessage, IconSearch, IconShield } from '../components/icons'
 
 const Admin = () => {
   const [users, setUsers] = useState<AdminUser[] | null>(null)
   const [error, setError] = useState('')
-  const [openId, setOpenId] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
 
   const load = useCallback(async () => {
     setError('')
@@ -251,6 +23,15 @@ const Admin = () => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
   }, [load])
+
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!users) return []
+    if (!q) return users
+    return users.filter((u) =>
+      [u.username, u.email, u.displayName ?? ''].some((v) => v.toLowerCase().includes(q)),
+    )
+  }, [users, query])
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -276,58 +57,57 @@ const Admin = () => {
 
       {users && (
         <Card>
-          <ul className="divide-y divide-line">
-            {users.map((u) => (
-              <li key={u.id} className="py-3 text-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <span>
-                    {u.displayName || u.username}
-                    <span className="ml-2 text-xs text-muted">@{u.username}</span>
-                    {u.role === 'ADMIN' && (
-                      <span className="ml-2 rounded-full bg-brand/15 px-2 py-0.5 text-xs font-medium text-brand">
-                        admin
-                      </span>
-                    )}
-                    {u.totpEnabled && (
-                      <span className="ml-2 text-xs text-success">2FA on</span>
-                    )}
-                    <span
-                      className={`ml-2 text-xs ${u.emailVerified ? 'text-success' : 'text-warning'}`}
-                    >
-                      {u.emailVerified ? 'email verified' : 'email unverified'}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="section-title">
+              Users <span className="font-normal text-muted">· {users.length}</span>
+            </h2>
+            <label className="relative w-full sm:w-64">
+              <IconSearch size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search name, username, email"
+                className="input py-1.5 pl-9 text-sm"
+              />
+            </label>
+          </div>
+          <ul className="mt-3 divide-y divide-line">
+            {shown.map((u) => (
+              <li key={u.id}>
+                <Link
+                  to={`/admin/users/${u.id}`}
+                  className="-mx-2 flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-panel-2"
+                >
+                  {u.avatarUrl ? (
+                    <img src={u.avatarUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
+                  ) : (
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/15 text-sm font-bold text-brand">
+                      {(u.displayName || u.username).charAt(0).toUpperCase()}
                     </span>
-                    {u.status !== 'ACTIVE' && (
-                      <span className="ml-2 text-xs text-danger">{u.status.toLowerCase()}</span>
-                    )}
-                    <span className="mt-0.5 block text-xs text-muted">
-                      {u.email} · joined {formatDate(u.createdAt)}
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <span className="truncate text-sm font-semibold text-ink">{u.displayName || u.username}</span>
+                      {u.isSelf && <span className="text-xs text-muted">(you)</span>}
+                      {u.role === 'ADMIN' && (
+                        <span className="rounded-full bg-brand/15 px-2 py-0.5 text-[11px] font-medium text-brand">admin</span>
+                      )}
+                      {u.restricted && (
+                        <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning">restricted</span>
+                      )}
+                      {u.status !== 'ACTIVE' && (
+                        <span className="rounded-full bg-danger/12 px-2 py-0.5 text-[11px] font-medium text-danger">deleted</span>
+                      )}
+                    </span>
+                    <span className="block truncate text-xs text-muted">
+                      @{u.username} · {u.email} · joined {new Date(u.createdAt).toLocaleDateString()}
                     </span>
                   </span>
-                  {u.isSelf ? (
-                    <span className="text-xs text-muted">
-                      it's you — see{' '}
-                      <a href="/account" className="underline">
-                        Account
-                      </a>
-                    </span>
-                  ) : (
-                    <Button
-                      size="sm"
-                      onClick={() => setOpenId(openId === u.id ? null : u.id)}
-                    >
-                      Manage
-                      <IconChevronDown
-                        size={14}
-                        className={openId === u.id ? 'rotate-180 transition-transform' : 'transition-transform'}
-                      />
-                    </Button>
-                  )}
-                </div>
-                {openId === u.id && !u.isSelf && (
-                  <ManagePanel user={u} onChanged={() => void load()} />
-                )}
+                  <IconChevronRight size={18} className="shrink-0 text-muted" />
+                </Link>
               </li>
             ))}
+            {shown.length === 0 && <li className="py-3 text-sm text-muted">No one matches “{query}”.</li>}
           </ul>
         </Card>
       )}

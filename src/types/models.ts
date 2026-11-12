@@ -48,6 +48,10 @@ export interface LocalUser extends BaseEntity {
   username: string
   email?: string
   displayName?: string
+  /** Only ever set on the signed-in user's own record, so their birthday
+   *  greeting and payday hints work offline too. */
+  birthday?: { month: number; day: number; year?: number | null } | null
+  paydays?: number[]
   status: UserStatus
 }
 

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { markTutorialSeen } from '../../features/onboarding'
 import { purgeDemoData, seedDemoData } from '../../features/demo/seed'
+import { isDemoMode } from '../../features/demo/demoMode'
 import { useAuth } from '../../hooks/useAuth'
 import { useSpace } from '../../hooks/useSpace'
 import { TourContext } from './tour-context'
@@ -26,7 +27,7 @@ const TourProvider = ({ children }: { children: ReactNode }) => {
       void (async () => {
         setPreparing(true)
         try {
-          if (next.demo && user?.id) {
+          if (next.demo && user?.id && !isDemoMode()) {
             await seedDemoData(user.id)
             enterDemo()
           }
@@ -43,7 +44,7 @@ const TourProvider = ({ children }: { children: ReactNode }) => {
     const wasDemo = tour?.demo
     markTutorialSeen()
     setTour(null)
-    if (wasDemo) {
+    if (wasDemo && !isDemoMode()) {
       exitDemo()
       void purgeDemoData()
     }

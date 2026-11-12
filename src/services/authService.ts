@@ -1,3 +1,4 @@
+import { isDemoMode, saveDemoUser } from '../features/demo/demoMode'
 import { api, COLD_START_TIMEOUT_MS } from '../lib/api'
 import type {
   AuthResponse,
@@ -44,6 +45,14 @@ export const login = (
   })
 }
 
+/** Sign in (or create an account) with Google's ID token. */
+export const googleAuth = (credential: string, termsAccepted: boolean, deviceId?: string) =>
+  api<AuthResponse | TwoFactorRequired>('/auth/google', {
+    method: 'POST',
+    timeoutMs: COLD_START_TIMEOUT_MS,
+    body: { credential, termsAccepted, deviceId },
+  })
+
 /** Second step of login for an account with 2FA on — a 6-digit code or a backup code. */
 export const verifyTwoFactorLogin = (
   pendingToken: string,
@@ -76,8 +85,11 @@ export const getMe = (timeoutMs?: number) => {
 }
 
 export const updateMe = (
-  updates: Partial<Pick<User, 'username' | 'email'>>,
+  updates: Partial<Pick<User, 'username' | 'email' | 'displayName' | 'birthday' | 'paydays'>>,
 ) => {
+  if (isDemoMode()) {
+    return Promise.resolve<AuthResponse>({ success: true, message: 'Saved on this device', user: saveDemoUser(updates) })
+  }
   return api<AuthResponse>('/auth/me', {
     method: 'PATCH',
     body: updates,

@@ -1,25 +1,13 @@
 import { useSyncExternalStore } from 'react'
-import { effectiveTheme, toggleThemeAnimated } from '../features/theme'
+import { effectiveTheme, subscribeTheme, toggleThemeAnimated } from '../features/theme'
 import { IconMoon, IconSun } from './icons'
-
-/** Re-renders when either the saved theme (an <html> attribute) or the OS theme changes. */
-const subscribe = (onChange: () => void) => {
-  const observer = new MutationObserver(onChange)
-  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-  const media = window.matchMedia('(prefers-color-scheme: dark)')
-  media.addEventListener('change', onChange)
-  return () => {
-    observer.disconnect()
-    media.removeEventListener('change', onChange)
-  }
-}
 
 /**
  * Light/dark switch in the header. Follows the device until it's pressed;
  * Settings → Theme → System hands control back to the device.
  */
 const ThemeToggle = () => {
-  const theme = useSyncExternalStore(subscribe, effectiveTheme, () => 'light' as const)
+  const theme = useSyncExternalStore(subscribeTheme, effectiveTheme, () => 'light' as const)
   const next = theme === 'dark' ? 'light' : 'dark'
 
   return (

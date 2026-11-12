@@ -9,11 +9,21 @@ export interface NotificationPreferences {
   feedbackReports: boolean
 }
 
+/** Year is optional — some people would rather not say. */
+export interface Birthday {
+  month: number
+  day: number
+  year?: number | null
+}
+
 export interface User {
   id: string
   username: string
   email: string
   displayName?: string | null
+  birthday?: Birthday | null
+  /** Days of the month they usually get paid (31 = last day), at most two. */
+  paydays?: number[]
   role?: UserRole
   totpEnabled?: boolean
   emailVerified?: boolean

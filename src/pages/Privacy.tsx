@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-const LAST_UPDATED = 'November 12, 2026'
+const LAST_UPDATED = 'November 13, 2026'
 
 const Privacy = () => (
   <main className="mx-auto max-w-2xl px-4 py-10">
@@ -31,6 +31,20 @@ const Privacy = () => (
             and a two-factor authentication secret if you turn that on.
           </li>
           <li>
+            <strong>About you (optional)</strong>: your birthday (the year
+            is optional too) and the days you usually get paid. Only you
+            see these — they're never shown to other members — and Fico
+            uses them only to greet you on your birthday and to word your
+            own budget hints. Clear them any time in Account → About you.
+          </li>
+          <li>
+            <strong>If you sign in with Google</strong>: Google tells Fico
+            your name, your email address (and that Google has verified
+            it), and your Google account id, which links your Google login
+            to your Fico account. Fico doesn't get your Google password,
+            contacts, files, or anything else from your Google account.
+          </li>
+          <li>
             <strong>Financial records you type in</strong>: transactions,
             accounts, bills, shopping lists, categories, budgets — every
             number in Fico is something you or a member of your shared
@@ -44,6 +58,14 @@ const Privacy = () => (
             your Account page; and, if you enable push notifications, a
             push subscription address handed to your browser's own push
             service.
+          </li>
+          <li>
+            <strong>Notifications</strong>: messages Fico shows you (a
+            suggestion you sent marked done, a note from the admin team) are
+            kept for up to 180 days. If an admin ever signs you out,
+            restricts or deletes your account, the reason they gave is
+            stored with it so Fico can show it to you, and the action is
+            recorded in an admin audit log.
           </li>
           <li>
             <strong>Basic technical logs</strong>: request metadata (route,
@@ -110,6 +132,13 @@ const Privacy = () => (
             Fico ever sends: verifying your email address, and a password
             reset link. It's given only the email address and the message
             content needed for that.
+          </li>
+          <li>
+            <strong>Google</strong> — only if you choose "Continue with
+            Google": Google confirms who you are and shares the details
+            listed in §1. Signing in this way is covered by Google's own
+            privacy policy as well; you can always use a username and
+            password instead.
           </li>
           <li>
             <strong>Your browser's own push service</strong> (e.g. one run

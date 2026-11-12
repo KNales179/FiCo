@@ -17,6 +17,8 @@ export interface AuthContextValue {
     identifier: string,
     password: string,
   ) => Promise<LoginNeedsTwoFactor | void>
+  /** Sign in (or create an account) with Google — may pause for 2FA like `login`. */
+  googleSignIn: (credential: string, termsAccepted: boolean) => Promise<LoginNeedsTwoFactor | void>
   /** Finishes a login that `login` paused on `requiresTwoFactor`. */
   verifyTwoFactor: (pendingToken: string, code: string) => Promise<void>
   register: (
@@ -28,6 +30,10 @@ export interface AuthContextValue {
   logout: () => Promise<void>
   /** Re-pulls the current user (role/2FA status can change from Account/Admin actions). */
   refreshUser: () => Promise<void>
+  /** Signed in to the device-only demo account. */
+  demo: boolean
+  /** "Try the demo" — opens the demo account with sample data. */
+  startDemo: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue | undefined>(

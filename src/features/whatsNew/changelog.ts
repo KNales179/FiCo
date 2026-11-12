@@ -32,6 +32,99 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.4.0',
+    date: '2026-11-13',
+    title: 'Notifications, and a word from the team',
+    highlights: [
+      {
+        icon: 'bell',
+        title: 'A new Notifications page',
+        body: 'Find it under the bell at the top. When the Fico team finishes something you suggested or fixes a bug you reported, you’ll hear about it here — tap it to jump straight to Updates and see what changed.',
+      },
+      {
+        icon: 'heart',
+        title: 'Messages from the Fico team',
+        body: 'Every now and then the team might send you a note. It pops up the next time you open Fico and stays on your Notifications page.',
+      },
+      {
+        icon: 'key',
+        title: 'Clear answers when you’re signed out',
+        body: 'If an admin ever signs you out or pauses your account, the sign-in screen now tells you why and for how long — no more mystery “session expired”.',
+      },
+    ],
+  },
+  {
+    version: '2.3.2',
+    date: '2026-11-13',
+    title: 'Try Fico without signing up',
+    highlights: [
+      {
+        icon: 'compass',
+        title: 'A demo you can poke at',
+        body: 'Tap “Try the demo” on the sign-in screen to explore all of Fico with a sample household’s money — bills, budgets, shopping lists, charts and the guided tours. Change anything you like; it stays on your device and vanishes when you exit.',
+      },
+    ],
+  },
+  {
+    version: '2.3.1',
+    date: '2026-11-13',
+    title: 'A tidier Finance switcher',
+    highlights: [
+      {
+        icon: 'wallet',
+        title: 'Your Finances, in one tidy list',
+        body: 'Tap your Finance’s name at the top to see all of them — personal and shared — and switch with one tap. “Add another Finance” now lives at the bottom of that list instead of a separate button.',
+      },
+      {
+        icon: 'users',
+        title: 'Up to 3 Finances of your own',
+        body: 'Each person can own up to three Finances (your personal one included). Finances someone else shares with you don’t count toward that.',
+      },
+    ],
+  },
+  {
+    version: '2.3.0',
+    date: '2026-11-12',
+    title: 'Hello, new look',
+    highlights: [
+      {
+        icon: 'key',
+        title: 'A sign-in screen worth the first look',
+        body: 'Signing in and signing up got a glow-up: the logo draws itself, floats around and loops on the side, and moving between Sign in, Create account and Forgot password now glides instead of jumping.',
+      },
+      {
+        icon: 'heart',
+        title: 'Fico knows your birthday now (if you tell it)',
+        body: 'Add your birthday and paydays in Account → About you. When you plan the month your birthday’s in, Budget suggests a little treat-yourself money — and on the day itself, Fico has a surprise for you.',
+      },
+      {
+        icon: 'users',
+        title: 'Continue with Google',
+        body: 'No new password to remember — sign in or create your Fico account with your Google account in one tap. Already have an account with the same email? It just links up.',
+      },
+      {
+        icon: 'wrench',
+        title: 'Sign-up tells you what’s wrong',
+        body: 'No more mystery “invalid data”. Fico now points at the exact field — a space in your username, passwords that don’t match, an email that’s already registered — and there’s a little eye to peek at your password while you type it.',
+      },
+      {
+        icon: 'compass',
+        title: 'A little hello when you open Fico',
+        body: 'The logo now draws itself in and fills with colour when you open the app — it follows your colour and light/dark mode. Tap to skip if you’re in a hurry.',
+      },
+      {
+        icon: 'palette',
+        title: 'The logo matches your colour',
+        body: 'Fico’s logo inside the app now follows the colour you picked in Settings — and looks right in both light and dark mode.',
+      },
+      {
+        icon: 'layout',
+        title: 'A crisp new app icon',
+        body: 'The icon you tap to open Fico is now a purple tile with a white logo — sharp on every phone and computer. (Already installed? Your phone may show the old one until you reinstall.)',
+      },
+    ],
+  },
+  {
     version: '2.2.0',
     date: '2026-11-12',
     title: 'Install in a tap, lock it up tight',

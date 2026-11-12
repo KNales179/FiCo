@@ -1,9 +1,13 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router-dom'
 import { forgotPassword } from '../services/authService'
+import AuthLink from '../components/auth/AuthLink'
+import { friendlyAuthError } from '../components/auth/authErrors'
+import { useAuthNav } from '../components/auth/authNav'
+import { IconCheck, IconLock } from '../components/icons'
 
 const ForgotPassword = () => {
+  const { swap } = useAuthNav()
   const [identifier, setIdentifier] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -16,73 +20,80 @@ const ForgotPassword = () => {
     try {
       // Always the same generic message either way — the backend never
       // reveals whether an account actually matched.
-      await forgotPassword(identifier)
-      setSent(true)
+      await forgotPassword(identifier.trim())
+      swap(() => setSent(true))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setError(friendlyAuthError(err, 'Something went wrong'))
     } finally {
       setLoading(false)
     }
   }
 
-  return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md">
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight text-ink">
-            Reset your password
-          </h1>
-          <p className="mt-2 text-muted">
-            Enter your username or email and we'll send a link to pick a new one.
+  if (sent) {
+    return (
+      <div className="card space-y-4 p-5 text-center sm:p-7">
+        <span data-auth-item="" className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success/15 text-success">
+          <IconCheck size={26} />
+        </span>
+        <div data-auth-item="">
+          <h1 className="text-2xl font-bold tracking-tight text-ink">Check your inbox</h1>
+          <p className="mt-1 text-sm text-muted">
+            If an account matches <span className="font-medium text-ink">{identifier.trim()}</span>, an email is on its
+            way with a link to choose a new password. It can take a few minutes — peek in spam too.
           </p>
         </div>
+        <AuthLink to="/login" className="btn btn-primary w-full py-2.5">
+          Back to sign in
+        </AuthLink>
+      </div>
+    )
+  }
 
-        {sent ? (
-          <div className="card space-y-3">
-            <p className="text-sm text-success">
-              If an account matches that, an email is on its way with instructions.
-            </p>
-            <Link to="/login" className="font-medium text-brand underline">
-              Back to sign in
-            </Link>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="card space-y-4">
-            <label className="block">
-              <span className="field-label">Username or email</span>
-              <input
-                value={identifier}
-                onChange={(event) => setIdentifier(event.target.value)}
-                autoComplete="username"
-                autoFocus
-                required
-                className="input"
-              />
-            </label>
+  return (
+    <div className="card space-y-5 p-5 sm:p-7">
+      <div data-auth-item="" className="flex items-center gap-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-ink">
+          <IconLock size={20} />
+        </span>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-ink">Forgot your password?</h1>
+          <p className="text-sm text-muted">It happens. We'll email you a link to pick a new one.</p>
+        </div>
+      </div>
 
-            {error && (
-              <p role="alert" className="text-sm text-danger">
-                {error}
-              </p>
-            )}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <label data-auth-item="" className="block">
+          <span className="field-label">Username or email</span>
+          <input
+            value={identifier}
+            onChange={(event) => setIdentifier(event.target.value)}
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            autoFocus
+            required
+            className="input"
+          />
+        </label>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary w-full py-2.5"
-            >
-              {loading ? 'Sending…' : 'Send reset link'}
-            </button>
-          </form>
+        {error && (
+          <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+            {error}
+          </p>
         )}
 
-        <p className="mt-6 text-sm text-muted">
-          <Link to="/login" className="font-medium text-brand underline">
-            Back to sign in
-          </Link>
-        </p>
-      </div>
-    </main>
+        <button data-auth-item="" type="submit" disabled={loading} className="btn btn-primary w-full py-2.5">
+          {loading ? 'Sending…' : 'Send reset link'}
+        </button>
+      </form>
+
+      <p data-auth-item="" className="text-center text-sm text-muted">
+        Remembered it?{' '}
+        <AuthLink to="/login" className="font-semibold text-brand hover:underline">
+          Back to sign in
+        </AuthLink>
+      </p>
+    </div>
   )
 }
 

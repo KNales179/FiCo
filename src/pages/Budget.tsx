@@ -20,6 +20,7 @@ import { monthlyInOut } from '../domain/insights'
 import { useAllTransactions } from '../hooks/useAllTransactions'
 import { IconAward, IconCalendar, IconChart, IconChevronLeft, IconChevronRight, IconWallet } from '../components/icons'
 import CollapsibleCard from '../components/CollapsibleCard'
+import BirthdayBudgetCard from '../components/budget/BirthdayBudgetCard'
 import Approx from '../components/Approx'
 import type { BudgetPlanItem } from '../types/models'
 
@@ -443,6 +444,13 @@ const Budget = () => {
       {!loading && recommendation && allocation && (
         <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] xl:grid-cols-[minmax(0,1fr)_27rem]">
           <div className="min-w-0 space-y-4">
+          <BirthdayBudgetCard
+            period={period}
+            incomeMinor={incomeMinor}
+            plannedItems={plannedItems}
+            onAdd={addPlannedItem}
+            canEdit={canEdit}
+          />
           <CollapsibleCard id="budget.plan" title="Your plan" icon={IconCalendar} dataTour="budget-plan">
           <div className="space-y-4">
             {/* Income */}

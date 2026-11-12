@@ -17,9 +17,12 @@ initServiceWorker()
 
 // Open IndexedDB and run migrations before the app reads any local data,
 // then drop any tutorial sample data a tour left behind (app closed mid-tour).
-void initDB().then(() =>
-  import('./features/demo/seed').then((m) => m.purgeDemoDataIfLeftOver()),
-)
+void initDB().then(async () => {
+  const { isDemoMode } = await import('./features/demo/demoMode')
+  if (isDemoMode()) return // the demo account's sample Finance lives in it
+  const m = await import('./features/demo/seed')
+  await m.purgeDemoDataIfLeftOver()
+})
 
 if (import.meta.env.DEV) {
   void import('./db/devtools')

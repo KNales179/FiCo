@@ -172,6 +172,18 @@ export const initAppearance = (): Appearance => {
   return appearance
 }
 
+/** For useSyncExternalStore: fires when the saved theme (an <html> attribute) or the OS theme changes. */
+export const subscribeTheme = (onChange: () => void) => {
+  const observer = new MutationObserver(onChange)
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+  const media = window.matchMedia('(prefers-color-scheme: dark)')
+  media.addEventListener('change', onChange)
+  return () => {
+    observer.disconnect()
+    media.removeEventListener('change', onChange)
+  }
+}
+
 /** The theme actually on screen right now — "system" resolved against the OS. */
 export const effectiveTheme = (): 'light' | 'dark' => {
   const attr = document.documentElement.getAttribute('data-theme')

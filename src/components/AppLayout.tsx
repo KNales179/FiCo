@@ -22,6 +22,7 @@ import {
   IconSparkles,
   IconCompass,
   IconShield,
+  IconBell,
   IconChevronDown,
   IconLogOut,
   type IconProps,
@@ -31,6 +32,7 @@ import SyncStatus from './SyncStatus'
 import BillReminders from './BillReminders'
 import WelcomeModal from './WelcomeModal'
 import WhatsNewModal from './WhatsNewModal'
+import BirthdayGreeting from './BirthdayGreeting'
 import NotificationPrompt from './NotificationPrompt'
 import InstallPrompt from './InstallPrompt'
 import { APP_VERSION } from '../features/whatsNew/changelog'
@@ -38,6 +40,10 @@ import PullToRefresh from './PullToRefresh'
 import { PageSkeleton } from './ui'
 import TourProvider from './tour/TourProvider'
 import ThemeToggle from './ThemeToggle'
+import FicoLogo from './FicoLogo'
+import NoticePopup from './NoticePopup'
+import DemoBanner from './DemoBanner'
+import { useNotificationPolling, useNotifications } from '../features/notifications'
 import { useStaggerIn } from '../lib/motion'
 
 type IconComponent = ComponentType<IconProps>
@@ -60,6 +66,7 @@ type MenuItem = { to: string; label: string; icon: IconComponent }
  */
 const MENU_YOU: MenuItem[] = [
   { to: '/account', label: 'Account', icon: IconUserCircle },
+  { to: '/notifications', label: 'Notifications', icon: IconBell },
   { to: '/settings', label: 'Settings', icon: IconSettings },
 ]
 const MENU_FINANCE: MenuItem[] = [
@@ -143,11 +150,15 @@ const AppLayout = () => {
     fetchOpenFeedback,
   )
 
+  useNotificationPolling(Boolean(user))
+  const { unread: unreadNotifications } = useNotifications()
+
   // Which primary nav destinations get the little "something new" dot.
   const badges: Record<string, boolean> = {
     '/shopping': shoppingUnseen,
     '/bills': billsUnseen,
     '/admin': feedbackUnseen,
+    '/notifications': unreadNotifications > 0,
   }
 
   const initial = (user?.displayName || user?.username || '?').charAt(0).toUpperCase()
@@ -157,6 +168,7 @@ const AppLayout = () => {
     <TourProvider>
     <div className="relative isolate min-h-screen">
       <div className="app-backdrop" aria-hidden="true" />
+      <DemoBanner />
       <header ref={headerRef} className="sticky top-0 z-20 border-b border-line bg-panel/90 shadow-sm backdrop-blur">
         {/* Always flex-nowrap, on every width — wrapping just traded "the
             profile button clips off-screen" for "the header grows a second
@@ -170,7 +182,7 @@ const AppLayout = () => {
             dropdown menu below the row instead of showing it. */}
         <div className="mx-auto flex max-w-6xl flex-nowrap items-center gap-x-2 px-3 py-2.5 sm:px-4 lg:px-6">
           <span className="flex shrink-0 items-center gap-1.5 text-base font-semibold tracking-tight text-brand">
-            <img src="/icon-192.png" alt="" className="h-7 w-7 rounded-md" />
+            <FicoLogo className="h-8 w-8" />
             <span className="hidden sm:inline">Fico</span>
           </span>
           <div data-tour="space" className="flex min-w-0 items-center">
@@ -206,6 +218,23 @@ const AppLayout = () => {
               which lives on its own row below the header instead. */}
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <ThemeToggle />
+            <NavLink
+              to="/notifications"
+              aria-label={unreadNotifications ? `Notifications, ${unreadNotifications} unread` : 'Notifications'}
+              title="Notifications"
+              className={({ isActive }) =>
+                `relative flex h-8 w-8 items-center justify-center rounded-lg border border-line transition-colors ${
+                  isActive ? 'bg-brand/10 text-brand' : 'bg-panel text-muted hover:bg-panel-2 hover:text-ink'
+                }`
+              }
+            >
+              <IconBell size={17} />
+              {unreadNotifications > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-[var(--panel)] bg-danger px-1 text-[10px] font-bold leading-none text-white">
+                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                </span>
+              )}
+            </NavLink>
             <div className="relative">
               <button
                 type="button"
@@ -317,6 +346,8 @@ const AppLayout = () => {
       <BillReminders />
       <WelcomeModal />
       <WhatsNewModal />
+      <BirthdayGreeting />
+      <NoticePopup />
       <InstallPrompt />
       <NotificationPrompt />
       <PullToRefresh />

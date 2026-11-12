@@ -1,3 +1,5 @@
+import { isDemoMode } from '../features/demo/demoMode'
+import { saveAuthNotice, type AuthNotice } from '../features/auth/authNotice'
 export const API_URL =
   import.meta.env?.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -32,11 +34,26 @@ interface ApiOptions extends Omit<RequestInit, 'body'> {
 /** Error thrown for any request that reached the server and came back not-ok. */
 export class ApiError extends Error {
   status: number
+  /** Per-field reasons from the server (e.g. { username: ['That username is taken'] }). */
+  fieldErrors?: Record<string, string[]>
+  /** A machine-readable reason when the server gives one (e.g. 'TERMS_REQUIRED'). */
+  code?: string
+  /** Why an admin ended this session / blocked this account, when that's the reason. */
+  notice?: AuthNotice
 
-  constructor(message: string, status: number) {
+  constructor(
+    message: string,
+    status: number,
+    fieldErrors?: Record<string, string[]>,
+    code?: string,
+    notice?: AuthNotice,
+  ) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.fieldErrors = fieldErrors
+    this.code = code
+    this.notice = notice
   }
 }
 
@@ -86,6 +103,10 @@ export const api = async <T>(
 ): Promise<T> => {
   const { body, headers, signal, timeoutMs, ...rest } = options
 
+  // Demo mode is a pretend, device-only account: never reach the real
+  // server — answer as if offline, and the app runs on local data.
+  if (isDemoMode()) throw new NetworkError(new Error('Demo mode'))
+
   let response: Response
 
   const controller = new AbortController()
@@ -127,18 +148,31 @@ export const api = async <T>(
     clearTimeout(timer)
   }
 
-  let data: { message?: string } | null = null
+  type ErrorBody = {
+    message?: string
+    errors?: Record<string, string[]>
+    code?: string
+    notice?: Omit<AuthNotice, 'message'>
+  }
+  let data: ErrorBody | null = null
 
   try {
-    data = (await response.json()) as { message?: string }
+    data = (await response.json()) as ErrorBody
   } catch {
     // Response has no JSON body.
   }
 
   if (!response.ok) {
+    const notice = data?.notice ? { ...data.notice, message: data.message || '' } : undefined
+    // Signed out / restricted / deleted by an admin: remember why, so the
+    // sign-in screen can say so — whichever request happened to find out.
+    if (notice) saveAuthNotice(notice)
     throw new ApiError(
       data?.message || 'Something went wrong',
       response.status,
+      data?.errors,
+      data?.code,
+      notice,
     )
   }
 

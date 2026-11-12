@@ -23,6 +23,7 @@ import type { SpaceSummary } from '../types/space'
 import { useAuth } from '../hooks/useAuth'
 import { SpaceContext } from './space-context'
 import { DEMO_SPACE_ID, demoSpaceSummary } from '../features/demo/space'
+import { isDemoMode } from '../features/demo/demoMode'
 
 const pickDefaultSpaceId = (spaces: SpaceSummary[]): string | null => {
   if (spaces.length === 0) return null
@@ -69,6 +70,13 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true)
     setError(null)
 
+    if (isDemoMode()) {
+      await applySpaces([{ ...demoSpaceSummary(userId), name: 'Dela Cruz Family (demo)' }])
+      setFromCache(false)
+      setLoading(false)
+      return
+    }
+
     try {
       const response = await listSpaces()
       await cacheSpaces(response.spaces, userId)
@@ -114,6 +122,9 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
 
   const createSpace = useCallback(
     async (name: string): Promise<SpaceSummary> => {
+      if (isDemoMode()) {
+        throw new Error('The demo has one sample Finance — create a free account to make your own.')
+      }
       const response = await createSpaceRequest(name)
       await load()
       await switchSpace(response.space.id)
