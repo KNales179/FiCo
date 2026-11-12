@@ -39,6 +39,8 @@ const Credits = lazy(() => import('./pages/Credits'))
 const Updates = lazy(() => import('./pages/Updates'))
 const Notifications = lazy(() => import('./pages/Notifications'))
 const AdminUser = lazy(() => import('./pages/AdminUser'))
+const AdminAppeals = lazy(() => import('./pages/AdminAppeals'))
+const AdminAppeal = lazy(() => import('./pages/AdminAppeal'))
 const Admin = lazy(() => import('./pages/Admin'))
 const Feedback = lazy(() => import('./pages/Feedback'))
 const AdminFeedback = lazy(() => import('./pages/AdminFeedback'))
@@ -95,6 +97,8 @@ const App = () => {
                           <Route path="/admin" element={<Admin />} />
                           <Route path="/admin/feedback" element={<AdminFeedback />} />
                           <Route path="/admin/users/:userId" element={<AdminUser />} />
+                          <Route path="/admin/appeals" element={<AdminAppeals />} />
+                          <Route path="/admin/appeals/:appealId" element={<AdminAppeal />} />
                         </Route>
                       </Route>
 

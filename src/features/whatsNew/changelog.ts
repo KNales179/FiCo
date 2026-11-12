@@ -32,6 +32,23 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.5.0',
+    date: '2026-11-13',
+    title: 'Fair chances, and a smoother sign-in',
+    highlights: [
+      {
+        icon: 'heart',
+        title: 'Appeal a restriction',
+        body: 'If your account is ever restricted, you can now appeal it right from the sign-in screen. The team reviews it and tells you their decision — lifted, shortened, or kept — with a note.',
+      },
+      {
+        icon: 'layout',
+        title: 'A calmer sign-in on phones and tablets',
+        body: 'The animated Fico logo now drifts softly behind the form, with a few icons floating around — and on bigger screens the logo panel stays put while you scroll the sign-up form.',
+      },
+    ],
+  },
+  {
     version: '2.4.0',
     date: '2026-11-13',
     title: 'Notifications, and a word from the team',

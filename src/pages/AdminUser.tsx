@@ -18,6 +18,8 @@ import type { DeviceSession } from '../types/auth'
 import { useAuth } from '../hooks/useAuth'
 import { Alert, Button, Card, Modal, SkeletonCard } from '../components/ui'
 import PasswordInput from '../components/auth/PasswordInput'
+import ReasonTemplates from '../components/admin/ReasonTemplates'
+import type { TemplateKind } from '../features/admin/reasonTemplates'
 import { describeUntil } from '../features/auth/authNotice'
 import {
   IconCheck,
@@ -235,7 +237,9 @@ const AdminUser = () => {
     </label>
   )
 
-  const reasonField = (required: boolean, placeholder: string) => (
+  const reasonField = (required: boolean, placeholder: string, kind: TemplateKind) => (
+    <div className="space-y-2">
+    <ReasonTemplates kind={kind} value={reason} onPick={setReason} />
     <label className="block">
       <span className="field-label">Reason {required ? '' : '(optional)'}</span>
       <textarea
@@ -250,6 +254,7 @@ const AdminUser = () => {
       />
       <span className="mt-1 block text-xs text-muted">They'll read this — write it for them.</span>
     </label>
+    </div>
   )
 
   const durationLabel = DURATIONS.find((d) => d.hours === hours)?.label ?? ''
@@ -477,6 +482,7 @@ const AdminUser = () => {
                   <span className="field-label">Title (optional)</span>
                   <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} className="input" placeholder="e.g. Quick heads-up" />
                 </label>
+                <ReasonTemplates kind="notice" value={message} onPick={setMessage} />
                 <label className="block">
                   <span className="field-label">Message</span>
                   <textarea
@@ -521,7 +527,7 @@ const AdminUser = () => {
 
             {action === 'signout' && (
               <>
-                {reasonField(false, 'e.g. Signing out a lost phone — please sign in again')}
+                {reasonField(false, 'e.g. Signing out a lost phone — please sign in again', 'signout')}
                 <Preview>
                   <p className="font-semibold">You have been signed out by the Fico Admin Team</p>
                   {reason.trim() && <p className="mt-0.5 text-muted">Reason: {reason.trim()}</p>}
@@ -531,7 +537,7 @@ const AdminUser = () => {
 
             {action === 'restrict' && (
               <>
-                {reasonField(true, 'e.g. Repeated spam in shared Finances')}
+                {reasonField(true, 'e.g. Repeated spam in shared Finances', 'restrict')}
                 <div>
                   <span className="field-label">For how long</span>
                   <div className="flex flex-wrap gap-2">
@@ -567,14 +573,14 @@ const AdminUser = () => {
                   <span className="field-label">New password</span>
                   <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={8} required autoComplete="new-password" />
                 </label>
-                {reasonField(false, 'e.g. You asked for a reset — here it is')}
+                {reasonField(false, 'e.g. You asked for a reset — here it is', 'password')}
                 {confirmField}
               </>
             )}
 
             {action === 'role' && (
               <>
-                {reasonField(false, profile.role === 'ADMIN' ? 'e.g. Thanks for helping out!' : 'e.g. Welcome to the team')}
+                {reasonField(false, profile.role === 'ADMIN' ? 'e.g. Thanks for helping out!' : 'e.g. Welcome to the team', 'role')}
                 <Preview>
                   <p className="font-semibold">
                     {profile.role === 'ADMIN' ? 'Your admin access was removed' : 'You’re now a Fico admin'}
@@ -587,7 +593,7 @@ const AdminUser = () => {
 
             {action === 'twofa' && (
               <>
-                {reasonField(false, 'e.g. You lost your phone — set it up again when you can')}
+                {reasonField(false, 'e.g. You lost your phone — set it up again when you can', 'twofa')}
                 {confirmField}
               </>
             )}
@@ -598,7 +604,7 @@ const AdminUser = () => {
                   Their account is closed, they're removed from every shared Finance, and the Finances they own are closed
                   too. This can't be undone from the app.
                 </p>
-                {reasonField(true, 'e.g. Requested by the account owner')}
+                {reasonField(true, 'e.g. Requested by the account owner', 'delete')}
                 <label className="block">
                   <span className="field-label">
                     Type <span className="font-mono text-ink">{profile.username}</span> to confirm

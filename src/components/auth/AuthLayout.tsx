@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import { flushSync } from 'react-dom'
 import { Link, useLocation, useNavigate, useOutlet } from 'react-router-dom'
 import { gsap, prefersReducedMotion } from '../../lib/motion'
@@ -21,6 +21,14 @@ const orderOf = (path: string) => ORDER[path] ?? 1
 
 const SHIFT = 28
 
+const WIDE_QUERY = '(min-width: 1024px)'
+const isWide = () => window.matchMedia(WIDE_QUERY).matches
+const subscribeWide = (onChange: () => void) => {
+  const mq = window.matchMedia(WIDE_QUERY)
+  mq.addEventListener('change', onChange)
+  return () => mq.removeEventListener('change', onChange)
+}
+
 /**
  * The frame around every sign-in screen: the form on the left, the animated
  * logo panel on the right (wide screens), a gridded backdrop with drifting
@@ -37,6 +45,9 @@ const AuthLayout = () => {
   const direction = useRef<1 | -1>(1)
   const prevPath = useRef(location.pathname)
   const busy = useRef(false)
+  // Only one logo animation runs: the side panel on wide screens, the
+  // blurred backdrop on phones & tablets.
+  const wide = useSyncExternalStore(subscribeWide, isWide, () => true)
 
   const enter = useCallback(() => {
     const stage = stageRef.current
@@ -137,32 +148,29 @@ const AuthLayout = () => {
   return (
     <AuthNavContext.Provider value={nav}>
       <AuthNoticeDialog />
-      <div className="relative min-h-[100dvh] overflow-x-hidden">
+      {/* overflow-x-clip, not -hidden: "hidden" makes this a scroll box and
+          quietly breaks the sticky logo panel on the right. */}
+      <div className="relative min-h-[100dvh] overflow-x-clip">
         <div className="auth-backdrop" aria-hidden="true">
           <span className="auth-blob auth-blob-1" />
           <span className="auth-blob auth-blob-2" />
           <span className="auth-blob auth-blob-3" />
         </div>
+        {!wide && <AuthShowcase variant="backdrop" />}
 
         <div className="relative mx-auto grid min-h-[100dvh] w-full max-w-7xl gap-8 px-4 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:px-8 lg:py-8">
           <section className="flex min-w-0 flex-col">
             <header className="flex items-center justify-between">
-              <Link to="/login" className="hidden items-center gap-2 lg:flex" aria-label="Fico">
+              <Link to="/login" className="flex items-center gap-2" aria-label="Fico">
                 <FicoLogo className="h-9 w-9" />
                 <span className="text-xl font-extrabold tracking-tight text-ink">Fico</span>
               </Link>
-              <span className="lg:hidden" />
               <ThemeToggle />
             </header>
 
             <div className="flex flex-1 flex-col items-center justify-center py-6 lg:py-10">
               <div className="w-full max-w-md">
-                <div className="mb-2 flex flex-col items-center lg:hidden">
-                  <AuthShowcase variant="compact" />
-                  <span className="text-2xl font-extrabold tracking-tight text-ink md:mt-2 md:text-3xl">Fico</span>
-                  <span className="text-sm text-muted">Your Daily Financial Companion</span>
-                </div>
-                <div ref={stageRef} className="-m-2 p-2">
+                <div ref={stageRef} className="auth-stage -m-2 p-2">
                   <div ref={innerRef}>{outlet}</div>
                 </div>
               </div>
@@ -179,8 +187,8 @@ const AuthLayout = () => {
             </footer>
           </section>
 
-          <aside className="sticky top-8 hidden h-[calc(100dvh-4rem)] min-h-[34rem] lg:block">
-            <AuthShowcase variant="panel" />
+          <aside className="sticky top-8 hidden h-[calc(100dvh-4rem)] min-h-[34rem] self-start lg:block">
+            {wide && <AuthShowcase variant="panel" />}
           </aside>
         </div>
       </div>

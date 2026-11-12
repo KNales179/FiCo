@@ -9,13 +9,21 @@ import {
   LOGO_LEAF,
   LOGO_VIEWBOX,
 } from '../ficoLogoPaths'
-import { IconCalendar, IconChart, IconUsers, IconWallet } from '../icons'
+import { IconCalendar, IconChart, IconHeart, IconUsers, IconWallet } from '../icons'
 
 const TAGLINES = [
   'Every peso, in its place.',
   'Bills on time. Budgets that hold.',
   'One household, one shared picture.',
   'Works offline — your records go where you go.',
+]
+
+const FLOATING_ICONS = [
+  { Icon: IconWallet, className: 'left-[8%] top-[14%]', delay: '0s' },
+  { Icon: IconCalendar, className: 'right-[9%] top-[22%]', delay: '-2.4s' },
+  { Icon: IconChart, className: 'left-[12%] bottom-[18%]', delay: '-4.2s' },
+  { Icon: IconUsers, className: 'right-[12%] bottom-[12%]', delay: '-1.3s' },
+  { Icon: IconHeart, className: 'left-[44%] top-[6%]', delay: '-3.3s' },
 ]
 
 // Where the leaf's stem meets the C, in logo coordinates — the leaf sways
@@ -30,7 +38,7 @@ const LEAF_PIVOT = '560 690'
  * taglines and floating sample cards); `compact` is the small one above the
  * form on phones. Reduced motion → a still logo.
  */
-const AuthShowcase = ({ variant }: { variant: 'panel' | 'compact' }) => {
+const AuthShowcase = ({ variant }: { variant: 'panel' | 'backdrop' }) => {
   const rootRef = useRef<HTMLDivElement>(null)
   const id = useId().replace(/:/g, '')
   const [tagline, setTagline] = useState(0)
@@ -116,7 +124,7 @@ const AuthShowcase = ({ variant }: { variant: 'panel' | 'compact' }) => {
   const logo = (
     <svg
       viewBox={LOGO_VIEWBOX}
-      className={panel ? 'relative h-auto w-[min(17rem,60%,40cqh)] overflow-visible' : 'relative h-20 w-20 overflow-visible md:h-32 md:w-32'}
+      className={panel ? 'relative h-auto w-[min(17rem,60%,40cqh)] overflow-visible' : 'relative h-auto w-[min(78vw,30rem)] overflow-visible'}
       aria-hidden="true"
     >
       <defs>
@@ -160,17 +168,30 @@ const AuthShowcase = ({ variant }: { variant: 'panel' | 'compact' }) => {
       aria-hidden="true"
       className="pointer-events-none absolute left-1/2 top-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full blur-xl"
       style={{
-        width: panel ? 'min(30rem, 90%)' : '9rem',
+        width: panel ? 'min(30rem, 90%)' : 'min(95vw, 36rem)',
         background: 'radial-gradient(circle, color-mix(in srgb, var(--brand) 38%, transparent), transparent 66%)',
       }}
     />
   )
 
+  // Phones & tablets: the same looping logo, big and softly blurred behind
+  // the form, with a few icons drifting around — nothing to read back there.
   if (!panel) {
     return (
-      <div ref={rootRef} className="relative flex items-center justify-center py-2">
-        {glow}
-        {logo}
+      <div
+        ref={rootRef}
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 -z-[1] flex items-center justify-center overflow-hidden lg:hidden"
+      >
+        <div className="relative flex items-center justify-center opacity-55 blur-[3px]">
+          {glow}
+          {logo}
+        </div>
+        {FLOATING_ICONS.map(({ Icon, className, delay }, i) => (
+          <span key={i} className={`auth-float-icon ${className}`} style={{ animationDelay: delay }}>
+            <Icon size={20} />
+          </span>
+        ))}
       </div>
     )
   }

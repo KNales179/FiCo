@@ -11,6 +11,18 @@ export interface AuthNotice {
   /** ISO end of a restriction; null = until lifted (or not a restriction). */
   until: string | null
   at: string
+  /** Restricted, and signed in with the right password: they may appeal. */
+  appeal?: { token: string; existing: AppealSummary | null }
+}
+
+export interface AppealSummary {
+  id: string
+  status: 'OPEN' | 'LIFTED' | 'SHORTENED' | 'KEPT'
+  message: string
+  decisionNote: string | null
+  newUntil: string | null
+  createdAt: string
+  decidedAt: string | null
 }
 
 const KEY = 'fico.authNotice'

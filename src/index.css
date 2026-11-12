@@ -940,3 +940,33 @@ h3 {
   -webkit-mask-image: linear-gradient(225deg, black 10%, transparent 75%);
   mask-image: linear-gradient(225deg, black 10%, transparent 75%);
 }
+
+/* Phones & tablets: icons drifting behind the sign-in form. */
+.auth-float-icon {
+  position: absolute;
+  display: flex;
+  height: 2.75rem;
+  width: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  color: var(--brand);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand) 20%, transparent);
+  box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--brand) 60%, transparent);
+  opacity: 0.8;
+  animation: auth-float 7s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-float-icon { animation: none; }
+}
+
+/* Phones & tablets: a frosted-glass form card, so the drifting logo
+   behind it still shows through. */
+@media (max-width: 1023px) {
+  .auth-stage .card {
+    background: color-mix(in srgb, var(--panel) 66%, transparent);
+    -webkit-backdrop-filter: blur(4px) saturate(1.15);
+    backdrop-filter: blur(4px) saturate(1.15);
+  }
+}
