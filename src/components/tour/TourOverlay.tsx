@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { useLocation, useNavigate } from 'react-router-dom'
 import { gsap, prefersReducedMotion } from '../../lib/motion'
 import { IconChevronLeft, IconChevronRight, IconX } from '../icons'
-import { TOUR_STEPS } from './steps'
+import type { Tour } from './steps'
 
 /**
  * The guided tour (GCash-style coach marks): the whole screen dims except a
@@ -61,6 +61,21 @@ const isPinned = (el: Element) => Boolean(el.closest('header, [data-bottom-nav]'
 /** Scrolls so the target (plus room for the bubble) sits in view, then waits for the scroll to settle. */
 const scrollToTarget = async (el: HTMLElement) => {
   if (isPinned(el)) return
+
+  // A target inside a panel that scrolls on its own (the dashboard's left
+  // column on a laptop) is brought into view inside that panel first.
+  const panel = el.closest<HTMLElement>('[data-scroll-panel]')
+  if (panel && panel.scrollHeight > panel.clientHeight + 1) {
+    const pr = panel.getBoundingClientRect()
+    const er = el.getBoundingClientRect()
+    if (er.top < pr.top + 8 || er.bottom > pr.bottom - 8) {
+      panel.scrollTo({
+        top: panel.scrollTop + (er.top - pr.top) - 12,
+        behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+      })
+      await sleep(400)
+    }
+  }
   const { top, bottom } = screenInsets()
   const r = el.getBoundingClientRect()
   const available = window.innerHeight - top - bottom
@@ -85,7 +100,8 @@ const scrollToTarget = async (el: HTMLElement) => {
   }
 }
 
-const TourOverlay = ({ onClose }: { onClose: () => void }) => {
+const TourOverlay = ({ tour, onClose }: { tour: Tour; onClose: () => void }) => {
+  const TOUR_STEPS = tour.steps
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -107,7 +123,7 @@ const TourOverlay = ({ onClose }: { onClose: () => void }) => {
 
   // The tour walks the dashboard — go there first if opened from elsewhere.
   useEffect(() => {
-    if (location.pathname !== '/') navigate('/')
+    if (location.pathname !== tour.route) navigate(tour.route)
     // Only on open; later route changes are the tour's own.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -261,7 +277,7 @@ const TourOverlay = ({ onClose }: { onClose: () => void }) => {
           if (name === null) break
           if (!homeReady.current) {
             // The dashboard may still be loading right after opening.
-            await waitForTarget('summary', 4000)
+            await waitForTarget(tour.ready, 5000)
             homeReady.current = true
           }
           target = findTarget(name)
@@ -281,7 +297,7 @@ const TourOverlay = ({ onClose }: { onClose: () => void }) => {
         setBusy(false)
       }
     },
-    [busy, close, reduced],
+    [busy, close, reduced, TOUR_STEPS, tour.ready],
   )
 
   const next = useCallback(() => {
@@ -295,7 +311,23 @@ const TourOverlay = ({ onClose }: { onClose: () => void }) => {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close()
+      if (e.key === 'Tab') {
+        // Keep keyboard focus inside the bubble — the page behind is off limits.
+        const focusable = bubbleRef.current?.querySelectorAll<HTMLElement>('button:not([disabled])')
+        if (!focusable || focusable.length === 0) return
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        } else if (!bubbleRef.current?.contains(document.activeElement)) {
+          e.preventDefault()
+          first.focus()
+        }
+      } else if (e.key === 'Escape') close()
       else if (e.key === 'ArrowRight') next()
       else if (e.key === 'ArrowLeft') back()
     }
@@ -309,6 +341,14 @@ const TourOverlay = ({ onClose }: { onClose: () => void }) => {
     <div ref={rootRef} className="fixed inset-0 z-[70]" style={{ visibility: 'hidden' }}>
       {/* Swallows every click on the dimmed page. */}
       <div className="absolute inset-0" aria-hidden="true" />
+
+      {tour.demo && (
+        <div className="pointer-events-none fixed inset-x-0 top-2 z-[2] flex justify-center px-3">
+          <span className="rounded-full bg-warning px-3 py-1 text-xs font-semibold text-black shadow-lg">
+            Sample data · tour only — nothing here is yours or saved
+          </span>
+        </div>
+      )}
 
       <div ref={spotRef} className="tour-spot" aria-hidden="true" />
 
@@ -341,9 +381,14 @@ const TourOverlay = ({ onClose }: { onClose: () => void }) => {
         </div>
 
         <div className="mt-3 flex items-start justify-between gap-3">
-          <h2 id="tour-title" className="text-base font-bold text-ink">
-            {step.title}
-          </h2>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-brand">
+              {tour.title} · {index + 1} of {TOUR_STEPS.length}
+            </p>
+            <h2 id="tour-title" className="text-base font-bold text-ink">
+              {step.title}
+            </h2>
+          </div>
           <button
             type="button"
             onClick={close}

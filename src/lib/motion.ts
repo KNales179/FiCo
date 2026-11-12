@@ -52,3 +52,33 @@ export const useStaggerIn = (
     }
   }, [ref, key, y, stagger, selector])
 }
+
+/**
+ * Smoothly scrolls an element into the middle of the screen (clear of the
+ * sticky header), then washes it in the accent colour and lets that fade
+ * away — "here's the thing you clicked". The colour is a CSS variable
+ * (--hl, 0–1) tweened by GSAP, so the highlight follows the theme.
+ */
+export const scrollToAndHighlight = (el: HTMLElement) => {
+  const reduce = prefersReducedMotion()
+  const header = document.querySelector('header')
+  const top = header ? header.getBoundingClientRect().bottom : 0
+  const r = el.getBoundingClientRect()
+  const available = window.innerHeight - top
+  const dest = window.scrollY + r.top - top - Math.max(16, (available - r.height) / 2)
+  window.scrollTo({ top: Math.max(0, dest), behavior: reduce ? 'auto' : 'smooth' })
+
+  el.classList.add('flash-highlight')
+  gsap.killTweensOf(el)
+  gsap.fromTo(
+    el,
+    { '--hl': 1 },
+    {
+      '--hl': 0,
+      duration: reduce ? 0.01 : 2.6,
+      delay: reduce ? 1.2 : 0.55,
+      ease: 'power2.inOut',
+      onComplete: () => el.classList.remove('flash-highlight'),
+    },
+  )
+}

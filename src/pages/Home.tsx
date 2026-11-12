@@ -3,15 +3,20 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useSpace } from '../hooks/useSpace'
 import { useMoney } from '../hooks/useMoney'
+import { useAllTransactions } from '../hooks/useAllTransactions'
 import { useStaggerIn } from '../lib/motion'
 import { formatMoney } from '../domain/money'
 import { Alert, Modal, Button, SkeletonCard, Skeleton } from '../components/ui'
 import {
   IconArrowDownRight,
   IconArrowUpRight,
+  IconChart,
   IconClipboardCheck,
   IconWallet,
 } from '../components/icons'
+import { BarChart, EmptyChart, RankedBars } from '../components/charts'
+import { dailySpending, spendingByCategory, startOfMonthIso } from '../domain/insights'
+import { RECEIPT_SCAN_ENABLED } from '../features/receipts/flags'
 import QuickAdd from '../components/money/QuickAdd'
 import ScanReceipt from '../components/money/ScanReceipt'
 import AccountsCard from '../components/money/AccountsCard'
@@ -33,7 +38,8 @@ const greeting = () => {
 const SummaryCard = ({ onCashCheck }: { onCashCheck?: () => void }) => {
   const { user } = useAuth()
   const { activeSpace } = useSpace()
-  const { totalsByCurrency, transactions, accounts } = useMoney()
+  const { totalsByCurrency, accounts } = useMoney()
+  const transactions = useAllTransactions()
   const currency = activeSpace?.currency ?? 'PHP'
 
   const month = useMemo(() => {
@@ -111,12 +117,67 @@ const SummaryCard = ({ onCashCheck }: { onCashCheck?: () => void }) => {
   )
 }
 
+/**
+ * The dashboard's charts: daily spending over the last two weeks, and where
+ * this month's money went. Same currency rule as the summary card.
+ */
+const InsightsCard = () => {
+  const { activeSpace } = useSpace()
+  const transactions = useAllTransactions()
+  const currency = activeSpace?.currency ?? 'PHP'
+  const daily = useMemo(() => dailySpending(transactions, 14, currency), [transactions, currency])
+  const categories = useMemo(
+    () => spendingByCategory(transactions, startOfMonthIso(), currency),
+    [transactions, currency],
+  )
+  const hasDaily = daily.some((d) => d.value > 0)
+
+  return (
+    <section className="card" data-tour="insights">
+      <h2 className="section-title flex items-center gap-2">
+        <span className="card-icon">
+          <IconChart size={16} />
+        </span>
+        Insights
+      </h2>
+      <div className="mt-4 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted">Spending · last 14 days</p>
+          <div className="mt-2">
+            {hasDaily ? (
+              <BarChart
+                ariaLabel="Spending per day for the last 14 days"
+                data={daily.map((d) => ({ key: d.key, label: d.label, title: d.title, values: [d.value] }))}
+                series={[{ name: 'Spent', color: 'var(--brand)' }]}
+                currency={currency}
+                height={170}
+              />
+            ) : (
+              <EmptyChart>No spending recorded in the last 14 days.</EmptyChart>
+            )}
+          </div>
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted">Top categories · this month</p>
+          <div className="mt-3">
+            {categories.length > 0 ? (
+              <RankedBars rows={categories} currency={currency} max={5} />
+            ) : (
+              <EmptyChart>Nothing spent yet this month.</EmptyChart>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 const Home = () => {
   const { error: spaceError } = useSpace()
   const { loading, error: moneyError, accounts } = useMoney()
   const [cashCheckOpen, setCashCheckOpen] = useState(false)
   const gridRef = useRef<HTMLDivElement>(null)
-  useStaggerIn(gridRef, loading ? null : 'ready')
+  useStaggerIn(gridRef, loading ? null : 'ready', { selector: ':scope > aside > *, :scope > div > *' })
 
   const hasCashAccount = accounts.some(
     (a) => a.status === 'ACTIVE' && a.type === 'CASH',
@@ -124,17 +185,19 @@ const Home = () => {
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="hero-card space-y-3">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-7 w-56" />
-          <Skeleton className="h-10 w-48" />
-        </div>
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <SkeletonCard lines={2} />
+      <div className="grid gap-4 lg:grid-cols-[24rem_minmax(0,1fr)]">
+        <div className="space-y-4">
+          <div className="hero-card space-y-3">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-7 w-56" />
+            <Skeleton className="h-10 w-48" />
+          </div>
           <SkeletonCard lines={3} />
         </div>
-        <SkeletonCard lines={4} />
+        <div className="space-y-4">
+          <SkeletonCard lines={5} />
+          <SkeletonCard lines={6} />
+        </div>
       </div>
     )
   }
@@ -144,45 +207,50 @@ const Home = () => {
       {(spaceError || moneyError) && <Alert>{spaceError ?? moneyError}</Alert>}
 
       {/*
-        One grid, three shapes:
-        - phone: a single column, in reading order.
-        - tablet (md): the summary and Accounts side by side, then Quick
-          add, Scan and Records each across the full width.
-        - laptop (lg+): a main column (summary, Quick add, Scan, Records)
-          with Accounts as a sidebar on the right.
+        Three shapes from one grid:
+        - phone: one column — summary, Quick add, Accounts, Insights, Records.
+        - tablet (md): summary and Accounts side by side, Quick add under
+          them, then Insights and Records across the full width.
+        - laptop (lg+): a left column (summary, Quick add, Accounts) that
+          stays put — scrolling on its own if it's taller than the screen —
+          while the right column (Insights, Records) scrolls with the page.
       */}
       <div
         ref={gridRef}
-        className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_21rem] xl:grid-cols-[minmax(0,1fr)_23rem]"
+        className="grid items-start gap-4 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]"
       >
-        <div className="min-w-0 md:col-start-1 md:row-start-1">
-          <SummaryCard onCashCheck={hasCashAccount ? () => setCashCheckOpen(true) : undefined} />
-        </div>
-
-        <aside className="min-w-0 md:col-start-2 md:row-start-1 lg:row-span-4">
-          <AccountsCard />
+        <aside
+          data-scroll-panel
+          className="grid min-w-0 gap-4 md:grid-cols-2 lg:sticky lg:top-[calc(var(--header-h,6rem)+1rem)] lg:max-h-[calc(100dvh-var(--header-h,6rem)-2rem)] lg:grid-cols-1 lg:-m-1.5 lg:overflow-y-auto lg:overscroll-contain lg:p-1.5 lg:[scrollbar-width:thin]"
+        >
+          <div className="min-w-0 md:col-start-1 md:row-start-1 lg:row-auto">
+            <SummaryCard onCashCheck={hasCashAccount ? () => setCashCheckOpen(true) : undefined} />
+          </div>
+          <div className="min-w-0 empty:hidden md:col-span-2 md:row-start-2 lg:col-span-1 lg:row-auto">
+            <QuickAdd />
+          </div>
+          <div className="min-w-0 md:col-start-2 md:row-start-1 lg:col-start-1 lg:row-auto">
+            <AccountsCard />
+          </div>
+          {RECEIPT_SCAN_ENABLED && (
+            <div className="min-w-0 md:col-span-2 lg:col-span-1" data-tour="scan">
+              <ScanReceipt />
+            </div>
+          )}
+          <p className="text-xs text-muted md:col-span-2 lg:col-span-1">
+            Fico is a manual record — not connected to any bank or e-wallet.
+            Numbers here may not exactly match your real balances.{' '}
+            <Link to="/terms" className="underline">
+              Learn more
+            </Link>
+          </p>
         </aside>
 
-        <div className="min-w-0 empty:hidden md:col-span-2 lg:col-span-1 lg:col-start-1">
-          <QuickAdd />
-        </div>
-
-        <div className="min-w-0 md:col-span-2 lg:col-span-1 lg:col-start-1" data-tour="scan">
-          <ScanReceipt />
-        </div>
-
-        <div className="min-w-0 md:col-span-2 lg:col-span-1 lg:col-start-1">
+        <div className="grid min-w-0 gap-4">
+          <InsightsCard />
           <TransactionList />
         </div>
       </div>
-
-      <p className="text-xs text-muted">
-        Fico is a manual record — not connected to any bank or e-wallet.
-        Numbers here may not exactly match your real balances.{' '}
-        <Link to="/terms" className="underline">
-          Learn more
-        </Link>
-      </p>
 
       {cashCheckOpen && (
         <Modal title="Cash check" onClose={() => setCashCheckOpen(false)}>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useShopping } from '../hooks/useShopping'
 import { useMoney } from '../hooks/useMoney'
+import { useAllTransactions } from '../hooks/useAllTransactions'
 import { useAuth } from '../hooks/useAuth'
 import { useSpace } from '../hooks/useSpace'
 import { computeListTotals } from '../features/shopping'
@@ -10,6 +11,8 @@ import { formatMoney, parseAmountToMinor } from '../domain/money'
 import { PageHeader, Button, Input, Select, Alert, SkeletonCard } from '../components/ui'
 import {
   IconArchive,
+  IconCart,
+  IconChart,
   IconCheck,
   IconPlus,
   IconRotateCcw,
@@ -17,6 +20,8 @@ import {
   IconX,
 } from '../components/icons'
 import CategoryPicker from '../components/money/CategoryPicker'
+import { BarChart, EmptyChart } from '../components/charts'
+import { monthlyInOut } from '../domain/insights'
 import type { ShoppingItem } from '../types/models'
 
 const SEEN_AREA = 'shopping'
@@ -119,6 +124,47 @@ const ItemRow = ({ item }: { item: ShoppingItem }) => {
         </span>
       )}
     </li>
+  )
+}
+
+/**
+ * Side-panel chart: what shopping trips actually cost, month by month —
+ * every expense a completed list (or a purchased list item) recorded.
+ */
+const ShoppingTrend = () => {
+  const transactions = useAllTransactions()
+  const { activeSpace } = useSpace()
+  const currency = activeSpace?.currency ?? 'PHP'
+  const monthly = useMemo(() => {
+    const trips = transactions.filter(
+      (t) => t.sourceType === 'SHOPPING_LIST' || t.sourceType === 'SHOPPING_ITEM',
+    )
+    return monthlyInOut(trips, 6, currency).map((m) => ({ ...m, values: [m.values[1]] }))
+  }, [transactions, currency])
+  const has = monthly.some((m) => m.values[0] > 0)
+
+  return (
+    <section className="card" data-tour="shopping-trend">
+      <h2 className="section-title flex items-center gap-2">
+        <span className="card-icon">
+          <IconChart size={16} />
+        </span>
+        Shopping spend · last 6 months
+      </h2>
+      <div className="mt-3">
+        {has ? (
+          <BarChart
+            ariaLabel="Shopping spending per month for the last six months"
+            data={monthly}
+            series={[{ name: 'Spent', color: 'var(--brand)' }]}
+            currency={currency}
+            height={150}
+          />
+        ) : (
+          <EmptyChart>Completed shopping trips show up here.</EmptyChart>
+        )}
+      </div>
+    </section>
   )
 }
 
@@ -267,380 +313,401 @@ const Shopping = () => {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-2xl space-y-4">
-        <SkeletonCard lines={1} />
-        <SkeletonCard lines={4} />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <SkeletonCard lines={5} />
+        <SkeletonCard lines={3} />
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <PageHeader title="Shopping" />
+    <div className="space-y-4">
+      <PageHeader
+        icon={IconCart}
+        title="Shopping"
+        description="Plan a trip, tick items off at the store, and record it as one expense."
+      />
 
       {error && <Alert>{error}</Alert>}
 
-      {canEdit && (
-        <form
-          onSubmit={submitNewList}
-          className="flex flex-wrap items-center gap-2 card"
-        >
-          <Input
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="New list (e.g. Weekend grocery)"
-            required
-            maxLength={120}
-            className="min-w-[10rem] flex-1"
-          />
-          <Input
-            value={newBudget}
-            onChange={(e) => setNewBudget(e.target.value)}
-            inputMode="decimal"
-            placeholder="Budget (optional)"
-            className="w-32"
-          />
-          <label className="flex items-center gap-1.5 text-sm text-muted">
-            <input
-              type="checkbox"
-              checked={newPrivate}
-              onChange={(e) => setNewPrivate(e.target.checked)}
-            />
-            Private
-          </label>
-          <Button type="submit" variant="primary">
-            <IconPlus size={15} />
-            Create list
-          </Button>
-        </form>
-      )}
-
-      {shownLists.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {shownLists.map((list) => {
-            const unseen =
-              !openedListIds.has(list.id) &&
-              isUnseen(list.createdAt, list.createdBy, lastSeenAt, user?.id)
-            const selected = list.id === selectedList?.id
-            return (
-              <button
-                key={list.id}
-                type="button"
-                onClick={() => openList(list.id)}
-                className={`relative rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
-                  selected
-                    ? 'border-transparent bg-brand text-brand-ink'
-                    : 'border-line bg-panel text-ink hover:bg-panel-2'
-                } ${unseen ? 'ring-2 ring-danger/60' : ''}`}
-              >
-                {unseen && (
-                  <span
-                    aria-label="New, not yet seen"
-                    className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-danger"
-                  />
-                )}
-                {list.title}
-                {list.status !== 'ACTIVE' &&
-                  ` (${list.status.toLowerCase()})`}
-              </button>
-            )
-          })}
-        </div>
-      )}
-
-      {selectedList && !selectedList.archived && totals && (
-        <section className="card">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">
-              {selectedList.title}
-              {selectedList.visibility === 'PRIVATE' && (
-                <span className="ml-2 text-xs text-amber-600">private</span>
-              )}
-            </h2>
-            <span className="flex items-center gap-2 text-xs text-muted">
-              {totals.checkedCount}/{totals.itemCount} checked
-              {canEdit && listIsActive && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    void updateList(selectedList.id, {
-                      visibility:
-                        selectedList.visibility === 'PRIVATE'
-                          ? 'SPACE'
-                          : 'PRIVATE',
-                    })
-                  }
-                  className="font-medium text-brand underline"
-                >
-                  {selectedList.visibility === 'PRIVATE'
-                    ? 'share'
-                    : 'make private'}
-                </button>
-              )}
-            </span>
-          </div>
-
-          <ul className="mt-3 divide-y">
-            {items.map((item) => (
-              <ItemRow key={item.id} item={item} />
-            ))}
-          </ul>
-
-          {canEdit && listIsActive && (
-            <form
-              onSubmit={submitItem}
-              className="mt-3 border-t pt-3"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <Input
-                  value={itemName}
-                  onChange={(e) => void onItemNameChange(e.target.value)}
-                  placeholder="Add item"
-                  required
-                  maxLength={120}
-                  className="min-w-[8rem] flex-1"
-                />
-                <Input
-                  value={itemPrice}
-                  onChange={(e) => setItemPrice(e.target.value)}
-                  inputMode="decimal"
-                  placeholder={
-                    suggestion?.lastPriceMinor != null
-                      ? `${suggestion.lastPriceMinor / 100}`
-                      : 'Planned price'
-                  }
-                  className="w-28"
-                />
-                <Button type="submit" variant="primary">
-                  <IconPlus size={15} />
-                  Add
-                </Button>
-              </div>
-              {suggestion && (
-                <p className="mt-1 text-xs text-muted">
-                  {suggestion.lastPriceMinor != null &&
-                    `Last time: ${formatMoney(suggestion.lastPriceMinor)}`}
-                  {suggestion.category && ` · ${suggestion.category}`}
-                </p>
-              )}
-            </form>
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
+        <div className="min-w-0 space-y-4" data-tour="shopping-lists">
+          {shownLists.length > 0 && (
+            <div className="flex flex-wrap gap-2" data-tour="shopping-chips">
+              {shownLists.map((list) => {
+                const unseen =
+                  !openedListIds.has(list.id) &&
+                  isUnseen(list.createdAt, list.createdBy, lastSeenAt, user?.id)
+                const selected = list.id === selectedList?.id
+                return (
+                  <button
+                    key={list.id}
+                    type="button"
+                    onClick={() => openList(list.id)}
+                    className={`relative rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                      selected
+                        ? 'border-transparent bg-brand text-brand-ink'
+                        : 'border-line bg-panel text-ink hover:bg-panel-2'
+                    } ${unseen ? 'ring-2 ring-danger/60' : ''}`}
+                  >
+                    {unseen && (
+                      <span
+                        aria-label="New, not yet seen"
+                        className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-danger"
+                      />
+                    )}
+                    {list.title}
+                    {list.status !== 'ACTIVE' &&
+                      ` (${list.status.toLowerCase()})`}
+                  </button>
+                )
+              })}
+            </div>
           )}
 
-          <dl className="mt-4 space-y-1 border-t pt-3 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-muted">Projected total</dt>
-              <dd>{formatMoney(totals.projectedTotalMinor)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted">Spent so far</dt>
-              <dd>{formatMoney(totals.spentMinor)}</dd>
-            </div>
-            {totals.remainingBudgetMinor != null && (
-              <div className="flex justify-between font-medium">
-                <dt>Remaining of budget</dt>
-                <dd
-                  className={
-                    totals.remainingBudgetMinor < 0 ? 'text-danger' : ''
-                  }
-                >
-                  {formatMoney(totals.remainingBudgetMinor)}
-                </dd>
+          {selectedList && !selectedList.archived && totals && (
+            <section className="card" data-tour="shopping-items">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">
+                  {selectedList.title}
+                  {selectedList.visibility === 'PRIVATE' && (
+                    <span className="ml-2 text-xs text-amber-600">private</span>
+                  )}
+                </h2>
+                <span className="flex items-center gap-2 text-xs text-muted">
+                  {totals.checkedCount}/{totals.itemCount} checked
+                  {canEdit && listIsActive && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void updateList(selectedList.id, {
+                          visibility:
+                            selectedList.visibility === 'PRIVATE'
+                              ? 'SPACE'
+                              : 'PRIVATE',
+                        })
+                      }
+                      className="font-medium text-brand underline"
+                    >
+                      {selectedList.visibility === 'PRIVATE'
+                        ? 'share'
+                        : 'make private'}
+                    </button>
+                  )}
+                </span>
               </div>
-            )}
-          </dl>
 
-          {formError && (
-            <p role="alert" className="mt-2 text-xs text-danger">
-              {formError}
+              <ul className="mt-3 divide-y">
+                {items.map((item) => (
+                  <ItemRow key={item.id} item={item} />
+                ))}
+              </ul>
+
+              {canEdit && listIsActive && (
+                <form
+                  onSubmit={submitItem}
+                  className="mt-3 border-t pt-3"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      value={itemName}
+                      onChange={(e) => void onItemNameChange(e.target.value)}
+                      placeholder="Add item"
+                      required
+                      maxLength={120}
+                      className="min-w-[8rem] flex-1"
+                    />
+                    <Input
+                      value={itemPrice}
+                      onChange={(e) => setItemPrice(e.target.value)}
+                      inputMode="decimal"
+                      placeholder={
+                        suggestion?.lastPriceMinor != null
+                          ? `${suggestion.lastPriceMinor / 100}`
+                          : 'Planned price'
+                      }
+                      className="w-28"
+                    />
+                    <Button type="submit" variant="primary">
+                      <IconPlus size={15} />
+                      Add
+                    </Button>
+                  </div>
+                  {suggestion && (
+                    <p className="mt-1 text-xs text-muted">
+                      {suggestion.lastPriceMinor != null &&
+                        `Last time: ${formatMoney(suggestion.lastPriceMinor)}`}
+                      {suggestion.category && ` · ${suggestion.category}`}
+                    </p>
+                  )}
+                </form>
+              )}
+
+              <dl className="mt-4 space-y-1 border-t pt-3 text-sm">
+                <div className="flex justify-between">
+                  <dt className="text-muted">Projected total</dt>
+                  <dd>{formatMoney(totals.projectedTotalMinor)}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-muted">Spent so far</dt>
+                  <dd>{formatMoney(totals.spentMinor)}</dd>
+                </div>
+                {totals.remainingBudgetMinor != null && (
+                  <div className="flex justify-between font-medium">
+                    <dt>Remaining of budget</dt>
+                    <dd
+                      className={
+                        totals.remainingBudgetMinor < 0 ? 'text-danger' : ''
+                      }
+                    >
+                      {formatMoney(totals.remainingBudgetMinor)}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+
+              {formError && (
+                <p role="alert" className="mt-2 text-xs text-danger">
+                  {formError}
+                </p>
+              )}
+
+              {completion && (
+                <p className="mt-3 text-sm text-success">{completion}</p>
+              )}
+
+              {canEdit && listIsActive && (
+                <div className="mt-4 space-y-2" data-tour="shopping-complete">
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="text-muted">This trip is</span>
+                    <CategoryPicker
+                      kind="EXPENSE"
+                      value={payCategoryId}
+                      onChange={setPayCategoryId}
+                      className="select w-auto"
+                    />
+                    <span className="text-muted">Pay from</span>
+                    <Select
+                      value={payAccountId || defaultAccount?.id || ''}
+                      onChange={(e) => setPayAccountId(e.target.value)}
+                      className="w-auto"
+                    >
+                      {activeAccounts.length === 0 && (
+                        <option value="">No accounts</option>
+                      )}
+                      {activeAccounts.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                          {a.isDefault ? ' •' : ''}
+                        </option>
+                      ))}
+                    </Select>
+                    <Button
+                      variant="primary"
+                      disabled={activeAccounts.length === 0}
+                      onClick={async () => {
+                        setFormError('')
+                        setCompletion(null)
+                        try {
+                          const r = await completeList(
+                            selectedList.id,
+                            payAccountId || defaultAccount?.id,
+                            {
+                              categoryId: payCategoryId || null,
+                              categoryName: categoryNameById.get(payCategoryId) ?? null,
+                            },
+                          )
+                          setCompletion(
+                            r.createdCount === 0
+                              ? 'Shopping done — nothing new to record.'
+                              : `Shopping done — ${formatMoney(r.spentMinor)} recorded across ${r.itemCount} item${r.itemCount === 1 ? '' : 's'}.`,
+                          )
+                          setPayCategoryId('')
+                        } catch (err) {
+                          setFormError(
+                            err instanceof Error
+                              ? err.message
+                              : 'Could not complete',
+                          )
+                        }
+                      }}
+                    >
+                      <IconCheck size={15} />
+                      Complete shopping
+                    </Button>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button onClick={() => void cancelList(selectedList.id)}>
+                      <IconX size={14} />
+                      Cancel list
+                    </Button>
+                    <Button variant="danger" onClick={() => void deleteList(selectedList.id)}>
+                      <IconTrash size={14} />
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {canEdit && !listIsActive && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button
+                    onClick={() =>
+                      void updateList(selectedList.id, { archived: true })
+                    }
+                  >
+                    <IconArchive size={14} />
+                    Archive list
+                  </Button>
+                  <Button
+                    variant="danger"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          selectedList.status === 'COMPLETED'
+                            ? `Delete "${selectedList.title}"? This removes the list and its items only — the expense it recorded stays in your transactions untouched.`
+                            : `Delete "${selectedList.title}"?`,
+                        )
+                      )
+                        void deleteList(selectedList.id)
+                    }}
+                  >
+                    <IconTrash size={14} />
+                    Delete list
+                  </Button>
+                </div>
+              )}
+            </section>
+          )}
+
+          {shownLists.length === 0 && (
+            <p className="text-sm text-muted">
+              {archivedLists.length > 0
+                ? 'No open shopping lists — older ones are in the archive.'
+                : 'No shopping lists yet.'}
             </p>
           )}
 
-          {completion && (
-            <p className="mt-3 text-sm text-success">{completion}</p>
-          )}
+        </div>
 
-          {canEdit && listIsActive && (
-            <div className="mt-4 space-y-2">
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-muted">This trip is</span>
-                <CategoryPicker
-                  kind="EXPENSE"
-                  value={payCategoryId}
-                  onChange={setPayCategoryId}
-                  className="select w-auto"
+        <aside className="min-w-0 space-y-4">
+          {canEdit && (
+            <form
+              onSubmit={submitNewList}
+              className="card space-y-3"
+              data-tour="shopping-new"
+            >
+            <h2 className="section-title flex items-center gap-2">
+              <span className="card-icon">
+                <IconPlus size={16} />
+              </span>
+              New shopping list
+            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="New list (e.g. Weekend grocery)"
+                required
+                maxLength={120}
+                className="min-w-[10rem] flex-1"
+              />
+              <Input
+                value={newBudget}
+                onChange={(e) => setNewBudget(e.target.value)}
+                inputMode="decimal"
+                placeholder="Budget (optional)"
+                className="w-32"
+              />
+              <label className="flex items-center gap-1.5 text-sm text-muted">
+                <input
+                  type="checkbox"
+                  checked={newPrivate}
+                  onChange={(e) => setNewPrivate(e.target.checked)}
                 />
-                <span className="text-muted">Pay from</span>
-                <Select
-                  value={payAccountId || defaultAccount?.id || ''}
-                  onChange={(e) => setPayAccountId(e.target.value)}
-                  className="w-auto"
-                >
-                  {activeAccounts.length === 0 && (
-                    <option value="">No accounts</option>
-                  )}
-                  {activeAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}
-                      {a.isDefault ? ' •' : ''}
-                    </option>
+                Private
+              </label>
+              <Button type="submit" variant="primary">
+                <IconPlus size={15} />
+                Create list
+              </Button>
+            </div>
+            </form>
+          )}
+
+          <ShoppingTrend />
+          {archivedLists.length > 0 && (
+            <section className="card">
+              <button
+                type="button"
+                onClick={() => setShowArchived((v) => !v)}
+                aria-expanded={showArchived}
+                className="flex items-center gap-1.5 text-sm font-semibold text-ink"
+              >
+                <IconArchive size={15} />
+                Archived lists ({archivedLists.length})
+                <span className="text-xs font-normal text-muted">
+                  {showArchived ? 'hide' : 'show'}
+                </span>
+              </button>
+              {showArchived && (
+                <ul className="mt-2 divide-y">
+                  {archivedLists.map((list) => (
+                    <li
+                      key={list.id}
+                      className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+                    >
+                      <span className="text-muted">
+                        {list.title}
+                        <span className="ml-2 text-xs">
+                          {list.status.toLowerCase()}
+                          {list.completedAt &&
+                            ` · ${new Date(list.completedAt).toLocaleDateString()}`}
+                        </span>
+                      </span>
+                      {canEdit && (
+                        <span className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            onClick={async () => {
+                              await updateList(list.id, { archived: false })
+                              selectList(list.id)
+                            }}
+                          >
+                            <IconRotateCcw size={14} />
+                            Restore
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            iconOnly
+                            aria-label="Delete list"
+                            title="Delete list"
+                            className="hover:text-danger"
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  list.status === 'COMPLETED'
+                                    ? `Delete "${list.title}"? This removes the list and its items only — the expense it recorded stays in your transactions untouched.`
+                                    : `Delete "${list.title}"?`,
+                                )
+                              )
+                                void deleteList(list.id)
+                            }}
+                          >
+                            <IconTrash size={14} />
+                          </Button>
+                        </span>
+                      )}
+                    </li>
                   ))}
-                </Select>
-                <Button
-                  variant="primary"
-                  disabled={activeAccounts.length === 0}
-                  onClick={async () => {
-                    setFormError('')
-                    setCompletion(null)
-                    try {
-                      const r = await completeList(
-                        selectedList.id,
-                        payAccountId || defaultAccount?.id,
-                        {
-                          categoryId: payCategoryId || null,
-                          categoryName: categoryNameById.get(payCategoryId) ?? null,
-                        },
-                      )
-                      setCompletion(
-                        r.createdCount === 0
-                          ? 'Shopping done — nothing new to record.'
-                          : `Shopping done — ${formatMoney(r.spentMinor)} recorded across ${r.itemCount} item${r.itemCount === 1 ? '' : 's'}.`,
-                      )
-                      setPayCategoryId('')
-                    } catch (err) {
-                      setFormError(
-                        err instanceof Error
-                          ? err.message
-                          : 'Could not complete',
-                      )
-                    }
-                  }}
-                >
-                  <IconCheck size={15} />
-                  Complete shopping
-                </Button>
-              </div>
-
-              <div className="flex gap-2">
-                <Button onClick={() => void cancelList(selectedList.id)}>
-                  <IconX size={14} />
-                  Cancel list
-                </Button>
-                <Button variant="danger" onClick={() => void deleteList(selectedList.id)}>
-                  <IconTrash size={14} />
-                  Delete
-                </Button>
-              </div>
-            </div>
+                </ul>
+              )}
+            </section>
           )}
-
-          {canEdit && !listIsActive && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button
-                onClick={() =>
-                  void updateList(selectedList.id, { archived: true })
-                }
-              >
-                <IconArchive size={14} />
-                Archive list
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      selectedList.status === 'COMPLETED'
-                        ? `Delete "${selectedList.title}"? This removes the list and its items only — the expense it recorded stays in your transactions untouched.`
-                        : `Delete "${selectedList.title}"?`,
-                    )
-                  )
-                    void deleteList(selectedList.id)
-                }}
-              >
-                <IconTrash size={14} />
-                Delete list
-              </Button>
-            </div>
-          )}
-        </section>
-      )}
-
-      {shownLists.length === 0 && (
-        <p className="text-sm text-muted">
-          {archivedLists.length > 0
-            ? 'No open shopping lists — older ones are in the archive below.'
-            : 'No shopping lists yet.'}
-        </p>
-      )}
-
-      {archivedLists.length > 0 && (
-        <section className="card">
-          <button
-            type="button"
-            onClick={() => setShowArchived((v) => !v)}
-            aria-expanded={showArchived}
-            className="flex items-center gap-1.5 text-sm font-semibold text-ink"
-          >
-            <IconArchive size={15} />
-            Archived lists ({archivedLists.length})
-            <span className="text-xs font-normal text-muted">
-              {showArchived ? 'hide' : 'show'}
-            </span>
-          </button>
-          {showArchived && (
-            <ul className="mt-2 divide-y">
-              {archivedLists.map((list) => (
-                <li
-                  key={list.id}
-                  className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
-                >
-                  <span className="text-muted">
-                    {list.title}
-                    <span className="ml-2 text-xs">
-                      {list.status.toLowerCase()}
-                      {list.completedAt &&
-                        ` · ${new Date(list.completedAt).toLocaleDateString()}`}
-                    </span>
-                  </span>
-                  {canEdit && (
-                    <span className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        onClick={async () => {
-                          await updateList(list.id, { archived: false })
-                          selectList(list.id)
-                        }}
-                      >
-                        <IconRotateCcw size={14} />
-                        Restore
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        iconOnly
-                        aria-label="Delete list"
-                        title="Delete list"
-                        className="hover:text-danger"
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              list.status === 'COMPLETED'
-                                ? `Delete "${list.title}"? This removes the list and its items only — the expense it recorded stays in your transactions untouched.`
-                                : `Delete "${list.title}"?`,
-                            )
-                          )
-                            void deleteList(list.id)
-                        }}
-                      >
-                        <IconTrash size={14} />
-                      </Button>
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
+        </aside>
+      </div>
     </div>
   )
 }

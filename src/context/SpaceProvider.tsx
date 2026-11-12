@@ -22,6 +22,7 @@ import {
 import type { SpaceSummary } from '../types/space'
 import { useAuth } from '../hooks/useAuth'
 import { SpaceContext } from './space-context'
+import { DEMO_SPACE_ID, demoSpaceSummary } from '../features/demo/space'
 
 const pickDefaultSpaceId = (spaces: SpaceSummary[]): string | null => {
   if (spaces.length === 0) return null
@@ -38,6 +39,12 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true)
   const [fromCache, setFromCache] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // The tour's sample Finance overrides the active one only in memory — the
+  // stored active-space choice is never touched, so exiting (or a reload)
+  // lands right back where the person was.
+  const [demo, setDemo] = useState(false)
+  const enterDemo = useCallback(() => setDemo(true), [])
+  const exitDemo = useCallback(() => setDemo(false), [])
 
   const applySpaces = useCallback(
     async (next: SpaceSummary[]) => {
@@ -115,24 +122,36 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
     [load, switchSpace],
   )
 
-  const activeSpace = useMemo(
+  const realActiveSpace = useMemo(
     () => spaces.find((space) => space.id === activeSpaceId) ?? null,
     [spaces, activeSpaceId],
+  )
+  const demoSpace = useMemo(
+    () => (demo && userId ? demoSpaceSummary(userId, realActiveSpace?.currency ?? 'PHP') : null),
+    [demo, userId, realActiveSpace?.currency],
+  )
+  const activeSpace = demoSpace ?? realActiveSpace
+  const shownSpaces = useMemo(
+    () => (demoSpace ? [...spaces, demoSpace] : spaces),
+    [spaces, demoSpace],
   )
 
   // When signed out, present an empty state without mutating stored state;
   // the next sign-in repopulates it via `load()`.
   const value = signedIn
     ? {
-        spaces,
+        spaces: shownSpaces,
         activeSpace,
-        activeSpaceId,
+        activeSpaceId: demoSpace ? DEMO_SPACE_ID : activeSpaceId,
         loading,
         fromCache,
         error,
         switchSpace,
         refresh: load,
         createSpace,
+        demo: Boolean(demoSpace),
+        enterDemo,
+        exitDemo,
       }
     : {
         spaces: [],
@@ -144,6 +163,9 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
         switchSpace,
         refresh: load,
         createSpace,
+        demo: false,
+        enterDemo,
+        exitDemo,
       }
 
   return (

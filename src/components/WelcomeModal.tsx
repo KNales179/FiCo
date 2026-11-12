@@ -39,7 +39,7 @@ const WelcomeModal = () => {
           variant="primary"
           onClick={() => {
             setShow(false)
-            startTour()
+            startTour('dashboard')
           }}
         >
           <IconCompass size={15} />

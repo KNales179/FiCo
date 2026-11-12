@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useRef, useState, type ComponentType } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState, type ComponentType } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useSpace } from '../hooks/useSpace'
@@ -29,9 +29,12 @@ import SpaceSwitcher from './SpaceSwitcher'
 import SyncStatus from './SyncStatus'
 import BillReminders from './BillReminders'
 import WelcomeModal from './WelcomeModal'
+import WhatsNewModal from './WhatsNewModal'
+import { APP_VERSION } from '../features/whatsNew/changelog'
 import PullToRefresh from './PullToRefresh'
 import { PageSkeleton } from './ui'
 import TourProvider from './tour/TourProvider'
+import ThemeToggle from './ThemeToggle'
 import { useStaggerIn } from '../lib/motion'
 
 type IconComponent = ComponentType<IconProps>
@@ -75,6 +78,20 @@ const AppLayout = () => {
   const pageRef = useRef<HTMLDivElement>(null)
   // Each page eases in when you arrive on it.
   useStaggerIn(pageRef, location.pathname, { y: 10 })
+
+  // Publishes the sticky header's height as --header-h, so sticky panels
+  // further down (the dashboard's left column) sit right under it.
+  const headerRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const set = () =>
+      document.documentElement.style.setProperty('--header-h', `${el.offsetHeight}px`)
+    set()
+    const observer = new ResizeObserver(set)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   const fetchShoppingLists = useCallback(
     () => (activeSpaceId ? listShoppingLists(activeSpaceId) : Promise.resolve([])),
@@ -127,7 +144,7 @@ const AppLayout = () => {
     <TourProvider>
     <div className="relative isolate min-h-screen">
       <div className="app-backdrop" aria-hidden="true" />
-      <header className="sticky top-0 z-20 border-b border-line bg-panel/90 shadow-sm backdrop-blur">
+      <header ref={headerRef} className="sticky top-0 z-20 border-b border-line bg-panel/90 shadow-sm backdrop-blur">
         {/* Always flex-nowrap, on every width — wrapping just traded "the
             profile button clips off-screen" for "the header grows a second
             line and pushes the whole page down," neither of which is
@@ -147,7 +164,7 @@ const AppLayout = () => {
             <SpaceSwitcher />
           </div>
 
-          <nav data-tour="nav" className="ml-1 hidden items-center gap-1 md:flex">
+          <nav data-tour="nav" className="ml-1 hidden items-center gap-1 lg:flex">
             {PRIMARY.map((item) => {
               const ItemIcon = item.icon
               return (
@@ -174,7 +191,8 @@ const AppLayout = () => {
           {/* Always right after the nav, on the same line, at every width —
               never bundled with (or wrapped together with) the sync status,
               which lives on its own row below the header instead. */}
-          <div className="ml-auto flex shrink-0 items-center">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <ThemeToggle />
             <div className="relative">
               <button
                 type="button"
@@ -276,9 +294,10 @@ const AppLayout = () => {
 
       <BillReminders />
       <WelcomeModal />
+      <WhatsNewModal />
       <PullToRefresh />
 
-      <main className="mx-auto max-w-6xl px-3 py-5 pb-24 sm:px-4 md:pb-8 lg:px-6 lg:py-7">
+      <main className="mx-auto max-w-6xl px-3 py-5 pb-28 sm:px-4 lg:px-6 lg:py-7 lg:pb-8">
         {/* Suspense here (not just at the app root) so the header and nav
             stay on screen while a page's code downloads — only the content
             area shows a skeleton. */}
@@ -290,6 +309,8 @@ const AppLayout = () => {
 
         <footer className="mt-10 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
           <span>© {new Date().getFullYear()} IBell. All rights reserved.</span>
+          {/* Plain text on purpose — bumped with every release (features/whatsNew/changelog.ts). */}
+          <span>Fico v{APP_VERSION}</span>
           <Link to="/credits" className="underline">
             Credits
           </Link>
@@ -302,11 +323,11 @@ const AppLayout = () => {
         </footer>
       </main>
 
-      {/* Mobile bottom navigation */}
+      {/* Bottom navigation — phones and tablets (anything under laptop width). */}
       <nav
         data-tour="nav"
         data-bottom-nav
-        className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-panel/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-panel/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
       >
         {PRIMARY.map((item) => {
           const ItemIcon = item.icon

@@ -119,28 +119,34 @@ const AccountsCard = () => {
         {activeAccounts.map((account, index) => (
           <li
             key={account.id}
-            className="flex flex-wrap items-center justify-between gap-2 py-2.5"
+            className="flex items-center justify-between gap-3 py-2.5"
           >
-            <span className="text-sm">
-              {account.name}
-              <span className="ml-2 text-xs text-muted">
+            {/* Name and type on the left, amount and buttons pushed to the
+                right — always this shape, never wrapping under each other. */}
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-medium text-ink">{account.name}</span>
+              <span className="block text-xs text-muted">
                 {account.type.toLowerCase()}
                 {account.isDefault && ' · default'}
               </span>
             </span>
 
             <span
-              className="flex items-center gap-3"
+              className="flex shrink-0 items-center gap-1"
               data-tour={index === 0 ? 'account-row' : undefined}
             >
               <span
-                className={`tabular-nums ${
+                className={`mr-2 tabular-nums ${
                   account.balanceMinor < 0 ? 'text-danger' : 'text-ink'
                 }`}
               >
                 {formatMoney(account.balanceMinor, account.currency)}
               </span>
-              {canEdit && !account.isDefault && (
+              {canEdit &&
+                (account.isDefault ? (
+                  // Keeps the buttons lined up in columns across rows.
+                  <span className="w-7" aria-hidden="true" />
+                ) : (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -151,7 +157,7 @@ const AccountsCard = () => {
                   >
                     <IconStar size={14} />
                   </Button>
-                )}
+                ))}
               {canEdit && (
                 <Button
                   variant="ghost"
@@ -198,16 +204,16 @@ const AccountsCard = () => {
               {archivedAccounts.map((account) => (
                 <li
                   key={account.id}
-                  className="flex flex-wrap items-center justify-between gap-2 py-2.5"
+                  className="flex items-center justify-between gap-3 py-2.5"
                 >
-                  <span className="text-sm text-muted">
-                    {account.name}
-                    <span className="ml-2 text-xs">
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm text-muted">{account.name}</span>
+                    <span className="block text-xs text-muted">
                       {account.type.toLowerCase()} · archived
                     </span>
                   </span>
-                  <span className="flex items-center gap-3">
-                    <span className="tabular-nums text-muted">
+                  <span className="flex shrink-0 items-center gap-1">
+                    <span className="mr-2 tabular-nums text-muted">
                       {formatMoney(account.balanceMinor, account.currency)}
                     </span>
                     {canEdit && (

@@ -303,7 +303,10 @@ const QuickAdd = () => {
       </div>
 
       <form onSubmit={submit} className="mt-3 space-y-3" data-tour="quick-add-fields">
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Three full-width rows, no leftover gaps: what (amount + title),
+            where and when (account + date, or from → to for a transfer),
+            then category with the Add button. */}
+        <div className={`grid gap-2 ${batchMode ? 'grid-cols-1' : 'grid-cols-[minmax(0,2fr)_minmax(0,3fr)]'}`}>
           {!batchMode && (
             <input
               value={amount}
@@ -314,7 +317,8 @@ const QuickAdd = () => {
               inputMode="decimal"
               placeholder="Amount"
               required
-              className="input w-28"
+              aria-label="Amount"
+              className="input"
             />
           )}
           <input
@@ -334,54 +338,87 @@ const QuickAdd = () => {
             }
             required={direction !== 'TRANSFER'}
             maxLength={120}
-            className="input min-w-[8rem] flex-1"
+            className="input"
           />
-          <select
-            value={accountId}
-            onChange={(e) => setChosenAccountId(e.target.value)}
-            className="select w-auto"
-            title={direction === 'TRANSFER' ? 'From' : undefined}
-          >
-            {activeAccounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-                {a.isDefault ? ' •' : ''}
-              </option>
-            ))}
-          </select>
-          {direction === 'TRANSFER' && (
-            <>
-              <span className="text-sm text-muted">to</span>
-              <select
-                value={toAccountId}
-                onChange={(e) => setDestinationAccountId(e.target.value)}
-                className="select w-auto"
-              >
-                {activeAccounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            </>
-          )}
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            max={today()}
-            title="When this actually happened — defaults to today, change it if you're recording late"
-            className="input w-auto"
-          />
-          {direction !== 'TRANSFER' && (
+        </div>
+
+        {direction === 'TRANSFER' ? (
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+            <select
+              value={accountId}
+              onChange={(e) => setChosenAccountId(e.target.value)}
+              className="select"
+              aria-label="From account"
+            >
+              {activeAccounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                  {a.isDefault ? ' •' : ''}
+                </option>
+              ))}
+            </select>
+            <span className="text-sm text-muted">to</span>
+            <select
+              value={toAccountId}
+              onChange={(e) => setDestinationAccountId(e.target.value)}
+              className="select"
+              aria-label="To account"
+            >
+              {activeAccounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              value={accountId}
+              onChange={(e) => setChosenAccountId(e.target.value)}
+              className="select"
+              aria-label="Account"
+            >
+              {activeAccounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                  {a.isDefault ? ' •' : ''}
+                </option>
+              ))}
+            </select>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              max={today()}
+              aria-label="Date"
+              title="When this actually happened — defaults to today, change it if you're recording late"
+              className="input"
+            />
+          </div>
+        )}
+
+        <div className={`grid gap-2 ${!batchMode && !crossCurrency ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-1'}`}>
+          {direction === 'TRANSFER' ? (
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              max={today()}
+              aria-label="Date"
+              title="When this actually happened — defaults to today, change it if you're recording late"
+              className="input"
+            />
+          ) : (
             <CategoryPicker
               kind={direction === 'INCOME' ? 'INCOME' : 'EXPENSE'}
               value={categoryId}
               onChange={changeCategory}
+              className="select w-full"
             />
           )}
           {!batchMode && !crossCurrency && (
-            <Button type="submit" variant="primary" disabled={busy}>
+            <Button type="submit" variant="primary" disabled={busy} className="px-6">
               {busy ? 'Saving…' : 'Add'}
             </Button>
           )}

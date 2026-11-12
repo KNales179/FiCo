@@ -5,7 +5,11 @@ import {
   type FeedbackEntry,
 } from '../services/feedbackService'
 import { PageHeader, Card, Button, Alert, SkeletonLines } from '../components/ui'
-import { IconCheck, IconRotateCcw } from '../components/icons'
+import {
+  IconCheck,
+  IconRotateCcw,
+  IconMessage,
+} from '../components/icons'
 import { markSeenNow } from '../features/seen'
 
 const formatDate = (iso: string) => new Date(iso).toLocaleString()
@@ -53,9 +57,10 @@ const AdminFeedback = () => {
   const openCount = rows?.filter((r) => r.status === 'OPEN').length ?? 0
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto max-w-3xl space-y-4">
       <PageHeader
         title="Report & feedback"
+        icon={IconMessage}
         description={
           rows
             ? `${openCount} open of ${rows.length} total`

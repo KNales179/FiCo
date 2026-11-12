@@ -15,8 +15,11 @@ initAppearance()
 
 initServiceWorker()
 
-// Open IndexedDB and run migrations before the app reads any local data.
-void initDB()
+// Open IndexedDB and run migrations before the app reads any local data,
+// then drop any tutorial sample data a tour left behind (app closed mid-tour).
+void initDB().then(() =>
+  import('./features/demo/seed').then((m) => m.purgeDemoDataIfLeftOver()),
+)
 
 if (import.meta.env.DEV) {
   void import('./db/devtools')

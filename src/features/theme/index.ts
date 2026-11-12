@@ -146,3 +146,45 @@ export const initAppearance = (): Appearance => {
   applyAppearance(appearance)
   return appearance
 }
+
+/** The theme actually on screen right now — "system" resolved against the OS. */
+export const effectiveTheme = (): 'light' | 'dark' => {
+  const attr = document.documentElement.getAttribute('data-theme')
+  if (attr === 'light' || attr === 'dark') return attr
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
+/**
+ * The navbar's light/dark switch. Flips to the opposite of what's showing
+ * and saves it (Settings → Theme → System goes back to following the
+ * device). Where the browser supports view transitions, the new theme is
+ * revealed as a circle growing out of the button that was pressed.
+ */
+export const toggleThemeAnimated = (origin?: { x: number; y: number }): Appearance => {
+  const next: Appearance = {
+    ...loadAppearance(),
+    theme: effectiveTheme() === 'dark' ? 'light' : 'dark',
+  }
+  saveAppearance(next)
+
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const doc = document as Document & {
+    startViewTransition?: (cb: () => void) => { ready: Promise<void> }
+  }
+  if (!doc.startViewTransition || reduce) {
+    applyAppearance(next)
+    return next
+  }
+
+  const x = origin?.x ?? window.innerWidth / 2
+  const y = origin?.y ?? 0
+  const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
+  const transition = doc.startViewTransition(() => applyAppearance(next))
+  void transition.ready.then(() => {
+    document.documentElement.animate(
+      { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+      { duration: 650, easing: 'ease-in-out', pseudoElement: '::view-transition-new(root)' },
+    )
+  })
+  return next
+}

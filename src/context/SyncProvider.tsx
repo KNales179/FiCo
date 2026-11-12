@@ -21,6 +21,7 @@ import type { MutationContext } from '../features/sync/context'
 import { useAuth } from '../hooks/useAuth'
 import { useSpace } from '../hooks/useSpace'
 import { useConnectivity } from '../hooks/useConnectivity'
+import { isDemoSpace } from '../features/demo/space'
 import { SyncContext, type SyncPhase } from './sync-context'
 
 const HEALTHY_INTERVAL = 45_000
@@ -55,7 +56,8 @@ export const SyncProvider = ({ children }: { children: ReactNode }) => {
   const userId = user?.id ?? null
   const ctx: MutationContext | null = useMemo(
     () =>
-      isAuthenticated && activeSpaceId && userId && deviceId
+      // Never sync the tour's local-only sample Finance.
+      isAuthenticated && activeSpaceId && !isDemoSpace(activeSpaceId) && userId && deviceId
         ? { spaceId: activeSpaceId, userId, deviceId }
         : null,
     [isAuthenticated, activeSpaceId, userId, deviceId],

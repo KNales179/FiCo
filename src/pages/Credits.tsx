@@ -1,10 +1,13 @@
 import { Link } from 'react-router-dom'
 import { PageHeader, Card } from '../components/ui'
-import { IconMessage } from '../components/icons'
+import {
+  IconMessage,
+  IconInfo,
+} from '../components/icons'
 
 const Credits = () => (
-  <div className="mx-auto max-w-2xl space-y-4">
-    <PageHeader title="Credits" description="About Fico, and who built it." />
+  <div className="mx-auto max-w-3xl space-y-4">
+    <PageHeader icon={IconInfo} title="Credits" description="About Fico, and who built it." />
 
     <Card>
       <h2 className="section-title">What Fico is</h2>

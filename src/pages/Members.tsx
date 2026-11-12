@@ -17,7 +17,13 @@ import { isNetworkError } from '../lib/api'
 import { SUPPORTED_CURRENCIES, currencyName } from '../domain/money'
 import type { SpaceMember, SpaceSummary } from '../types/space'
 import { PageHeader, Card, Button, Input, Alert, EmptyState, SkeletonRow } from '../components/ui'
-import { IconAward, IconLogOut, IconUserPlus, IconX } from '../components/icons'
+import {
+  IconAward,
+  IconLogOut,
+  IconUserPlus,
+  IconX,
+  IconUsers,
+} from '../components/icons'
 
 /**
  * The Finance's currency — every account created in it defaults to this,
@@ -212,6 +218,7 @@ const Members = () => {
     return (
       <div className="space-y-4">
         <PageHeader
+          icon={IconUsers}
           title="Members"
           description={`${activeSpace.name} is a personal Finance — it's just you.`}
         />
@@ -227,6 +234,7 @@ const Members = () => {
   return (
     <div className="space-y-4">
       <PageHeader
+          icon={IconUsers}
         title={`${activeSpace.name} · members`}
         description="Everyone here is a full participant. Only the owner can invite, remove, or hand over the Finance."
         actions={

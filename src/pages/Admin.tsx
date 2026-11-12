@@ -194,9 +194,10 @@ const Admin = () => {
   }, [load])
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto max-w-3xl space-y-4">
       <PageHeader
         title="Admin"
+        icon={IconShield}
         description="Manage every account — not to be confused with a shared Finance's own owner."
       />
 

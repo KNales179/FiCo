@@ -48,8 +48,8 @@ const Categories = () => {
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-4">
-      <PageHeader title="Categories" />
+    <div className="mx-auto max-w-3xl space-y-4">
+      <PageHeader icon={IconTag} title="Categories" />
       <p className="text-sm text-muted">
         Renaming or removing a category never changes transactions already
         recorded — they keep the name they were saved with. A category marked{' '}

@@ -21,7 +21,15 @@ import { ensureDeviceId } from '../features/auth/localAuth'
 import { isNetworkError } from '../lib/api'
 import type { DeviceSession } from '../types/auth'
 import { PageHeader, Card, Button, Input, Alert, SkeletonRow } from '../components/ui'
-import { IconCamera, IconDownload, IconLogOut, IconShare, IconTrash, IconX } from '../components/icons'
+import {
+  IconCamera,
+  IconDownload,
+  IconLogOut,
+  IconShare,
+  IconTrash,
+  IconX,
+  IconUserCircle,
+} from '../components/icons'
 import {
   installPlatform,
   onInstallAvailabilityChange,
@@ -688,9 +696,10 @@ const Account = () => {
   const { user } = useAuth()
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto max-w-3xl space-y-4">
       <PageHeader
         title="Account"
+        icon={IconUserCircle}
         description={user ? `Signed in as ${user.username}` : undefined}
       />
       <EmailVerificationBanner />

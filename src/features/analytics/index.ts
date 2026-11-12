@@ -1,5 +1,6 @@
 import { transactionRepository } from '../../repositories'
 import { isNetworkError } from '../../lib/api'
+import { isDemoSpace } from '../demo/space'
 import { fetchAnalytics } from '../../services/analyticsService'
 import { listShoppingLists, computeListTotals } from '../shopping'
 import { listItems } from '../shopping/items'
@@ -35,7 +36,8 @@ export const computeAnalytics = async (
   custom?: Partial<DateRange>,
   currency = 'PHP',
 ): Promise<Analytics> => {
-  if (period !== 'CUSTOM') {
+  // The tour's sample Finance only exists on this device.
+  if (period !== 'CUSTOM' && !isDemoSpace(spaceId)) {
     try {
       const server = await fetchAnalytics(spaceId, period, currency)
       return { ...server, fromCache: false }

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { submitFeedback, type FeedbackType } from '../services/feedbackService'
 import { PageHeader, Card, Button, Alert } from '../components/ui'
+import { IconMessage } from '../components/icons'
 
 const Feedback = () => {
   const [type, setType] = useState<FeedbackType>('BUG')
@@ -26,9 +27,10 @@ const Feedback = () => {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto max-w-3xl space-y-4">
       <PageHeader
         title="Report & feedback"
+        icon={IconMessage}
         description="Something broken, or an idea for Fico — goes straight to the admin."
       />
 

@@ -20,6 +20,7 @@ import {
   IconSearch,
   IconTrash,
   IconClock,
+  IconReceipt,
 } from '../icons'
 import Attachments from '../Attachments'
 import CategoryPicker from './CategoryPicker'
@@ -30,7 +31,16 @@ const SEEN_AREA = 'transactions'
 /** A small colored badge for the transaction's direction — the one place
  * this list leans on color beyond the amount itself, so the type reads at
  * a glance even before the amount's sign registers. */
-const TypeBadge = ({ type }: { type: Transaction['type'] }) => {
+const TypeBadge = ({ type, bill = false }: { type: Transaction['type']; bill?: boolean }) => {
+  // A bill payment gets its own look (owner feedback) — a receipt in a
+  // rounded square, amber — so it never blends into everyday expenses.
+  if (bill) {
+    return (
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warning/15 text-warning ring-1 ring-warning/30">
+        <IconReceipt size={16} />
+      </span>
+    )
+  }
   const style =
     type === 'INCOME'
       ? 'bg-success/10 text-success'
@@ -45,6 +55,12 @@ const TypeBadge = ({ type }: { type: Transaction['type'] }) => {
     </span>
   )
 }
+
+const BillTag = () => (
+  <span className="shrink-0 rounded-md bg-warning/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
+    Bill
+  </span>
+)
 
 /**
  * The itemized detail behind an expense — a scanned receipt, a completed
@@ -440,7 +456,7 @@ const TableRow = ({ txn, accountName, unseen, onOpen }: RowProps) => {
       <tr className={unseen ? 'bg-brand/5' : undefined}>
         <td className="w-10">
           <span className="relative inline-flex">
-            <TypeBadge type={txn.type} />
+            <TypeBadge type={txn.type} bill={txn.sourceType === 'BILL_PAYMENT'} />
             {unseen && (
               <span
                 aria-label="New, not yet seen"
@@ -451,7 +467,10 @@ const TableRow = ({ txn, accountName, unseen, onOpen }: RowProps) => {
           </span>
         </td>
         <td>
-          <p className="font-medium text-ink">{txn.title}</p>
+          <p className="flex items-center gap-1.5 font-medium text-ink">
+            {txn.title}
+            {txn.sourceType === 'BILL_PAYMENT' && <BillTag />}
+          </p>
           {metaLine(txn, accountName)}
         </td>
         <td className="text-right">{amountText(txn)}</td>
@@ -494,7 +513,7 @@ const CardRow = ({ txn, accountName, unseen, onOpen }: RowProps) => {
     <li className={`py-3 ${unseen ? 'bg-brand/5' : ''}`}>
       <div className="flex items-start gap-3">
         <span className="relative mt-0.5 inline-flex">
-          <TypeBadge type={txn.type} />
+          <TypeBadge type={txn.type} bill={txn.sourceType === 'BILL_PAYMENT'} />
           {unseen && (
             <span
               aria-label="New, not yet seen"
@@ -505,7 +524,10 @@ const CardRow = ({ txn, accountName, unseen, onOpen }: RowProps) => {
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <p className="min-w-0 truncate font-medium text-ink">{txn.title}</p>
+            <p className="flex min-w-0 items-center gap-1.5 font-medium text-ink">
+              <span className="truncate">{txn.title}</span>
+              {txn.sourceType === 'BILL_PAYMENT' && <BillTag />}
+            </p>
             {amountText(txn)}
           </div>
           {metaLine(txn, accountName)}

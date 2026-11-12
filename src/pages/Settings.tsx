@@ -17,7 +17,13 @@ import {
 } from '../features/theme'
 import type { NotificationPreferences } from '../types/auth'
 import { PageHeader, Card, Button, Alert } from '../components/ui'
-import { IconBell, IconCheck, IconPalette, IconSlidersHorizontal } from '../components/icons'
+import {
+  IconBell,
+  IconCheck,
+  IconPalette,
+  IconSlidersHorizontal,
+  IconSettings,
+} from '../components/icons'
 
 const cx = (...parts: Array<string | false | null | undefined>) =>
   parts.filter(Boolean).join(' ')
@@ -108,7 +114,7 @@ const AppearanceSection = () => {
     appearance.defaultPageSize === DEFAULT_APPEARANCE.defaultPageSize
 
   return (
-    <Card>
+    <Card data-tour="settings-appearance">
       <div className="flex items-center gap-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand/10 text-brand">
           <IconPalette size={17} />
@@ -168,7 +174,7 @@ const AppearanceSection = () => {
           </div>
         </div>
 
-        <div>
+        <div data-tour="settings-font">
           <span className="field-label">Font</span>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {FONTS.map((f) => {
@@ -330,7 +336,7 @@ const NotificationsSection = () => {
   )
 
   return (
-    <Card>
+    <Card data-tour="settings-notifications">
       <div className="flex items-center gap-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand/10 text-brand">
           <IconBell size={17} />
@@ -370,9 +376,10 @@ const NotificationsSection = () => {
 
 const Settings = () => {
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto max-w-5xl space-y-4">
       <PageHeader
         title="Settings"
+        icon={IconSettings}
         description="How Fico looks and speaks up, on this device."
         actions={
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand/10 text-brand">
@@ -380,8 +387,10 @@ const Settings = () => {
           </span>
         }
       />
-      <AppearanceSection />
-      <NotificationsSection />
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <AppearanceSection />
+        <NotificationsSection />
+      </div>
     </div>
   )
 }

@@ -14,6 +14,11 @@ import {
 } from '../features/budget'
 import { formatMoney, parseAmountToMinor } from '../domain/money'
 import { PageHeader, Card, Button, Input, Alert, SkeletonCard } from '../components/ui'
+import { BarChart, DonutChart, EmptyChart } from '../components/charts'
+import { CATEGORY_COLORS } from '../components/charts/palette'
+import { monthlyInOut } from '../domain/insights'
+import { useAllTransactions } from '../hooks/useAllTransactions'
+import { IconCalendar, IconChart, IconChevronLeft, IconChevronRight } from '../components/icons'
 import type { BudgetPlanItem } from '../types/models'
 
 const periodLabel = (period: string): string => {
@@ -174,8 +179,11 @@ const BillAmountInput = ({
 }
 
 const Budget = () => {
-  const { activeSpaceId } = useSpace()
+  const { activeSpaceId, activeSpace } = useSpace()
   const { ctx, canEdit } = useMutationContext()
+  const transactions = useAllTransactions()
+  const currency = activeSpace?.currency ?? 'PHP'
+  const history = useMemo(() => monthlyInOut(transactions, 6, currency), [transactions, currency])
 
   const [period, setPeriod] = useState(() => nextPeriod())
   const [loading, setLoading] = useState(true)
@@ -405,17 +413,18 @@ const Budget = () => {
     <div className="space-y-4">
       <PageHeader
         title="Budget"
+        icon={IconCalendar}
         description="Plan where next month's money goes before it arrives."
         actions={
-          <div className="flex items-center gap-1">
-            <Button size="sm" onClick={() => setPeriod((p) => shiftPeriod(p, -1))}>
-              ←
+          <div className="flex items-center gap-1" data-tour="budget-period">
+            <Button size="sm" iconOnly aria-label="Previous month" onClick={() => setPeriod((p) => shiftPeriod(p, -1))}>
+              <IconChevronLeft size={16} />
             </Button>
             <span className="w-32 text-center text-sm font-medium">
               {periodLabel(period)}
             </span>
-            <Button size="sm" onClick={() => setPeriod((p) => shiftPeriod(p, 1))}>
-              →
+            <Button size="sm" iconOnly aria-label="Next month" onClick={() => setPeriod((p) => shiftPeriod(p, 1))}>
+              <IconChevronRight size={16} />
             </Button>
           </div>
         }
@@ -430,8 +439,9 @@ const Budget = () => {
       )}
 
       {!loading && recommendation && allocation && (
-        <>
-          <Card className="space-y-4">
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] xl:grid-cols-[minmax(0,1fr)_27rem]">
+          <div className="min-w-0 space-y-4">
+          <Card className="space-y-4" data-tour="budget-plan">
             {/* Income */}
             <div>
               <div className="flex items-center justify-between">
@@ -584,7 +594,32 @@ const Budget = () => {
             </div>
           </Card>
 
-          <Card>
+          </div>
+
+          <aside className="min-w-0 space-y-4">
+          <Card data-tour="budget-chart">
+            <h2 className="section-title flex items-center gap-2">
+              <span className="card-icon">
+                <IconChart size={16} />
+              </span>
+              Where {periodLabel(period)}'s money goes
+            </h2>
+            <div className="mt-4">
+              <DonutChart
+                currency={currency}
+                centerLabel={allocation.remainingMinor < 0 ? 'Short by' : 'Left over'}
+                centerValue={formatMoney(Math.abs(allocation.remainingMinor))}
+                slices={[
+                  { label: 'Bills', value: allocation.billsTotalMinor, color: CATEGORY_COLORS[0] },
+                  { label: 'Planned expenses', value: allocation.plannedTotalMinor, color: CATEGORY_COLORS[1] },
+                  { label: 'Weekly staples', value: allocation.weeklyStaplesTotalMinor * allocation.weeks, color: CATEGORY_COLORS[2] },
+                  { label: 'Left over', value: Math.max(0, allocation.remainingMinor), color: CATEGORY_COLORS[3] },
+                ]}
+              />
+            </div>
+          </Card>
+
+          <Card data-tour="budget-breakdown">
             <h2 className="section-title">The breakdown</h2>
             <dl className="mt-2 space-y-1 text-sm">
               <div className="flex justify-between">
@@ -726,7 +761,31 @@ const Budget = () => {
               </>
             )}
           </Card>
-        </>
+
+          <Card data-tour="budget-history">
+            <h2 className="section-title">Money in vs out · last 6 months</h2>
+            <p className="mt-1 text-xs text-muted">
+              What actually came in and went out — the history this plan is recommended from.
+            </p>
+            <div className="mt-3">
+              {history.some((m) => m.values[0] + m.values[1] > 0) ? (
+                <BarChart
+                  ariaLabel="Money in and out per month for the last six months"
+                  data={history}
+                  series={[
+                    { name: 'In', color: 'var(--success)' },
+                    { name: 'Out', color: 'var(--danger)' },
+                  ]}
+                  currency={currency}
+                  height={170}
+                />
+              ) : (
+                <EmptyChart>Record some income and spending to see your months here.</EmptyChart>
+              )}
+            </div>
+          </Card>
+          </aside>
+        </div>
       )}
     </div>
   )

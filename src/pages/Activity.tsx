@@ -5,7 +5,8 @@ import {
   fetchActionLogs,
   type ActionLogEntry,
 } from '../services/actionLogService'
-import { SkeletonLines } from '../components/ui'
+import { PageHeader, SkeletonLines } from '../components/ui'
+import { IconClock } from '../components/icons'
 
 const timeAgo = (iso: string) => {
   const diff = Date.now() - new Date(iso).getTime()
@@ -60,31 +61,32 @@ const Activity = () => {
 
   if (activeSpace?.type === 'PERSONAL') {
     return (
-      <div className="mx-auto max-w-xl">
-        <h1 className="text-2xl font-semibold tracking-tight">Activity</h1>
-        <p className="mt-2 text-sm text-muted">
-          Activity history is for shared spaces — a personal space is just you.
-        </p>
+      <div className="mx-auto max-w-3xl">
+        <PageHeader
+          icon={IconClock}
+          title="Activity"
+          description="Activity history is for shared spaces — a personal space is just you."
+        />
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-3">
-      <h1 className="text-2xl font-semibold tracking-tight">Activity</h1>
+    <div className="mx-auto max-w-3xl space-y-3">
+      <PageHeader icon={IconClock} title="Activity" description="Who did what in this Finance, newest first." />
       {error && (
         <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       )}
       {loading && (
-        <div className="divide-y rounded border p-4">
+        <div className="card">
           <SkeletonLines count={5} />
         </div>
       )}
 
       {!loading && (
-      <ul className="divide-y rounded border">
+      <ul className="card divide-y divide-line p-0 sm:p-0">
         {logs.map((log) => (
           <li key={log.id} className="px-4 py-2 text-sm">
             <span className="font-medium">

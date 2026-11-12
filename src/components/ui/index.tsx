@@ -1,4 +1,5 @@
 import {
+  type ComponentType,
   useEffect,
   useRef,
   type ButtonHTMLAttributes,
@@ -7,7 +8,7 @@ import {
   type ReactNode,
   type SelectHTMLAttributes,
 } from 'react'
-import { IconX } from '../icons'
+import { IconX, type IconProps } from '../icons'
 
 /**
  * Small shared UI primitives (Roadmap Phase 25). They wrap the utility classes
@@ -84,21 +85,36 @@ export const Field = ({
   </label>
 )
 
+/**
+ * Every page opens with this banner: an accent icon tile, the title and a
+ * one-line description, with the page's own controls on the right — the
+ * same "section" look the dashboard's summary card has, so all pages read
+ * as one app.
+ */
 export const PageHeader = ({
   title,
   description,
   actions,
+  icon: Icon,
 }: {
   title: string
   description?: string
   actions?: ReactNode
+  icon?: ComponentType<IconProps>
 }) => (
-  <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-    <div>
-      <h1 className="page-title">{title}</h1>
-      {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
+  <div className="page-hero mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div className="flex min-w-0 items-center gap-3">
+      {Icon && (
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-ink shadow-sm">
+          <Icon size={21} />
+        </span>
+      )}
+      <div className="min-w-0">
+        <h1 className="page-title truncate">{title}</h1>
+        {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
+      </div>
     </div>
-    {actions && <div className="flex items-center gap-2">{actions}</div>}
+    {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
   </div>
 )
 
@@ -212,7 +228,7 @@ export const AppShellSkeleton = () => (
     <div className="border-b border-line bg-panel shadow-sm">
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-3 py-2.5 sm:px-4 lg:px-6">
         <Skeleton className="h-6 w-16" />
-        <div className="hidden flex-1 items-center gap-2 md:flex">
+        <div className="hidden flex-1 items-center gap-2 lg:flex">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-7 w-20" />
           ))}
