@@ -26,8 +26,15 @@
           if (saved.fontSize && saved.fontSize !== 'md') {
             root.setAttribute('data-font-size', saved.fontSize)
           }
-          if (saved.font && saved.font !== 'jakarta') {
-            root.setAttribute('data-font', saved.font)
+          var fonts = {
+            manrope: "'Manrope Variable'", outfit: "'Outfit Variable'", lexend: "'Lexend Variable'",
+            inter: "'Inter Variable'", plex: "'IBM Plex Sans Variable'", source: "'Source Sans 3 Variable'",
+            dmsans: "'DM Sans Variable'", nunito: "'Nunito Variable'", quicksand: "'Quicksand Variable'",
+            fredoka: "'Fredoka Variable'", baloo: "'Baloo 2 Variable'", comic: "'Comic Neue'",
+            patrick: "'Patrick Hand'", system: 'system-ui'
+          }
+          if (saved.font && fonts[saved.font]) {
+            root.style.setProperty('--font-ui', fonts[saved.font] + ', system-ui, sans-serif')
           }
           if (saved.density && saved.density !== 'comfortable') {
             root.setAttribute('data-density', saved.density)

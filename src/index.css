@@ -41,10 +41,17 @@
 :root {
   color-scheme: light dark;
 
-  --surface-base: #f5f5f8;
-  --panel: #ffffff;
-  --panel-2-base: #fafafb;
-  --line: #e4e4ea;
+  /* Light mode is deliberately not paper-white (owner feedback: too bright,
+     and the chosen colour barely showed). Big surfaces — the page and the
+     cards — carry a tint of the active accent; only small content like
+     input fields stays pure white. */
+  --surface-base: #e7e7ef;
+  --panel: color-mix(in srgb, var(--brand) 5%, #f7f7fa);
+  --panel-2-base: #eeeef4;
+  --field: #ffffff;
+  --line: color-mix(in srgb, var(--brand) 10%, #dcdce5);
+  --grid-line: color-mix(in srgb, var(--brand) 16%, transparent);
+  --glow: color-mix(in srgb, var(--brand) 30%, transparent);
   --ink: #1b1b22;
   --muted: #6a6a76;
   --danger: #dc2626;
@@ -64,8 +71,8 @@
      brand color is used with restraint) picks up a slight tint of whichever
      accent is active, via color-mix so it automatically follows both the
      palette and the light/dark base without a copy per combination. */
-  --surface: color-mix(in srgb, var(--brand) 6%, var(--surface-base));
-  --panel-2: color-mix(in srgb, var(--brand) 3%, var(--panel-2-base));
+  --surface: color-mix(in srgb, var(--brand) 13%, var(--surface-base));
+  --panel-2: color-mix(in srgb, var(--brand) 6%, var(--panel-2-base));
 }
 
 @media (prefers-color-scheme: dark) {
@@ -85,10 +92,16 @@
 
     --surface: color-mix(in srgb, var(--brand) 10%, var(--surface-base));
     --panel-2: color-mix(in srgb, var(--brand) 6%, var(--panel-2-base));
+    --field: var(--panel);
+    --grid-line: color-mix(in srgb, var(--ink) 6%, transparent);
+    --glow: color-mix(in srgb, var(--brand) 16%, transparent);
   }
 }
 
 :root[data-theme="dark"] {
+  --field: var(--panel);
+  --grid-line: color-mix(in srgb, var(--ink) 6%, transparent);
+  --glow: color-mix(in srgb, var(--brand) 16%, transparent);
   --surface-base: #0e0e12;
   --panel: #17171d;
   --panel-2-base: #1d1d25;
@@ -292,19 +305,6 @@
 :root {
   --font-ui: "Plus Jakarta Sans Variable", system-ui, "Segoe UI", Roboto, sans-serif;
 }
-html[data-font="inter"] {
-  --font-ui: "Inter Variable", system-ui, "Segoe UI", Roboto, sans-serif;
-}
-html[data-font="manrope"] {
-  --font-ui: "Manrope Variable", system-ui, "Segoe UI", Roboto, sans-serif;
-}
-html[data-font="nunito"] {
-  --font-ui: "Nunito Variable", system-ui, "Segoe UI", Roboto, sans-serif;
-}
-html[data-font="system"] {
-  --font-ui: system-ui, "Segoe UI", Roboto, sans-serif;
-}
-
 html[data-font-size="sm"] {
   font-size: 14px;
 }
@@ -375,15 +375,15 @@ body {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(60rem 28rem at 50% -8rem, color-mix(in srgb, var(--brand) 16%, transparent), transparent 70%);
+    radial-gradient(60rem 28rem at 50% -8rem, var(--glow), transparent 70%);
 }
 .app-backdrop::before {
   content: "";
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(color-mix(in srgb, var(--ink) 6%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--ink) 6%, transparent) 1px, transparent 1px);
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: 36px 36px;
   background-position: center top;
   -webkit-mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 100%);
@@ -465,7 +465,7 @@ h3 {
 
   .input,
   .select {
-    @apply w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm text-ink
+    @apply w-full rounded-lg border border-line bg-[var(--field)] px-3 py-2 text-sm text-ink
       outline-none transition-colors placeholder:text-muted
       focus:border-brand focus:ring-2 focus:ring-brand/20;
   }
@@ -679,4 +679,12 @@ h3 {
   border-radius: 10px;
   background-color: color-mix(in srgb, var(--brand) calc(var(--hl) * 22%), transparent);
   box-shadow: 0 0 0 calc(var(--hl) * 2px) color-mix(in srgb, var(--brand) 70%, transparent);
+}
+
+/* A row that scrolls sideways (Settings tabs on a phone) — still swipeable. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

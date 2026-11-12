@@ -342,13 +342,7 @@ const TourOverlay = ({ tour, onClose }: { tour: Tour; onClose: () => void }) => 
       {/* Swallows every click on the dimmed page. */}
       <div className="absolute inset-0" aria-hidden="true" />
 
-      {tour.demo && (
-        <div className="pointer-events-none fixed inset-x-0 top-2 z-[2] flex justify-center px-3">
-          <span className="rounded-full bg-warning px-3 py-1 text-xs font-semibold text-black shadow-lg">
-            Sample data · tour only — nothing here is yours or saved
-          </span>
-        </div>
-      )}
+
 
       <div ref={spotRef} className="tour-spot" aria-hidden="true" />
 
@@ -382,8 +376,15 @@ const TourOverlay = ({ tour, onClose }: { tour: Tour; onClose: () => void }) => 
 
         <div className="mt-3 flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-brand">
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold uppercase tracking-wider text-brand">
               {tour.title} · {index + 1} of {TOUR_STEPS.length}
+              {/* Lives inside the bubble (not pinned to the top of the
+                  screen) so it never covers what the tour points at. */}
+              {tour.demo && (
+                <span className="rounded-full bg-warning/15 px-2 py-0.5 normal-case tracking-normal text-warning">
+                  Sample data · not saved
+                </span>
+              )}
             </p>
             <h2 id="tour-title" className="text-base font-bold text-ink">
               {step.title}

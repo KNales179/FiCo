@@ -1,6 +1,19 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 
-import { COLD_START_TIMEOUT_MS, isNetworkError } from '../lib/api'
+import { ApiError, COLD_START_TIMEOUT_MS } from '../lib/api'
+
+/**
+ * Only a real "this session is no good" answer signs the device out. A
+ * free-tier host waking up answers with 502/503/504 for a while — that's
+ * the server being sleepy, not the session being invalid, and treating it
+ * as a rejection was logging people out of a session they were using.
+ */
+const isSessionRejected = (error: unknown) =>
+  error instanceof ApiError && (error.status === 401 || error.status === 403)
+
+/** While the app is open and the server answers, check in this often — every
+ *  authenticated request slides the session's expiry forward. */
+const KEEPALIVE_MS = 20 * 60 * 1000
 import type { SessionInfo, User } from '../types/auth'
 import {
   getMe,
@@ -99,14 +112,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } catch (error) {
         if (cancelled) return
 
-        if (isNetworkError(error)) {
-          // Already showing the local session above (if there was one) —
-          // nothing more to do here but keep running on it.
-          if (!local) setUser(null)
-        } else {
+        if (isSessionRejected(error)) {
           // The server rejected the session — this device is no longer trusted.
           await dropAuth()
+        } else if (!local) {
+          // Unreachable or sleepy server and nothing cached to run on.
+          setUser(null)
         }
+        // Otherwise: keep running on the cached local session.
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -130,7 +143,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     void getMe(COLD_START_TIMEOUT_MS)
       .then((response) => applyServerAuth(response.user, response.session))
       .catch(async (error) => {
-        if (!isNetworkError(error)) {
+        if (isSessionRejected(error)) {
           await dropAuth()
         }
       })
@@ -138,6 +151,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         revalidating.current = false
       })
   }, [serverReachable, offline, user, applyServerAuth, dropAuth])
+
+  // Keep an actively used session alive: while the app is open and visible,
+  // check in with the server now and then (and whenever it comes back to the
+  // foreground). Each check slides the expiry forward server-side, so a
+  // session only ends after a long stretch of not using Fico at all.
+  useEffect(() => {
+    if (!user) return
+    let last = Date.now()
+    const ping = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - last < KEEPALIVE_MS) return
+      last = Date.now()
+      void getMe(COLD_START_TIMEOUT_MS)
+        .then((response) => applyServerAuth(response.user, response.session))
+        .catch(async (error) => {
+          if (isSessionRejected(error)) await dropAuth()
+        })
+    }
+    const timer = window.setInterval(ping, 60 * 1000)
+    document.addEventListener('visibilitychange', ping)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', ping)
+    }
+  }, [user, applyServerAuth, dropAuth])
 
   const login = async (identifier: string, password: string) => {
     const deviceId = await ensureDeviceId().catch(() => undefined)

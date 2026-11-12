@@ -16,6 +16,7 @@ import CategoryPicker from './CategoryPicker'
 import ItemRowsEditor from './ItemRowsEditor'
 import { newBlankItem, sumItemPricesMinor, toScannedReceiptItems } from './draftItems'
 import type { DraftItem } from './draftItems'
+import CollapsibleCard from '../CollapsibleCard'
 
 /**
  * The fast path for everyday entry (Product Spec §38). Amount + what + pay
@@ -273,14 +274,12 @@ const QuickAdd = () => {
   }
 
   return (
-    <section className="card" data-tour="quick-add">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="section-title flex items-center gap-2">
-          <span className="card-icon">
-            <IconPlus size={16} />
-          </span>
-          Quick add
-        </h2>
+    <CollapsibleCard
+      id="dash.quickadd"
+      title="Quick add"
+      icon={IconPlus}
+      dataTour="quick-add"
+      actions={
         <div
           data-tour="quick-add-type"
           className="inline-flex overflow-hidden rounded-lg border border-line text-xs font-medium"
@@ -300,9 +299,10 @@ const QuickAdd = () => {
             </button>
           ))}
         </div>
-      </div>
+      }
+    >
 
-      <form onSubmit={submit} className="mt-3 space-y-3" data-tour="quick-add-fields">
+      <form onSubmit={submit} className="space-y-3" data-tour="quick-add-fields">
         {/* Three full-width rows, no leftover gaps: what (amount + title),
             where and when (account + date, or from → to for a transfer),
             then category with the Add button. */}
@@ -500,7 +500,7 @@ const QuickAdd = () => {
       {saved && !error && (
         <p className="mt-2 text-xs text-success">Saved.</p>
       )}
-    </section>
+    </CollapsibleCard>
   )
 }
 

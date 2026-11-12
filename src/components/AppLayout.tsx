@@ -19,6 +19,7 @@ import {
   IconSettings,
   IconMessage,
   IconInfo,
+  IconSparkles,
   IconCompass,
   IconShield,
   IconChevronDown,
@@ -30,6 +31,7 @@ import SyncStatus from './SyncStatus'
 import BillReminders from './BillReminders'
 import WelcomeModal from './WelcomeModal'
 import WhatsNewModal from './WhatsNewModal'
+import NotificationPrompt from './NotificationPrompt'
 import { APP_VERSION } from '../features/whatsNew/changelog'
 import PullToRefresh from './PullToRefresh'
 import { PageSkeleton } from './ui'
@@ -50,12 +52,13 @@ const PRIMARY: { to: string; label: string; icon: IconComponent; end?: boolean }
 
 /** Secondary destinations — behind the account menu. */
 const SECONDARY: { to: string; label: string; icon: IconComponent }[] = [
-  { to: '/categories', label: 'Categories', icon: IconTag },
-  { to: '/members', label: 'Members', icon: IconUsers },
-  { to: '/activity', label: 'Activity', icon: IconClock },
   { to: '/account', label: 'Account', icon: IconUserCircle },
   { to: '/settings', label: 'Settings', icon: IconSettings },
+  { to: '/members', label: 'Members', icon: IconUsers },
+  { to: '/categories', label: 'Categories', icon: IconTag },
+  { to: '/activity', label: 'Activity', icon: IconClock },
   { to: '/tutorial', label: 'How Fico works', icon: IconCompass },
+  { to: '/updates', label: 'Updates', icon: IconSparkles },
   { to: '/credits', label: 'Credits', icon: IconInfo },
   { to: '/feedback', label: 'Report & feedback', icon: IconMessage },
 ]
@@ -295,6 +298,7 @@ const AppLayout = () => {
       <BillReminders />
       <WelcomeModal />
       <WhatsNewModal />
+      <NotificationPrompt />
       <PullToRefresh />
 
       <main className="mx-auto max-w-6xl px-3 py-5 pb-28 sm:px-4 lg:px-6 lg:py-7 lg:pb-8">

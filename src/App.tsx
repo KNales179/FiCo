@@ -34,6 +34,7 @@ const Account = lazy(() => import('./pages/Account'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Tutorial = lazy(() => import('./pages/Tutorial'))
 const Credits = lazy(() => import('./pages/Credits'))
+const Updates = lazy(() => import('./pages/Updates'))
 const Admin = lazy(() => import('./pages/Admin'))
 const Feedback = lazy(() => import('./pages/Feedback'))
 const AdminFeedback = lazy(() => import('./pages/AdminFeedback'))
@@ -80,6 +81,7 @@ const App = () => {
                           <Route path="/settings" element={<Settings />} />
                           <Route path="/tutorial" element={<Tutorial />} />
                           <Route path="/credits" element={<Credits />} />
+                          <Route path="/updates" element={<Updates />} />
                           <Route path="/feedback" element={<Feedback />} />
                           <Route path="/admin" element={<Admin />} />
                           <Route path="/admin/feedback" element={<AdminFeedback />} />

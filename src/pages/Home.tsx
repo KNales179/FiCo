@@ -17,6 +17,8 @@ import {
 import { BarChart, EmptyChart, RankedBars } from '../components/charts'
 import { dailySpending, spendingByCategory, startOfMonthIso } from '../domain/insights'
 import { RECEIPT_SCAN_ENABLED } from '../features/receipts/flags'
+import CollapsibleCard from '../components/CollapsibleCard'
+import Approx from '../components/Approx'
 import QuickAdd from '../components/money/QuickAdd'
 import ScanReceipt from '../components/money/ScanReceipt'
 import AccountsCard from '../components/money/AccountsCard'
@@ -86,6 +88,7 @@ const SummaryCard = ({ onCashCheck }: { onCashCheck?: () => void }) => {
         <p className="mt-1 text-4xl font-bold tracking-tight tabular-nums text-ink sm:text-5xl">
           {formatMoney(totalsByCurrency[currency] ?? 0, currency)}
         </p>
+        <Approx minor={totalsByCurrency[currency] ?? 0} currency={currency} className="mt-0.5 text-sm" />
         {otherTotals.length > 0 && (
           <p className="mt-1 text-sm text-muted tabular-nums">
             {otherTotals.map(([c, v]) => `+ ${formatMoney(v, c)}`).join('  ')}
@@ -102,6 +105,7 @@ const SummaryCard = ({ onCashCheck }: { onCashCheck?: () => void }) => {
           <p className="mt-0.5 text-lg font-semibold tabular-nums text-ink">
             {formatMoney(month.spent, currency)}
           </p>
+          <Approx minor={month.spent} currency={currency} />
         </div>
         <div className="stat-tile">
           <p className="flex items-center gap-1 text-xs text-muted">
@@ -111,6 +115,7 @@ const SummaryCard = ({ onCashCheck }: { onCashCheck?: () => void }) => {
           <p className="mt-0.5 text-lg font-semibold tabular-nums text-ink">
             {formatMoney(month.received, currency)}
           </p>
+          <Approx minor={month.received} currency={currency} />
         </div>
       </div>
     </section>
@@ -133,14 +138,8 @@ const InsightsCard = () => {
   const hasDaily = daily.some((d) => d.value > 0)
 
   return (
-    <section className="card" data-tour="insights">
-      <h2 className="section-title flex items-center gap-2">
-        <span className="card-icon">
-          <IconChart size={16} />
-        </span>
-        Insights
-      </h2>
-      <div className="mt-4 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+    <CollapsibleCard id="dash.insights" title="Insights" icon={IconChart} dataTour="insights">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <div className="min-w-0">
           <p className="text-xs font-medium text-muted">Spending · last 14 days</p>
           <div className="mt-2">
@@ -168,7 +167,7 @@ const InsightsCard = () => {
           </div>
         </div>
       </div>
-    </section>
+    </CollapsibleCard>
   )
 }
 

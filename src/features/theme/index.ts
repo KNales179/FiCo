@@ -26,7 +26,23 @@ export type Palette =
   | 'brown'
 export type FontSize = 'sm' | 'md' | 'lg'
 /** Bundled typefaces (src/fonts.css) — all work offline. */
-export type FontFamily = 'jakarta' | 'inter' | 'manrope' | 'nunito' | 'system'
+export type FontFamily =
+  | 'jakarta'
+  | 'manrope'
+  | 'outfit'
+  | 'lexend'
+  | 'inter'
+  | 'plex'
+  | 'source'
+  | 'dmsans'
+  | 'nunito'
+  | 'quicksand'
+  | 'fredoka'
+  | 'baloo'
+  | 'comic'
+  | 'patrick'
+  | 'system'
+export type FontGroup = 'Modern' | 'Professional' | 'Cute' | 'Silly' | 'System'
 export type Density = 'comfortable' | 'compact'
 
 export interface Appearance {
@@ -34,6 +50,13 @@ export interface Appearance {
   palette: Palette
   fontSize: FontSize
   font: FontFamily
+  /**
+   * A personal "show me this too" currency (e.g. AED for someone abroad).
+   * Purely a view on this device: amounts in the Finance's own currency get
+   * an approximate converted line next to them. Never changes any record or
+   * what anyone else in the Finance sees. null = off.
+   */
+  displayCurrency: string | null
   /** Row/list spacing — "compact" fits more on screen, e.g. a long Records table. */
   density: Density
   /** How many rows the Records list opens with — still changeable per-visit there. */
@@ -45,6 +68,7 @@ export const DEFAULT_APPEARANCE: Appearance = {
   palette: 'purple',
   fontSize: 'md',
   font: 'jakarta',
+  displayCurrency: null,
   density: 'comfortable',
   defaultPageSize: 25,
 }
@@ -67,38 +91,32 @@ export const PALETTES: { value: Palette; label: string; swatch: string }[] = [
   { value: 'brown', label: 'Brown', swatch: '#78350f' },
 ]
 
-export const FONTS: { value: FontFamily; label: string; hint: string; stack: string }[] = [
-  {
-    value: 'jakarta',
-    label: 'Jakarta',
-    hint: 'Modern and friendly — the default',
-    stack: "'Plus Jakarta Sans Variable', system-ui, sans-serif",
-  },
-  {
-    value: 'inter',
-    label: 'Inter',
-    hint: 'Neutral and very readable',
-    stack: "'Inter Variable', system-ui, sans-serif",
-  },
-  {
-    value: 'manrope',
-    label: 'Manrope',
-    hint: 'Clean and geometric',
-    stack: "'Manrope Variable', system-ui, sans-serif",
-  },
-  {
-    value: 'nunito',
-    label: 'Nunito',
-    hint: 'Soft and rounded',
-    stack: "'Nunito Variable', system-ui, sans-serif",
-  },
-  {
-    value: 'system',
-    label: 'System',
-    hint: "Your device's own font",
-    stack: "system-ui, 'Segoe UI', Roboto, sans-serif",
-  },
+export const FONTS: {
+  value: FontFamily
+  label: string
+  group: FontGroup
+  hint: string
+  stack: string
+}[] = [
+  { value: 'jakarta', label: 'Plus Jakarta Sans', group: 'Modern', hint: 'The default — modern and friendly', stack: "'Plus Jakarta Sans Variable', system-ui, sans-serif" },
+  { value: 'manrope', label: 'Manrope', group: 'Modern', hint: 'Clean and geometric', stack: "'Manrope Variable', system-ui, sans-serif" },
+  { value: 'outfit', label: 'Outfit', group: 'Modern', hint: 'Round and airy', stack: "'Outfit Variable', system-ui, sans-serif" },
+  { value: 'lexend', label: 'Lexend', group: 'Modern', hint: 'Extra easy to read', stack: "'Lexend Variable', system-ui, sans-serif" },
+  { value: 'inter', label: 'Inter', group: 'Professional', hint: 'Neutral and very readable', stack: "'Inter Variable', system-ui, sans-serif" },
+  { value: 'plex', label: 'IBM Plex Sans', group: 'Professional', hint: 'Crisp and businesslike', stack: "'IBM Plex Sans Variable', system-ui, sans-serif" },
+  { value: 'source', label: 'Source Sans', group: 'Professional', hint: 'Classic and tidy', stack: "'Source Sans 3 Variable', system-ui, sans-serif" },
+  { value: 'dmsans', label: 'DM Sans', group: 'Professional', hint: 'Simple and sharp', stack: "'DM Sans Variable', system-ui, sans-serif" },
+  { value: 'nunito', label: 'Nunito', group: 'Cute', hint: 'Soft and rounded', stack: "'Nunito Variable', system-ui, sans-serif" },
+  { value: 'quicksand', label: 'Quicksand', group: 'Cute', hint: 'Light and bubbly', stack: "'Quicksand Variable', system-ui, sans-serif" },
+  { value: 'fredoka', label: 'Fredoka', group: 'Cute', hint: 'Chunky and playful', stack: "'Fredoka Variable', system-ui, sans-serif" },
+  { value: 'baloo', label: 'Baloo', group: 'Cute', hint: 'Bouncy and warm', stack: "'Baloo 2 Variable', system-ui, sans-serif" },
+  { value: 'comic', label: 'Comic Neue', group: 'Silly', hint: 'Comic Sans, but tidier', stack: "'Comic Neue', 'Comic Sans MS', system-ui, sans-serif" },
+  { value: 'patrick', label: 'Patrick Hand', group: 'Silly', hint: 'Looks handwritten', stack: "'Patrick Hand', system-ui, sans-serif" },
+  { value: 'system', label: 'Device font', group: 'System', hint: "Your phone or computer's own font", stack: "system-ui, 'Segoe UI', Roboto, sans-serif" },
 ]
+
+export const fontStack = (font: FontFamily): string =>
+  (FONTS.find((f) => f.value === font) ?? FONTS[0]).stack
 
 const STORAGE_KEY = 'fico.appearance'
 
@@ -125,12 +143,16 @@ export const applyAppearance = (appearance: Appearance): void => {
   if (appearance.fontSize === 'md') root.removeAttribute('data-font-size')
   else root.setAttribute('data-font-size', appearance.fontSize)
 
-  if (appearance.font === 'jakarta') root.removeAttribute('data-font')
-  else root.setAttribute('data-font', appearance.font)
+  // The font is set straight onto --font-ui, so adding a font only means
+  // adding it to FONTS (and src/fonts.css) — no per-font CSS rule needed.
+  if (appearance.font === 'jakarta') root.style.removeProperty('--font-ui')
+  else root.style.setProperty('--font-ui', fontStack(appearance.font))
 
   if (appearance.density === 'comfortable') root.removeAttribute('data-density')
   else root.setAttribute('data-density', appearance.density)
 }
+
+export const APPEARANCE_EVENT = 'fico:appearance'
 
 export const saveAppearance = (appearance: Appearance): void => {
   try {
@@ -138,6 +160,9 @@ export const saveAppearance = (appearance: Appearance): void => {
   } catch {
     // Private browsing / storage disabled — the choice just won't persist.
   }
+  // Let anything showing appearance-driven content (the display currency)
+  // update right away, not just on the next page load.
+  window.dispatchEvent(new Event(APPEARANCE_EVENT))
 }
 
 /** Load, apply, and return the current appearance — call once at startup. */

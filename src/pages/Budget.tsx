@@ -13,12 +13,14 @@ import {
   type BudgetRecommendation,
 } from '../features/budget'
 import { formatMoney, parseAmountToMinor } from '../domain/money'
-import { PageHeader, Card, Button, Input, Alert, SkeletonCard } from '../components/ui'
+import { PageHeader, Button, Input, Alert, SkeletonCard } from '../components/ui'
 import { BarChart, DonutChart, EmptyChart } from '../components/charts'
 import { CATEGORY_COLORS } from '../components/charts/palette'
 import { monthlyInOut } from '../domain/insights'
 import { useAllTransactions } from '../hooks/useAllTransactions'
-import { IconCalendar, IconChart, IconChevronLeft, IconChevronRight } from '../components/icons'
+import { IconAward, IconCalendar, IconChart, IconChevronLeft, IconChevronRight, IconWallet } from '../components/icons'
+import CollapsibleCard from '../components/CollapsibleCard'
+import Approx from '../components/Approx'
 import type { BudgetPlanItem } from '../types/models'
 
 const periodLabel = (period: string): string => {
@@ -441,7 +443,8 @@ const Budget = () => {
       {!loading && recommendation && allocation && (
         <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] xl:grid-cols-[minmax(0,1fr)_27rem]">
           <div className="min-w-0 space-y-4">
-          <Card className="space-y-4" data-tour="budget-plan">
+          <CollapsibleCard id="budget.plan" title="Your plan" icon={IconCalendar} dataTour="budget-plan">
+          <div className="space-y-4">
             {/* Income */}
             <div>
               <div className="flex items-center justify-between">
@@ -592,19 +595,20 @@ const Budget = () => {
                 />
               </div>
             </div>
-          </Card>
+          </div>
+          </CollapsibleCard>
 
           </div>
 
           <aside className="min-w-0 space-y-4">
-          <Card data-tour="budget-chart">
-            <h2 className="section-title flex items-center gap-2">
-              <span className="card-icon">
-                <IconChart size={16} />
-              </span>
-              Where {periodLabel(period)}'s money goes
-            </h2>
-            <div className="mt-4">
+          <CollapsibleCard id="budget.chart" title={`Where ${periodLabel(period)}'s money goes`} icon={IconChart} dataTour="budget-chart">
+
+
+
+
+
+
+            <div>
               <DonutChart
                 currency={currency}
                 centerLabel={allocation.remainingMinor < 0 ? 'Short by' : 'Left over'}
@@ -617,11 +621,11 @@ const Budget = () => {
                 ]}
               />
             </div>
-          </Card>
+          </CollapsibleCard>
 
-          <Card data-tour="budget-breakdown">
-            <h2 className="section-title">The breakdown</h2>
-            <dl className="mt-2 space-y-1 text-sm">
+          <CollapsibleCard id="budget.breakdown" title="The breakdown" icon={IconWallet} dataTour="budget-breakdown">
+
+            <dl className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <dt className="text-muted">Expected income</dt>
                 <dd className="tabular-nums">{formatMoney(allocation.incomeMinor)}</dd>
@@ -660,14 +664,18 @@ const Budget = () => {
               </div>
               <div className="flex justify-between border-t border-line pt-1 font-medium">
                 <dt>Left over</dt>
-                <dd className="tabular-nums">{formatMoney(allocation.remainingMinor)}</dd>
+                <dd className="text-right tabular-nums">
+                  {formatMoney(allocation.remainingMinor)}
+                  <Approx minor={allocation.remainingMinor} currency={currency} />
+                </dd>
               </div>
               <div className="flex justify-between text-brand">
                 <dt className="font-medium">
                   Weekly spending money ({allocation.weeks} wk{allocation.weeks === 1 ? '' : 's'})
                 </dt>
-                <dd className="tabular-nums font-semibold">
+                <dd className="text-right tabular-nums font-semibold">
                   {formatMoney(allocation.weeklyBudgetMinor)}
+                  <Approx minor={allocation.weeklyBudgetMinor} currency={currency} />
                 </dd>
               </div>
               <p className="pl-0 text-xs text-muted">
@@ -713,10 +721,10 @@ const Budget = () => {
               </Button>
             )}
             {saved && <p className="mt-2 text-xs text-success">Saved.</p>}
-          </Card>
+          </CollapsibleCard>
 
-          <Card>
-            <h2 className="section-title">Tipid tips</h2>
+          <CollapsibleCard id="budget.tips" title="Tipid tips" icon={IconAward}>
+
             <p className="mt-1 text-xs text-muted">
               Not everything you spend on is a weekly need — these are
               bought only occasionally, from how often you've actually
@@ -760,10 +768,10 @@ const Budget = () => {
                 </ul>
               </>
             )}
-          </Card>
+          </CollapsibleCard>
 
-          <Card data-tour="budget-history">
-            <h2 className="section-title">Money in vs out · last 6 months</h2>
+          <CollapsibleCard id="budget.history" title="Money in vs out · last 6 months" icon={IconChart} dataTour="budget-history">
+
             <p className="mt-1 text-xs text-muted">
               What actually came in and went out — the history this plan is recommended from.
             </p>
@@ -783,7 +791,7 @@ const Budget = () => {
                 <EmptyChart>Record some income and spending to see your months here.</EmptyChart>
               )}
             </div>
-          </Card>
+          </CollapsibleCard>
           </aside>
         </div>
       )}

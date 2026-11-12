@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useBills } from '../hooks/useBills'
 import { useMoney } from '../hooks/useMoney'
 import { useAllTransactions } from '../hooks/useAllTransactions'
@@ -23,7 +23,10 @@ import {
   IconX,
 } from '../components/icons'
 import CategoryPicker from '../components/money/CategoryPicker'
-import { scrollToAndHighlight } from '../lib/motion'
+import { gsap, prefersReducedMotion, scrollToAndHighlight } from '../lib/motion'
+import CollapsibleCard from '../components/CollapsibleCard'
+import Approx from '../components/Approx'
+import { openSection } from '../lib/sections'
 import { BarChart, EmptyChart } from '../components/charts'
 import { monthlyInOut, shortMonth, startOfMonthIso } from '../domain/insights'
 import type { Bill, BillPayment, BillRecurrence, BillType } from '../types/models'
@@ -523,18 +526,18 @@ const PaidBills = ({
   }
 
   return (
-    <section className="card" data-tour="bills-paid">
-      <h2 className="section-title flex items-center gap-2">
-        <span className="card-icon">
-          <IconCheck size={16} />
-        </span>
-        Paid bills
-      </h2>
-      {error && <p className="mt-2 text-xs text-danger">{error}</p>}
+    <CollapsibleCard
+      id="bills.paid"
+      title="Paid bills"
+      icon={IconCheck}
+      dataTour="bills-paid"
+      subtitle={`${payments.length} payment${payments.length === 1 ? '' : 's'}`}
+    >
+      {error && <p className="mb-2 text-xs text-danger">{error}</p>}
       {payments.length === 0 ? (
-        <p className="mt-2 text-sm text-muted">Payments you record show up here.</p>
+        <p className="text-sm text-muted">Payments you record show up here.</p>
       ) : (
-        <ul className="mt-2 divide-y divide-line">
+        <ul className="-mt-2 divide-y divide-line">
           {shown.map((p) => {
             const unseen = isUnseen(p.createdAt, p.createdBy, lastSeenAt, currentUserId)
             const kwh = kwhByPayment.get(p.id)
@@ -598,7 +601,7 @@ const PaidBills = ({
           Show all {payments.length} payments
         </button>
       )}
-    </section>
+    </CollapsibleCard>
   )
 }
 
@@ -637,25 +640,21 @@ const BillsOverview = ({ bills }: { bills: Bill[] }) => {
   const hasHistory = monthly.some((m) => m.values[0] > 0)
 
   return (
-    <section className="card" data-tour="bills-overview">
-      <h2 className="section-title flex items-center gap-2">
-        <span className="card-icon">
-          <IconChart size={16} />
-        </span>
-        Overview
-      </h2>
-      <div className="mt-3 grid grid-cols-2 gap-2">
+    <CollapsibleCard id="bills.overview" title="Overview" icon={IconChart} dataTour="bills-overview">
+      <div className="grid grid-cols-2 gap-2">
         <div className="stat-tile">
           <p className="text-xs text-muted">Due in 30 days · {stats.dueSoonCount}</p>
           <p className="mt-0.5 text-lg font-semibold tabular-nums text-ink">
             {formatMoney(stats.dueSoonMinor, currency)}
           </p>
+          <Approx minor={stats.dueSoonMinor} currency={currency} />
         </div>
         <div className="stat-tile">
           <p className="text-xs text-muted">Paid this month</p>
           <p className="mt-0.5 text-lg font-semibold tabular-nums text-ink">
             {formatMoney(stats.paidThisMonth, currency)}
           </p>
+          <Approx minor={stats.paidThisMonth} currency={currency} />
         </div>
       </div>
       {stats.overdueCount > 0 && (
@@ -677,7 +676,7 @@ const BillsOverview = ({ bills }: { bills: Bill[] }) => {
           <EmptyChart>Payments you record show up here month by month.</EmptyChart>
         )}
       </div>
-    </section>
+    </CollapsibleCard>
   )
 }
 
@@ -704,6 +703,21 @@ const Bills = () => {
   const [lastSeenAt, setLastSeenAt] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [paidExpanded, setPaidExpanded] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const addFormRef = useRef<HTMLFormElement>(null)
+  // The add form slides open under the "Add bill" button.
+  useLayoutEffect(() => {
+    const el = addFormRef.current
+    if (!adding || !el || prefersReducedMotion()) return
+    const tween = gsap.fromTo(
+      el,
+      { height: 0, autoAlpha: 0, overflow: 'hidden' },
+      { height: 'auto', autoAlpha: 1, duration: 0.4, ease: 'power3.out', clearProps: 'height,opacity,visibility,overflow' },
+    )
+    return () => {
+      tween.kill()
+    }
+  }, [adding])
   const [pendingJump, setPendingJump] = useState<string | null>(null)
   const { paymentsFor } = useBills()
 
@@ -742,12 +756,17 @@ const Bills = () => {
   const jumpToPayment = (paymentId: string) => {
     const index = payments.findIndex((p) => p.id === paymentId)
     if (index >= PAID_PREVIEW && !paidExpanded) setPaidExpanded(true)
+    openSection('bills.paid')
     setPendingJump(paymentId)
   }
   useEffect(() => {
     if (!pendingJump) return
-    const el = document.getElementById(`payment-${pendingJump}`)
-    if (el) scrollToAndHighlight(el)
+    // Next frame: the Paid bills card may have just been unfolded.
+    const id = pendingJump
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`payment-${id}`)
+      if (el) scrollToAndHighlight(el)
+    })
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPendingJump(null)
   }, [pendingJump, paidExpanded])
@@ -896,6 +915,7 @@ const Bills = () => {
       setScheduledDraft([])
       setScheduledInput('')
       setTracksElectricity(false)
+      setAdding(false)
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Could not create bill')
     }
@@ -922,24 +942,22 @@ const Bills = () => {
       />
       {error && <Alert>{error}</Alert>}
 
-      {/* Bills on the left; overview, charts and "Add a bill" beside them
-          on a wide screen, below them on a phone. */}
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_23rem] xl:grid-cols-[minmax(0,1fr)_26rem]">
+      {/* Bills and their charts on the left; the long Paid bills list on
+          the right on a wide screen (below everything on a phone). Every
+          card folds away by tapping its name. */}
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] xl:grid-cols-[minmax(0,1fr)_27rem]">
         <div className="min-w-0 space-y-4">
-
-          <section className="card" data-tour="bills-upcoming">
-            <h2 className="section-title flex items-center gap-2">
-              <span className="card-icon">
-                <IconCalendar size={16} />
-              </span>
-              Upcoming
-            </h2>
+          <CollapsibleCard
+            id="bills.upcoming"
+            title="Upcoming"
+            icon={IconCalendar}
+            dataTour="bills-upcoming"
+            subtitle={upcoming.length > 0 ? `${upcoming.length} to pay` : 'all caught up'}
+          >
             {upcoming.length === 0 ? (
-              <p className="mt-2 text-sm text-muted">
-                Nothing to pay right now — you're all caught up.
-              </p>
+              <p className="text-sm text-muted">Nothing to pay right now — you're all caught up.</p>
             ) : (
-              <ul className="mt-1 divide-y divide-line">
+              <ul className="-mt-2 divide-y divide-line">
                 {upcoming.map(({ bill, last, recentlyPaid }) => (
                   <UpcomingRow
                     key={bill.id}
@@ -951,23 +969,160 @@ const Bills = () => {
                 ))}
               </ul>
             )}
-          </section>
+          </CollapsibleCard>
 
-          <section className="card" data-tour="bills-all">
-            <h2 className="section-title flex items-center gap-2">
-              <span className="card-icon">
-                <IconReceipt size={16} />
-              </span>
-              All bills
-            </h2>
-            <ul className="mt-2 divide-y">
+          <CollapsibleCard
+            id="bills.all"
+            title="All bills"
+            icon={IconReceipt}
+            dataTour="bills-all"
+            subtitle={`${active.length} bill${active.length === 1 ? '' : 's'}`}
+            actions={
+              canEdit && (
+                <Button
+                  size="sm"
+                  variant={adding ? 'default' : 'primary'}
+                  onClick={() => setAdding((v) => !v)}
+                  data-tour="bills-add"
+                >
+                  {adding ? <IconX size={14} /> : <IconPlus size={14} />}
+                  {adding ? 'Cancel' : 'Add bill'}
+                </Button>
+              )
+            }
+          >
+            {canEdit && adding && (
+              <form
+                ref={addFormRef}
+                onSubmit={submit}
+                className="mb-3 space-y-2 rounded-xl border border-line bg-panel-2 p-3"
+              >
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Name (e.g. Electricity)"
+                  required
+                  maxLength={80}
+                  autoFocus
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <Select
+                    value={recurrence}
+                    onChange={(e) => {
+                      setRecurrence(e.target.value as BillRecurrence)
+                      setFormError('')
+                    }}
+                    aria-label="How often"
+                  >
+                    <option value="MONTHLY">Monthly</option>
+                    <option value="YEARLY">Yearly</option>
+                    <option value="SCHEDULED">Specific dates</option>
+                    <option value="NONE">No fixed date</option>
+                  </Select>
+                  <Select
+                    value={billType}
+                    onChange={(e) => setBillType(e.target.value as BillType)}
+                    aria-label="Amount type"
+                  >
+                    <option value="FIXED">Same amount</option>
+                    <option value="VARIABLE">Amount changes</option>
+                  </Select>
+                </div>
+                <div className={`grid gap-2 ${recurrence === 'MONTHLY' || recurrence === 'YEARLY' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  <Input
+                    value={expected}
+                    onChange={(e) => setExpected(e.target.value)}
+                    inputMode="decimal"
+                    placeholder="Expected amount"
+                  />
+                  {(recurrence === 'MONTHLY' || recurrence === 'YEARLY') && (
+                    <Input
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      aria-label="Next due date"
+                    />
+                  )}
+                </div>
+
+                {recurrence === 'SCHEDULED' && (
+                  <div>
+                    <p className="field-label">
+                      Dates (e.g. this term's tuition — add as many as you already know)
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="date"
+                        value={scheduledInput}
+                        onChange={(e) => setScheduledInput(e.target.value)}
+                      />
+                      <Button type="button" onClick={addScheduledDraftDate}>
+                        <IconPlus size={13} />
+                        Add date
+                      </Button>
+                    </div>
+                    {scheduledDraft.length > 0 && (
+                      <ul className="mt-2 flex flex-wrap gap-1.5">
+                        {scheduledDraft.map((d) => (
+                          <li key={d} className="chip">
+                            {new Date(d).toLocaleDateString()}
+                            <button
+                              type="button"
+                              aria-label="Remove date"
+                              onClick={() =>
+                                setScheduledDraft((dates) => dates.filter((x) => x !== d))
+                              }
+                              className="ml-1 text-muted hover:text-danger"
+                            >
+                              <IconX size={11} />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+
+                {recurrence === 'NONE' && (
+                  <p className="text-xs text-muted">
+                    No due date needed — pay it any time; you still get a running payment history.
+                  </p>
+                )}
+
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                  <CategoryPicker
+                    kind="EXPENSE"
+                    value={categoryId}
+                    onChange={setCategoryId}
+                    className="select w-full"
+                  />
+                  <label className="flex items-center gap-1.5 text-sm text-muted">
+                    <input
+                      type="checkbox"
+                      checked={tracksElectricity}
+                      onChange={(e) => setTracksElectricity(e.target.checked)}
+                    />
+                    Track kWh
+                  </label>
+                </div>
+
+                {formError && (
+                  <p role="alert" className="text-xs text-danger">
+                    {formError}
+                  </p>
+                )}
+                <Button type="submit" variant="primary" className="w-full">
+                  <IconPlus size={15} />
+                  Add bill
+                </Button>
+              </form>
+            )}
+
+            <ul className="-mt-2 divide-y divide-line">
               {active.map((bill, billIndex) => {
                 const billUnseen = isUnseen(bill.createdAt, bill.createdBy, lastSeenAt, user?.id)
                 return (
-                  <li
-                    key={bill.id}
-                    className={`py-3 ${billUnseen ? 'bg-danger/5' : ''}`}
-                  >
+                  <li key={bill.id} className={`py-3 ${billUnseen ? 'bg-danger/5' : ''}`}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <p className="flex items-center gap-1.5 truncate text-sm font-medium text-ink">
@@ -998,9 +1153,7 @@ const Bills = () => {
                             iconOnly
                             aria-label="Edit bill"
                             title="Edit bill (name, dates, category)"
-                            onClick={() =>
-                              setEditingId((id) => (id === bill.id ? null : bill.id))
-                            }
+                            onClick={() => setEditingId((id) => (id === bill.id ? null : bill.id))}
                           >
                             <IconEdit size={14} />
                           </Button>
@@ -1043,10 +1196,7 @@ const Bills = () => {
                       </span>
                     </div>
                     {editingId === bill.id ? (
-                      <EditBillForm
-                        bill={bill}
-                        onDone={() => setEditingId(null)}
-                      />
+                      <EditBillForm bill={bill} onDone={() => setEditingId(null)} />
                     ) : (
                       <History payments={paymentsByBill.get(bill.id) ?? []} onJump={jumpToPayment} />
                     )}
@@ -1054,41 +1204,117 @@ const Bills = () => {
                 )
               })}
               {active.length === 0 && (
-                <li className="py-2 text-sm text-muted">No bills yet.</li>
+                <li className="py-3 text-sm text-muted">
+                  No bills yet{canEdit ? ' — tap “Add bill” to start.' : '.'}
+                </li>
               )}
             </ul>
-          </section>
+          </CollapsibleCard>
 
-          <PaidBills
-            payments={payments}
-            billName={billName}
-            canEdit={canEdit}
-            lastSeenAt={lastSeenAt}
-            currentUserId={user?.id}
-            expanded={paidExpanded}
-            onExpand={() => setPaidExpanded(true)}
-          />
+          <BillsOverview bills={bills} />
+
+          {electricity.length > 0 && (
+            <CollapsibleCard
+              id="bills.electricity"
+              title="Electricity"
+              icon={IconChart}
+              dataTour="bills-electricity"
+            >
+              <div className="grid gap-4 xl:grid-cols-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-muted">Cost per billing period</p>
+                  <div className="mt-2">
+                    <BarChart
+                      ariaLabel="Electricity cost per billing period"
+                      data={[...electricity]
+                        .sort((a, b) => a.billingPeriod.localeCompare(b.billingPeriod))
+                        .slice(-6)
+                        .map((r) => ({
+                          key: r.id,
+                          label: r.billingPeriod.length === 7 ? shortMonth(r.billingPeriod) : r.billingPeriod.slice(5),
+                          title: `${r.billingPeriod}${r.consumptionKwh != null ? ` · ${r.consumptionKwh} kWh` : ''}`,
+                          values: [r.amountMinor],
+                        }))}
+                      series={[{ name: 'Cost', color: 'var(--brand)' }]}
+                      height={150}
+                    />
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  {electricityError && (
+                    <p role="alert" className="mb-1 text-xs text-danger">
+                      {electricityError}
+                    </p>
+                  )}
+                  <table className="w-full text-sm">
+                    <thead className="text-left text-xs text-muted">
+                      <tr>
+                        <th className="py-1">Period</th>
+                        <th className="py-1 text-right">Amount</th>
+                        <th className="py-1 text-right">kWh</th>
+                        <th className="py-1 text-right">₱/kWh</th>
+                        {canEdit && <th className="py-1" />}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {electricity.map((r) => {
+                        const perKwh = costPerKwhMinor(r.amountMinor, r.consumptionKwh)
+                        return (
+                          <tr key={r.id} className="border-t">
+                            <td className="py-1.5">{r.billingPeriod}</td>
+                            <td className="py-1.5 text-right tabular-nums">{formatMoney(r.amountMinor)}</td>
+                            <td className="py-1.5 text-right tabular-nums">{r.consumptionKwh ?? '—'}</td>
+                            <td className="py-1.5 text-right tabular-nums">
+                              {perKwh != null ? formatMoney(perKwh) : '—'}
+                            </td>
+                            {canEdit && (
+                              <td className="py-1 text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  iconOnly
+                                  aria-label="Delete"
+                                  title="Delete"
+                                  className="hover:text-danger"
+                                  onClick={() => void removeElectricityRecord(r.billPaymentId)}
+                                  disabled={electricityBusyId === r.billPaymentId}
+                                >
+                                  <IconTrash size={13} />
+                                </Button>
+                              </td>
+                            )}
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </CollapsibleCard>
+          )}
 
           {archived.length > 0 && (
-            <section className="card">
-              <h2 className="text-lg font-semibold">Archived bills</h2>
-              <p className="mt-1 text-xs text-muted">
-                Archived bills don't show as upcoming or count toward your
-                budget. Restore one to start tracking it again — its payment
-                history is kept.
+            <CollapsibleCard
+              id="bills.archived"
+              title="Archived bills"
+              icon={IconArchive}
+              subtitle={`${archived.length}`}
+            >
+              <p className="text-xs text-muted">
+                Archived bills don't show as upcoming or count toward your budget. Restore one to
+                start tracking it again — its payment history is kept.
               </p>
-              <ul className="mt-2 divide-y">
+              <ul className="mt-1 divide-y divide-line">
                 {archived.map((bill) => (
-                  <li key={bill.id} className="py-2 text-sm">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-muted">
-                        {bill.name}
-                        <span className="ml-2 text-xs">
-                          {bill.recurrence.toLowerCase()}
-                          {bill.expectedAmountMinor != null &&
-                            ` · ~${formatMoney(bill.expectedAmountMinor)}`}
-                        </span>
-                      </span>
+                  <li key={bill.id} className="py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-muted">{bill.name}</p>
+                        <p className="text-xs text-muted">
+                          {RECURRENCE_LABEL[bill.recurrence]}
+                          {bill.expectedAmountMinor != null && ` · ~${formatMoney(bill.expectedAmountMinor)}`}
+                        </p>
+                      </div>
                       {canEdit && (
                         <Button
                           size="sm"
@@ -1111,27 +1337,31 @@ const Bills = () => {
                   </li>
                 ))}
               </ul>
-            </section>
+            </CollapsibleCard>
           )}
 
           {canEdit && deletedBills.length > 0 && (
-            <section className="card">
-              <h2 className="text-lg font-semibold">Deleted bills</h2>
-              <p className="mt-1 text-xs text-muted">
-                Deleted by mistake? Restore brings it back as active, exactly as
-                it was — its payment history comes with it.
+            <CollapsibleCard
+              id="bills.deleted"
+              title="Deleted bills"
+              icon={IconTrash}
+              subtitle={`${deletedBills.length}`}
+            >
+              <p className="text-xs text-muted">
+                Deleted by mistake? Restore brings it back as active, exactly as it was — its
+                payment history comes with it.
               </p>
-              <ul className="mt-2 divide-y">
+              <ul className="mt-1 divide-y divide-line">
                 {deletedBills.map((bill) => (
-                  <li key={bill.id} className="flex items-center justify-between py-2 text-sm">
-                    <span>
-                      {bill.name}
-                      <span className="ml-2 text-xs text-muted">
+                  <li key={bill.id} className="flex items-center justify-between gap-3 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-ink">{bill.name}</p>
+                      <p className="text-xs text-muted">
                         {bill.recurrence === 'NONE' || !bill.nextDueDate
                           ? dueDateLabel(bill)
                           : `was due ${dueDateLabel(bill)}`}
-                      </span>
-                    </span>
+                      </p>
+                    </div>
                     <Button
                       size="sm"
                       disabled={restoringId === bill.id}
@@ -1150,221 +1380,20 @@ const Bills = () => {
                   </li>
                 ))}
               </ul>
-            </section>
+            </CollapsibleCard>
           )}
-
         </div>
 
-        <aside className="min-w-0 space-y-4">
-          <BillsOverview bills={bills} />
-          {electricity.length > 0 && (
-            <section className="card" data-tour="bills-electricity">
-              <h2 className="section-title flex items-center gap-2">
-                <span className="card-icon">
-                  <IconChart size={16} />
-                </span>
-                Electricity
-              </h2>
-              <p className="mt-3 text-xs font-medium text-muted">Cost per billing period</p>
-              <div className="mt-2">
-                <BarChart
-                  ariaLabel="Electricity cost per billing period"
-                  data={[...electricity]
-                    .sort((a, b) => a.billingPeriod.localeCompare(b.billingPeriod))
-                    .slice(-6)
-                    .map((r) => ({
-                      key: r.id,
-                      label: r.billingPeriod.length === 7 ? shortMonth(r.billingPeriod) : r.billingPeriod.slice(5),
-                      title: `${r.billingPeriod}${r.consumptionKwh != null ? ` · ${r.consumptionKwh} kWh` : ''}`,
-                      values: [r.amountMinor],
-                    }))}
-                  series={[{ name: 'Cost', color: 'var(--brand)' }]}
-                  height={140}
-                />
-              </div>
-              {electricityError && (
-                <p role="alert" className="mt-1 text-xs text-danger">
-                  {electricityError}
-                </p>
-              )}
-              <table className="mt-2 w-full text-sm">
-                <thead className="text-left text-xs text-muted">
-                  <tr>
-                    <th className="py-1">Period</th>
-                    <th className="py-1 text-right">Amount</th>
-                    <th className="py-1 text-right">kWh</th>
-                    <th className="py-1 text-right">₱/kWh</th>
-                    {canEdit && <th className="py-1" />}
-                  </tr>
-                </thead>
-                <tbody>
-                  {electricity.map((r) => {
-                    const perKwh = costPerKwhMinor(
-                      r.amountMinor,
-                      r.consumptionKwh,
-                    )
-                    return (
-                      <tr key={r.id} className="border-t">
-                        <td className="py-1">{r.billingPeriod}</td>
-                        <td className="py-1 text-right">
-                          {formatMoney(r.amountMinor)}
-                        </td>
-                        <td className="py-1 text-right">
-                          {r.consumptionKwh ?? '—'}
-                        </td>
-                        <td className="py-1 text-right">
-                          {perKwh != null ? formatMoney(perKwh) : '—'}
-                        </td>
-                        {canEdit && (
-                          <td className="py-1 text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              iconOnly
-                              aria-label="Delete"
-                              title="Delete"
-                              className="hover:text-danger"
-                              onClick={() => void removeElectricityRecord(r.billPaymentId)}
-                              disabled={electricityBusyId === r.billPaymentId}
-                            >
-                              <IconTrash size={13} />
-                            </Button>
-                          </td>
-                        )}
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </section>
-          )}
-
-          {canEdit && (
-            <form onSubmit={submit} className="card" data-tour="bills-add">
-              <h2 className="section-title flex items-center gap-2">
-                <span className="card-icon">
-                  <IconPlus size={16} />
-                </span>
-                Add a bill
-              </h2>
-              <div className="mt-3 flex flex-wrap gap-2 text-sm">
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Name (e.g. Electricity)"
-                  required
-                  maxLength={80}
-                  className="min-w-[10rem] flex-1"
-                />
-                <Select
-                  value={recurrence}
-                  onChange={(e) => {
-                    setRecurrence(e.target.value as BillRecurrence)
-                    setFormError('')
-                  }}
-                  className="w-auto"
-                >
-                  <option value="MONTHLY">monthly</option>
-                  <option value="YEARLY">yearly</option>
-                  <option value="SCHEDULED">scheduled (specific dates)</option>
-                  <option value="NONE">no fixed date</option>
-                </Select>
-                <Select
-                  value={billType}
-                  onChange={(e) => setBillType(e.target.value as BillType)}
-                  className="w-auto"
-                >
-                  <option value="FIXED">fixed</option>
-                  <option value="VARIABLE">variable</option>
-                </Select>
-                <Input
-                  value={expected}
-                  onChange={(e) => setExpected(e.target.value)}
-                  inputMode="decimal"
-                  placeholder="Expected amount"
-                  className="w-32"
-                />
-                {(recurrence === 'MONTHLY' || recurrence === 'YEARLY') && (
-                  <Input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    className="w-auto"
-                  />
-                )}
-                <CategoryPicker
-                  kind="EXPENSE"
-                  value={categoryId}
-                  onChange={setCategoryId}
-                  className="select w-auto"
-                />
-                <label className="flex items-center gap-1.5 text-sm text-muted">
-                  <input
-                    type="checkbox"
-                    checked={tracksElectricity}
-                    onChange={(e) => setTracksElectricity(e.target.checked)}
-                  />
-                  Track kWh
-                </label>
-                <Button type="submit" variant="primary">
-                  <IconPlus size={15} />
-                  Add bill
-                </Button>
-              </div>
-
-              {recurrence === 'SCHEDULED' && (
-                <div className="mt-3 border-t border-line pt-3">
-                  <p className="field-label">
-                    Dates (e.g. this term's tuition — add as many as you already know)
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Input
-                      type="date"
-                      value={scheduledInput}
-                      onChange={(e) => setScheduledInput(e.target.value)}
-                      className="w-auto"
-                    />
-                    <Button type="button" size="sm" onClick={addScheduledDraftDate}>
-                      <IconPlus size={13} />
-                      Add date
-                    </Button>
-                  </div>
-                  {scheduledDraft.length > 0 && (
-                    <ul className="mt-2 flex flex-wrap gap-1.5">
-                      {scheduledDraft.map((d) => (
-                        <li key={d} className="chip">
-                          {new Date(d).toLocaleDateString()}
-                          <button
-                            type="button"
-                            aria-label="Remove date"
-                            onClick={() =>
-                              setScheduledDraft((dates) => dates.filter((x) => x !== d))
-                            }
-                            className="ml-1 text-muted hover:text-danger"
-                          >
-                            <IconX size={11} />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-
-              {recurrence === 'NONE' && (
-                <p className="mt-3 border-t border-line pt-3 text-xs text-muted">
-                  No due date needed — this bill can be paid any time, with no
-                  payability window. You'll still get a running payment history.
-                </p>
-              )}
-
-              {formError && (
-                <p role="alert" className="mt-2 text-xs text-danger">
-                  {formError}
-                </p>
-              )}
-            </form>
-          )}
+        <aside className="min-w-0">
+          <PaidBills
+            payments={payments}
+            billName={billName}
+            canEdit={canEdit}
+            lastSeenAt={lastSeenAt}
+            currentUserId={user?.id}
+            expanded={paidExpanded}
+            onExpand={() => setPaidExpanded(true)}
+          />
         </aside>
       </div>
     </div>

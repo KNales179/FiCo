@@ -35,6 +35,7 @@ import {
   IconWallet,
 } from '../components/icons'
 import { gsap, prefersReducedMotion, useStaggerIn } from '../lib/motion'
+import Approx from '../components/Approx'
 
 const PERIODS: { value: AnalyticsPeriod; label: string }[] = [
   { value: 'THIS_MONTH', label: 'This month' },
@@ -117,6 +118,7 @@ const StatTile = ({
       >
         <CountUp value={value} format={format} />
       </p>
+      <Approx minor={value} currency={currency} />
     </div>
   )
 }

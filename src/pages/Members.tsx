@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useSpace } from '../hooks/useSpace'
 import { useAuth } from '../hooks/useAuth'
 import {
@@ -10,12 +10,10 @@ import {
   removeMember,
   revokeInvitation,
   transferOwnership,
-  updateSpaceCurrency,
   type PendingInvitation,
 } from '../services/spaceService'
 import { isNetworkError } from '../lib/api'
-import { SUPPORTED_CURRENCIES, currencyName } from '../domain/money'
-import type { SpaceMember, SpaceSummary } from '../types/space'
+import type { SpaceMember } from '../types/space'
 import { PageHeader, Card, Button, Input, Alert, EmptyState, SkeletonRow } from '../components/ui'
 import {
   IconAward,
@@ -24,88 +22,6 @@ import {
   IconX,
   IconUsers,
 } from '../components/icons'
-
-/**
- * The Finance's currency — every account created in it defaults to this,
- * and it's what a cross-currency transfer converts into. Anyone can see it;
- * only the owner can change it (a personal space's owner is always its
- * only member, so this reads as "freely settable" there and as a real
- * restriction only once other people share the space).
- */
-const CurrencyCard = ({
-  space,
-  isOwner,
-  onChanged,
-}: {
-  space: SpaceSummary
-  isOwner: boolean
-  onChanged: () => Promise<void>
-}) => {
-  const [currency, setCurrency] = useState(space.currency)
-  const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCurrency(space.currency)
-  }, [space.currency])
-
-  const save = async () => {
-    setError('')
-    setMessage('')
-    setBusy(true)
-    try {
-      await updateSpaceCurrency(space.id, currency)
-      await onChanged()
-      setMessage('Currency updated')
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Could not change the currency',
-      )
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Card>
-      <h2 className="section-title">Finance currency</h2>
-      <p className="mt-1 text-xs text-muted">
-        New accounts in {space.name} default to this currency. Accounts can
-        still use a different one — Fico converts at today's rate when
-        money transfers between them.
-        {!isOwner && ' Only the owner can change it.'}
-      </p>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <select
-          value={currency}
-          onChange={(e) => setCurrency(e.target.value)}
-          disabled={!isOwner}
-          className="select w-auto"
-          title={currencyName(currency)}
-        >
-          {SUPPORTED_CURRENCIES.map((c) => (
-            <option key={c} value={c} title={currencyName(c)}>
-              {c}
-            </option>
-          ))}
-        </select>
-        {isOwner && currency !== space.currency && (
-          <Button size="sm" variant="primary" disabled={busy} onClick={() => void save()}>
-            {busy ? 'Saving…' : 'Save'}
-          </Button>
-        )}
-      </div>
-      {message && <p className="mt-2 text-xs text-success">{message}</p>}
-      {error && (
-        <p role="alert" className="mt-2 text-xs text-danger">
-          {error}
-        </p>
-      )}
-    </Card>
-  )
-}
 
 const MemberAvatar = ({ member }: { member: SpaceMember }) => {
   const initial = (member.displayName || member.username || '?').charAt(0).toUpperCase()
@@ -222,7 +138,13 @@ const Members = () => {
           title="Members"
           description={`${activeSpace.name} is a personal Finance — it's just you.`}
         />
-        <CurrencyCard space={activeSpace} isOwner={isOwner} onChanged={refresh} />
+        <p className="text-xs text-muted">
+          {activeSpace.name}’s currency now lives in{' '}
+          <Link to="/settings?tab=currency" className="font-medium text-brand underline">
+            Settings → Currency
+          </Link>
+          .
+        </p>
         <EmptyState title="Nothing to manage here">
           Create a shared Finance from the switcher to plan money with other
           people.
@@ -239,7 +161,7 @@ const Members = () => {
         description="Everyone here is a full participant. Only the owner can invite, remove, or hand over the Finance."
         actions={
           !isOwner ? (
-            <Button variant="ghost" onClick={() => void leave()}>
+            <Button variant="ghost" onClick={() => void leave()} data-tour="members-leave">
               <IconLogOut size={16} />
               Leave Finance
             </Button>
@@ -247,7 +169,13 @@ const Members = () => {
         }
       />
 
-      <CurrencyCard space={activeSpace} isOwner={isOwner} onChanged={refresh} />
+      <p className="text-xs text-muted">
+        {activeSpace.name}’s currency now lives in{' '}
+        <Link to="/settings?tab=currency" className="font-medium text-brand underline">
+          Settings → Currency
+        </Link>
+        .
+      </p>
 
       {error && <Alert>{error}</Alert>}
 
@@ -259,7 +187,7 @@ const Members = () => {
           </div>
         </Card>
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap" data-tour="members-list">
           <table className="table">
             <thead>
               <tr>
@@ -348,7 +276,7 @@ const Members = () => {
       )}
 
       {isOwner && (
-        <Card>
+        <Card data-tour="members-invite">
           <form onSubmit={invite}>
             <h2 className="section-title">Invite someone</h2>
             <div className="mt-2 flex flex-wrap gap-2">

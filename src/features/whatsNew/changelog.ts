@@ -15,6 +15,12 @@ export type HighlightIcon =
   | 'moon'
   | 'wrench'
   | 'camera'
+  | 'bell'
+  | 'heart'
+  | 'key'
+  | 'wallet'
+  | 'text'
+  | 'users'
 
 export interface Release {
   version: string
@@ -25,6 +31,58 @@ export interface Release {
 }
 
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.0',
+    date: '2026-11-12',
+    title: 'Tidy, cozy, and stays logged in',
+    highlights: [
+      {
+        icon: 'layout',
+        title: 'Fold it your way',
+        body: 'Tap any section’s name to fold it away — Fico remembers what you like open. Less scrolling, more you.',
+      },
+      {
+        icon: 'wallet',
+        title: 'Your money, your currency',
+        body: 'Living abroad? Settings → Currency lets you see amounts in AED, USD or whatever you think in — just for you, nobody else’s view changes.',
+      },
+      {
+        icon: 'text',
+        title: 'Settings, but make it neat',
+        body: 'Settings is now split into tidy tabs, with 14 fonts to pick from — professional, cute, and yes, a few silly ones.',
+      },
+      {
+        icon: 'receipt',
+        title: 'Bills got a glow-up',
+        body: '“Add bill” now hides behind a button until you need it, and the long Paid bills list moved to the side where it belongs.',
+      },
+      {
+        icon: 'palette',
+        title: 'Easier on the eyes',
+        body: 'Light mode is softer now, and your favourite colour actually shows up in the background. No more blinding white!',
+      },
+      {
+        icon: 'key',
+        title: 'No more surprise logouts',
+        body: 'As long as you keep using Fico, you stay signed in — even while the server is still waking up.',
+      },
+      {
+        icon: 'bell',
+        title: 'Reminders, one tap away',
+        body: 'Fico will now and then offer to turn on notifications, so you never miss a bill again — and the on/off switch finally lives in Settings → Notifications.',
+      },
+      {
+        icon: 'compass',
+        title: 'More tours, more answers',
+        body: 'New Members tour (inviting and managing family), shopping tour now explains shared lists, and Menu → Updates lists every version Fico has had.',
+      },
+      {
+        icon: 'heart',
+        title: 'Psst… support Fico',
+        body: 'Curious why going online takes a moment? Peek at Credits — and if Fico helps you, there’s a way to say thanks.',
+      },
+    ],
+  },
   {
     version: '2.0.0',
     date: '2026-11-12',
@@ -91,6 +149,19 @@ export const seenVersion = (): string | null => {
   } catch {
     return APP_VERSION // storage blocked — don't nag every load
   }
+}
+
+/**
+ * Every release this device hasn't seen yet, newest first — so skipping
+ * versions (updating twice between visits) still shows everything in one
+ * pop-up instead of only the latest. A device that never saw any notes
+ * gets them all.
+ */
+export const unseenReleases = (): Release[] => {
+  const seen = seenVersion()
+  if (seen === APP_VERSION) return []
+  const index = seen ? RELEASES.findIndex((r) => r.version === seen) : -1
+  return index === -1 ? RELEASES : RELEASES.slice(0, index)
 }
 
 export const markVersionSeen = (): void => {

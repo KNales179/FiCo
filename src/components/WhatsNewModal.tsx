@@ -1,37 +1,15 @@
-import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { hasSeenTutorial } from '../features/onboarding'
 import {
   CURRENT_RELEASE,
   markVersionSeen,
-  seenVersion,
-  type HighlightIcon,
+  unseenReleases,
+  type Release,
 } from '../features/whatsNew/changelog'
 import { gsap, prefersReducedMotion } from '../lib/motion'
-import {
-  IconArchive,
-  IconCamera,
-  IconChart,
-  IconCompass,
-  IconHome,
-  IconMoon,
-  IconPalette,
-  IconReceipt,
-  IconSettings,
-  IconX,
-  type IconProps,
-} from './icons'
+import { IconX } from './icons'
+import { RELEASE_ICONS as ICONS } from './releaseIcons'
 
-const ICONS: Record<HighlightIcon, ComponentType<IconProps>> = {
-  palette: IconPalette,
-  layout: IconHome,
-  chart: IconChart,
-  compass: IconCompass,
-  receipt: IconReceipt,
-  archive: IconArchive,
-  moon: IconMoon,
-  wrench: IconSettings,
-  camera: IconCamera,
-}
 
 /**
  * "What's new" — shown once per device after an update, describing the
@@ -39,23 +17,25 @@ const ICONS: Record<HighlightIcon, ComponentType<IconProps>> = {
  * the welcome prompt instead, and simply starts on the current version.
  */
 const WhatsNewModal = () => {
-  const [show, setShow] = useState(false)
+  const [releases, setReleases] = useState<Release[]>([])
+  const show = releases.length > 0
   const panelRef = useRef<HTMLDivElement>(null)
 
   const close = useCallback(() => {
     markVersionSeen()
-    setShow(false)
+    setReleases([])
   }, [])
 
   useEffect(() => {
-    if (seenVersion() === CURRENT_RELEASE.version) return
+    const missed = unseenReleases()
+    if (missed.length === 0) return
     if (!hasSeenTutorial()) {
       // First time on this device — the welcome prompt covers it.
       markVersionSeen()
       return
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setShow(true)
+    setReleases(missed)
   }, [])
 
   useEffect(() => {
@@ -104,6 +84,8 @@ const WhatsNewModal = () => {
           </button>
           <p className="text-xs font-semibold uppercase tracking-wider text-brand">
             What's new · v{CURRENT_RELEASE.version}
+            {releases.length > 1 &&
+              ` + ${releases.length - 1} earlier update${releases.length > 2 ? 's' : ''}`}
           </p>
           <h2 id="whats-new-title" className="mt-1 text-2xl font-bold text-ink">
             {CURRENT_RELEASE.title}
@@ -117,22 +99,36 @@ const WhatsNewModal = () => {
           </p>
         </div>
 
-        <ul className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
-          {CURRENT_RELEASE.highlights.map((h) => {
-            const Icon = ICONS[h.icon]
-            return (
-              <li key={h.title} data-highlight="" className="flex gap-3">
-                <span className="card-icon mt-0.5">
-                  <Icon size={16} />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-ink">{h.title}</p>
-                  <p className="mt-0.5 text-sm leading-relaxed text-muted">{h.body}</p>
-                </div>
-              </li>
-            )
-          })}
-        </ul>
+        {/* One pop-up for everything missed: each release under its own
+            version heading, newest first. */}
+        <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
+          {releases.map((release, i) => (
+            <section key={release.version}>
+              {releases.length > 1 && (
+                <p data-highlight="" className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
+                  <span className="rounded-md bg-brand/10 px-1.5 py-0.5 text-brand">v{release.version}</span>
+                  {i === 0 ? 'Latest' : release.title}
+                </p>
+              )}
+              <ul className="space-y-3">
+                {release.highlights.map((h) => {
+                  const Icon = ICONS[h.icon]
+                  return (
+                    <li key={h.title} data-highlight="" className="flex gap-3">
+                      <span className="card-icon mt-0.5">
+                        <Icon size={16} />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-ink">{h.title}</p>
+                        <p className="mt-0.5 text-sm leading-relaxed text-muted">{h.body}</p>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
 
         <div className="border-t border-line px-5 py-3">
           <button type="button" onClick={close} className="btn btn-primary w-full py-2">

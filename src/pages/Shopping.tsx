@@ -21,6 +21,7 @@ import {
 } from '../components/icons'
 import CategoryPicker from '../components/money/CategoryPicker'
 import { BarChart, EmptyChart } from '../components/charts'
+import CollapsibleCard from '../components/CollapsibleCard'
 import { monthlyInOut } from '../domain/insights'
 import type { ShoppingItem } from '../types/models'
 
@@ -144,14 +145,8 @@ const ShoppingTrend = () => {
   const has = monthly.some((m) => m.values[0] > 0)
 
   return (
-    <section className="card" data-tour="shopping-trend">
-      <h2 className="section-title flex items-center gap-2">
-        <span className="card-icon">
-          <IconChart size={16} />
-        </span>
-        Shopping spend · last 6 months
-      </h2>
-      <div className="mt-3">
+    <CollapsibleCard id="shopping.trend" title="Shopping spend · last 6 months" icon={IconChart} dataTour="shopping-trend">
+      <div>
         {has ? (
           <BarChart
             ariaLabel="Shopping spending per month for the last six months"
@@ -164,7 +159,7 @@ const ShoppingTrend = () => {
           <EmptyChart>Completed shopping trips show up here.</EmptyChart>
         )}
       </div>
-    </section>
+    </CollapsibleCard>
   )
 }
 

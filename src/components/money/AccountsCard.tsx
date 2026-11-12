@@ -18,6 +18,7 @@ import {
   IconWallet,
   IconX,
 } from '../icons'
+import CollapsibleCard from '../CollapsibleCard'
 
 const ACCOUNT_TYPES: AccountType[] = [
   'CASH',
@@ -91,31 +92,31 @@ const AccountsCard = () => {
   }
 
   return (
-    <section className="card" data-tour="accounts">
-      <div className="flex items-center justify-between">
-        <h2 className="section-title flex items-center gap-2">
-          <span className="card-icon">
-            <IconWallet size={16} />
-          </span>
-          Accounts
-        </h2>
-        {canEdit && (
+    <CollapsibleCard
+      id="dash.accounts"
+      title="Accounts"
+      icon={IconWallet}
+      dataTour="accounts"
+      subtitle={`${activeAccounts.length} account${activeAccounts.length === 1 ? '' : 's'}`}
+      actions={
+        canEdit && (
           <Button size="sm" data-tour="accounts-add" onClick={() => setOpen((v) => !v)}>
             {open ? <IconX size={14} /> : <IconPlus size={14} />}
             {open ? 'Cancel' : 'Account'}
           </Button>
-        )}
-      </div>
+        )
+      }
+    >
 
       {activeAccounts.length === 0 && (
-        <p className="mt-3 text-sm text-muted">
+        <p className="text-sm text-muted">
           {archivedAccounts.length > 0
             ? 'No active accounts — restore one from the archive below, or add a new one.'
             : `No accounts yet. ${canEdit ? 'Add one to start recording money.' : ''}`}
         </p>
       )}
 
-      <ul className="mt-3 divide-y divide-line">
+      <ul className="-mt-2 divide-y divide-line">
         {activeAccounts.map((account, index) => (
           <li
             key={account.id}
@@ -311,7 +312,7 @@ const AccountsCard = () => {
           </Button>
         </form>
       )}
-    </section>
+    </CollapsibleCard>
   )
 }
 

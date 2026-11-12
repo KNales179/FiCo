@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-const LAST_UPDATED = 'September 13, 2026'
+const LAST_UPDATED = 'November 12, 2026'
 
 const Terms = () => (
   <main className="mx-auto max-w-2xl px-4 py-10">
@@ -63,8 +63,12 @@ const Terms = () => (
         <p className="mt-2">
           If you create or join a shared ("Family") Finance, every member
           can see and add to the records in it, subject to what each
-          record's own visibility is set to. Inviting someone shares that
-          Finance's data with them; removing them (or leaving yourself)
+          record's own visibility is set to. That includes shopping lists
+          and bills: in a shared Finance, other members can see, add to,
+          tick off, pay, and complete them, unless something is marked
+          Private. The Finance's currency is shared too and can be changed
+          only by its owner. Inviting someone shares that Finance's data
+          with them; removing them (or leaving yourself)
           stops future access but does not erase what already happened
           while they were a member. Choose who you share a Finance with
           accordingly.
@@ -91,12 +95,51 @@ const Terms = () => (
           and push notifications all need the server to be reachable. We
           don't guarantee the service will always be available, error-free,
           or uninterrupted, and we may change or discontinue features with
-          notice where reasonably possible.
+          notice where reasonably possible. Fico's server currently runs on
+          a free hosting plan that sleeps when idle, so the first online
+          action after a quiet period can take a while; this is expected
+          and isn't a fault in your data.
         </p>
       </section>
 
       <section>
-        <h2 className="section-title">6. Acceptable use</h2>
+        <h2 className="section-title">6. Guided tours and sample data</h2>
+        <p className="mt-2">
+          The guided tours under "How Fico works" show a temporary Sample
+          Finance filled with made-up records. It exists only on your
+          device while a tour runs, is never sent to the server or shared
+          with anyone, and is deleted when the tour ends. It isn't real
+          and doesn't reflect your own finances.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="section-title">7. Currency conversions</h2>
+        <p className="mt-2">
+          Converted amounts — your personal display currency, and the
+          amount that lands in a different-currency account on a transfer —
+          use a daily exchange rate from an outside rate service (or the
+          last rate Fico saw, when offline). They're approximate, for
+          convenience only, and may differ from the rate a bank or
+          remittance service would actually give you. Your personal
+          display currency is a view on your device only: it never changes
+          a record or what anyone else in your Finance sees.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="section-title">8. Donations</h2>
+        <p className="mt-2">
+          Fico is free to use. Supporting it through the GCash details on
+          the Credits page is entirely voluntary — a donation doesn't buy
+          any extra features, priority, or guarantee of service, and isn't
+          handled or refundable through the app itself. Please include a
+          note so it can be identified.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="section-title">9. Acceptable use</h2>
         <p className="mt-2">
           Don't use Fico to store or share anything unlawful, don't try to
           break its security or access another Finance you're not a member
@@ -107,7 +150,7 @@ const Terms = () => (
       </section>
 
       <section>
-        <h2 className="section-title">7. Limitation of liability</h2>
+        <h2 className="section-title">10. Limitation of liability</h2>
         <p className="mt-2">
           Fico is provided "as is." To the fullest extent the law allows,
           we're not liable for financial decisions made using it, for data
@@ -118,16 +161,18 @@ const Terms = () => (
       </section>
 
       <section>
-        <h2 className="section-title">8. Changes to these terms</h2>
+        <h2 className="section-title">11. Changes to these terms</h2>
         <p className="mt-2">
           We may update these terms as Fico changes. Continuing to use
           Fico after an update means you accept the revised terms; if a
-          change is significant, we'll try to make that clear in the app.
+          change is significant, we'll try to make that clear in the app
+          (for example in the "What's new" notes, also listed under
+          Menu → Updates).
         </p>
       </section>
 
       <section>
-        <h2 className="section-title">9. Contact</h2>
+        <h2 className="section-title">12. Contact</h2>
         <p className="mt-2">
           Questions about these terms, or about your data, can be raised
           through Fico's own "Report & feedback" page once you're signed

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-const LAST_UPDATED = 'September 13, 2026'
+const LAST_UPDATED = 'November 12, 2026'
 
 const Privacy = () => (
   <main className="mx-auto max-w-2xl px-4 py-10">
@@ -78,8 +78,11 @@ const Privacy = () => (
           Philippines' Data Privacy Act guidance and the EU's ePrivacy
           rules) exempt cookies that are essential to the service you
           asked for. Fico also keeps a small amount of data in your
-          browser's local storage — your appearance preference (theme,
-          palette, text size) — and, more substantially, in your browser's
+          browser's local storage — your appearance preferences (theme,
+          colour, font, text size), your personal display currency and the
+          last exchange rates looked up, which sections you've folded away,
+          and whether you've seen the welcome tour and the latest update
+          notes — and, more substantially, in your browser's
           IndexedDB, which is where your financial records actually live
           on your device for offline use. None of this is shared with any
           other website.
@@ -116,11 +119,19 @@ const Privacy = () => (
             payload it can't read the contents of without your device's
             key.
           </li>
+          <li>
+            <strong>open.er-api.com</strong> (an exchange-rate service) —
+            only when you convert between currencies (a cross-currency
+            transfer, or your personal display currency). Fico asks it for
+            the rate between two currency codes and nothing else: no
+            amounts, records, or account details are sent. Like any website
+            you contact, it can see the request coming from your device.
+          </li>
         </ul>
         <p className="mt-2">
           None of these are asked to do anything with your data beyond the
           specific job above. Fico doesn't control their own security
-          practices, but all four are established providers with their
+          practices, but all of them are established providers with their
           own public security and privacy documentation.
         </p>
       </section>

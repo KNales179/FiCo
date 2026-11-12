@@ -298,6 +298,19 @@ export const IconBook = (props: IconProps) => (
   </Icon>
 )
 
+export const IconSparkles = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 3.5l1.6 4.4 4.4 1.6-4.4 1.6L12 15.5l-1.6-4.4L6 9.5l4.4-1.6Z" />
+    <path d="M18.5 15l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7Z" />
+  </Icon>
+)
+
+export const IconHeart = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" />
+  </Icon>
+)
+
 export const IconWallet = (props: IconProps) => (
   <Icon {...props}>
     <path d="M18.5 7.5V6a1.5 1.5 0 0 0-1.5-1.5H5.5A2 2 0 0 0 3.5 6.5v11a2 2 0 0 0 2 2h13a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 18.5 7.5H5.5" />
