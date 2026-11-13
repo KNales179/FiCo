@@ -33,6 +33,23 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.8.1',
+    date: '2026-11-14',
+    title: 'Admins can invite, and tidier switches',
+    highlights: [
+      {
+        icon: 'layout',
+        title: 'On/off switches fixed',
+        body: 'The little on/off switches now sit neatly in their track and are easy to read, in both light and dark mode.',
+      },
+      {
+        icon: 'users',
+        title: 'Admins can bring people in',
+        body: 'In a shared Finance, admins can now invite people and remove members and viewers. Setting roles and handing over ownership stay with the owner.',
+      },
+    ],
+  },
+  {
     version: '2.8.0',
     date: '2026-11-13',
     title: 'Shared Finances, grown up',

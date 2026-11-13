@@ -148,6 +148,30 @@ export const runRoleScenarios = async (base, mongoUri) => {
       return (await B.page.locator('input[aria-label="Amount"]').count()) === 1
     })())
 
+    // A Finance admin manages people but not roles.
+    await B.page.goto(base + 'members')
+    await B.page.waitForTimeout(2000)
+    await closePopups(B.page)
+    check('a Finance admin can invite people', (await B.page.getByRole('button', { name: 'Invite' }).count()) === 1)
+    check('a Finance admin gets no role picker', (await B.page.getByLabel(/Role for/).count()) === 0)
+    const adminApi = await B.page.evaluate(async ({ spaceId, ownerId }) => {
+      const call = (method, path, body) =>
+        fetch(`http://localhost:5099/api/spaces/${spaceId}${path}`, {
+          method,
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: body ? JSON.stringify(body) : undefined,
+        }).then((r) => r.status)
+      return {
+        role: await call('PATCH', `/members/${ownerId}/role`, { role: 'VIEWER' }),
+        removeOwner: await call('DELETE', `/members/${ownerId}`),
+        invite: await call('POST', '/invitations', { email: 'someone-new@example.com' }),
+      }
+    }, { spaceId: String(spaceId), ownerId: String((await mongo.db().collection('users').findOne({ username: owner }))._id) })
+    check('a Finance admin can’t change roles', adminApi.role === 403, JSON.stringify(adminApi))
+    check('a Finance admin can’t remove the owner', adminApi.removeOwner === 403, JSON.stringify(adminApi))
+    check('a Finance admin can send an invitation', adminApi.invite >= 200 && adminApi.invite < 300, JSON.stringify(adminApi))
+
     // Profile tags.
     await A.page.goto(base + 'account')
     await A.page.waitForTimeout(2000)
@@ -203,6 +227,33 @@ export const runRoleScenarios = async (base, mongoUri) => {
       return res.status
     }, other)
     check('another admin can’t give themselves Fico Owner', denied === 403, String(denied))
+
+    // Nobody — the Fico Owner included — can make someone else Fico Owner,
+    // and no admin can take the Fico Owner's admin access away.
+    const ownerGives = await A.page.evaluate(async (u) => {
+      const list = await (await fetch('http://localhost:5099/api/admin/users', { credentials: 'include' })).json()
+      const target = list.users.find((x) => x.username === u)
+      const res = await fetch(`http://localhost:5099/api/admin/users/${target.id}/badges`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ badge: 'FICO_OWNER', on: true }),
+      })
+      return res.status
+    }, other)
+    check('the Fico Owner can’t make someone else Fico Owner', ownerGives === 403, String(ownerGives))
+    const demote = await B.page.evaluate(async ({ u, pw }) => {
+      const list = await (await fetch('http://localhost:5099/api/admin/users', { credentials: 'include' })).json()
+      const target = list.users.find((x) => x.username === u)
+      const res = await fetch(`http://localhost:5099/api/admin/users/${target.id}/role`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'USER', confirmPassword: pw, reason: 'test' }),
+      })
+      return res.status
+    }, { u: owner, pw: PASSWORD })
+    check('an admin can’t remove the Fico Owner’s admin access', demote === 403, String(demote))
 
     await A.ctx.close()
     await B.ctx.close()

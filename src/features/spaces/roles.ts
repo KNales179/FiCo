@@ -15,8 +15,8 @@ export const ROLE_LABEL: Record<MembershipRole, string> = {
 }
 
 export const ROLE_HINT: Record<MembershipRole, string> = {
-  OWNER: 'Everything, plus managing members',
-  ADMIN: 'Edits everything and sees Activity',
+  OWNER: 'Everything, plus setting roles and handing over ownership',
+  ADMIN: 'Edits everything, sees Activity, invites and removes members',
   MEMBER: 'Adds and edits records',
   VIEWER: 'Can see, can’t change anything',
 }

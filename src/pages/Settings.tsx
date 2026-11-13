@@ -21,7 +21,7 @@ import {
   type ThemeMode,
 } from '../features/theme'
 import type { NotificationPreferences } from '../types/auth'
-import { PageHeader, Card, Button, Alert, Select } from '../components/ui'
+import { PageHeader, Card, Button, Alert, Select, Switch } from '../components/ui'
 import PushControl from '../components/settings/PushControl'
 import FinanceCurrency from '../components/settings/FinanceCurrency'
 import {
@@ -71,41 +71,6 @@ const Segmented = <T extends string>({
       </button>
     ))}
   </div>
-)
-
-/** An accessible on/off switch; the check mark keeps "on" clear without relying on colour. */
-const Switch = ({
-  checked,
-  onChange,
-  disabled,
-  label,
-}: {
-  checked: boolean
-  onChange: (checked: boolean) => void
-  disabled?: boolean
-  label: string
-}) => (
-  <button
-    type="button"
-    role="switch"
-    aria-checked={checked}
-    aria-label={label}
-    disabled={disabled}
-    onClick={() => onChange(!checked)}
-    className={cx(
-      'relative h-7 w-12 shrink-0 rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-      checked ? 'border-brand bg-brand' : 'border-line bg-panel-2',
-    )}
-  >
-    <span
-      className={cx(
-        'absolute top-0.5 flex h-5.5 w-5.5 items-center justify-center rounded-full bg-white shadow transition-transform',
-        checked ? 'translate-x-[22px] text-brand' : 'translate-x-0.5 text-transparent',
-      )}
-    >
-      <IconCheck size={13} />
-    </span>
-  </button>
 )
 
 /**

@@ -8,7 +8,7 @@ import {
   type ReactNode,
   type SelectHTMLAttributes,
 } from 'react'
-import { IconX, type IconProps } from '../icons'
+import { IconCheck, IconX, type IconProps } from '../icons'
 
 /**
  * Small shared UI primitives (Roadmap Phase 25). They wrap the utility classes
@@ -313,3 +313,43 @@ export const Modal = ({
     </div>
   )
 }
+
+/**
+ * An accessible on/off switch; the check mark keeps "on" clear without
+ * relying on colour. The knob is pinned to the track's left edge and slid
+ * from there — a button centres its content, so an unanchored knob drifts.
+ */
+export const Switch = ({
+  checked,
+  onChange,
+  disabled,
+  label,
+}: {
+  checked: boolean
+  onChange: (checked: boolean) => void
+  disabled?: boolean
+  label: string
+}) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={checked}
+    aria-label={label}
+    disabled={disabled}
+    onClick={() => onChange(!checked)}
+    className={cx(
+      'relative inline-block h-7 w-12 shrink-0 rounded-full border p-0 transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+      checked ? 'border-brand bg-brand' : 'border-line bg-panel-2',
+    )}
+  >
+    <span
+      aria-hidden="true"
+      className={cx(
+        'absolute left-0.5 top-1/2 flex h-5.5 w-5.5 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow transition-transform',
+        checked ? 'translate-x-5 text-brand' : 'translate-x-0 text-transparent',
+      )}
+    >
+      <IconCheck size={13} />
+    </span>
+  </button>
+)

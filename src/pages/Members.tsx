@@ -77,6 +77,8 @@ const Members = () => {
   const [offline, setOffline] = useState(false)
 
   const isOwner = activeSpace?.role === 'OWNER'
+  // The owner and admins invite and remove people; only the owner sets roles.
+  const canManage = isOwner || activeSpace?.role === 'ADMIN'
   const isFamily = activeSpace?.type === 'FAMILY'
   const spaceId = activeSpace?.id
   // The demo has a pretend household; only role changes work, on this device.
@@ -96,7 +98,7 @@ const Members = () => {
       setMembers(m.members)
       setOffline(false)
       cacheMembers(spaceId, m.members)
-      if (isOwner) {
+      if (canManage) {
         const inv = await listInvitations(spaceId)
         setInvites(inv.invitations)
       }
@@ -110,7 +112,7 @@ const Members = () => {
     } finally {
       setLoading(false)
     }
-  }, [spaceId, isOwner, demo])
+  }, [spaceId, canManage, demo])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -132,6 +134,21 @@ const Members = () => {
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not change their role')
+    }
+  }
+
+  const remove = async (m: SpaceMember) => {
+    if (!spaceId) return
+    const name = m.displayName || m.username || 'this member'
+    if (!window.confirm(`Remove ${name} from ${activeSpace?.name}?`)) return
+    setMessage('')
+    setError('')
+    try {
+      await removeMember(spaceId, m.userId)
+      setMessage(`${name} was removed`)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not remove them')
     }
   }
 
@@ -210,7 +227,7 @@ const Members = () => {
       <PageHeader
           icon={IconUsers}
         title={`${activeSpace.name} · members`}
-        description="Owner manages members and roles · Admins edit everything and see Activity · Members add and edit · Viewers can only look."
+        description="Owner sets roles · Owner and admins invite and remove people · Admins also edit everything and see Activity · Members add and edit · Viewers can only look."
         actions={
           !isOwner ? (
             <Button variant="ghost" onClick={() => void leave()} data-tour="members-leave">
@@ -253,7 +270,7 @@ const Members = () => {
               <tr>
                 <th>Member</th>
                 <th>Role</th>
-                {isOwner && <th className="text-right">Actions</th>}
+                {canManage && <th className="text-right">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -294,29 +311,34 @@ const Members = () => {
                       </span>
                     )}
                   </td>
-                  {isOwner && (
+                  {canManage && (
                     <td className="text-right">
-                      {m.role !== 'OWNER' && !offline && !demo && (
+                      {m.role !== 'OWNER' && m.userId !== user?.id && !offline && !demo && (
                         <span className="flex items-center justify-end gap-1">
-                          <Button
-                            size="sm"
-                            iconOnly
-                            aria-label="Make owner"
-                            title="Make owner"
-                            onClick={() => void makeOwner(m)}
-                          >
-                            <IconAward size={14} />
-                          </Button>
-                          <Button
-                            size="sm"
-                            iconOnly
-                            variant="danger"
-                            aria-label="Remove"
-                            title="Remove"
-                            onClick={() => void removeMember(spaceId!, m.userId).then(load)}
-                          >
-                            <IconX size={14} />
-                          </Button>
+                          {isOwner && (
+                            <Button
+                              size="sm"
+                              iconOnly
+                              aria-label="Make owner"
+                              title="Make owner"
+                              onClick={() => void makeOwner(m)}
+                            >
+                              <IconAward size={14} />
+                            </Button>
+                          )}
+                          {/* Admins remove members and viewers; other admins are the owner's call. */}
+                          {(isOwner || m.role !== 'ADMIN') && (
+                            <Button
+                              size="sm"
+                              iconOnly
+                              variant="danger"
+                              aria-label={`Remove ${m.displayName || m.username}`}
+                              title="Remove"
+                              onClick={() => void remove(m)}
+                            >
+                              <IconX size={14} />
+                            </Button>
+                          )}
                         </span>
                       )}
                     </td>
@@ -328,7 +350,7 @@ const Members = () => {
         </div>
       )}
 
-      {isOwner && invites.length > 0 && (
+      {canManage && invites.length > 0 && (
         <Card>
           <h2 className="section-title">Pending invitations</h2>
           <ul className="mt-2 divide-y divide-line">
@@ -352,7 +374,7 @@ const Members = () => {
         </Card>
       )}
 
-      {isOwner && (
+      {canManage && (
         <Card data-tour="members-invite">
           <form onSubmit={invite}>
             <h2 className="section-title">Invite someone</h2>

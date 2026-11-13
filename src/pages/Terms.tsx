@@ -85,8 +85,9 @@ const Terms = () => (
           Each member of a shared Finance has a role. The <strong>Owner</strong>{' '}
           invites and removes people, sets everyone else's role, and can hand
           ownership to someone else. <strong>Admins</strong> can add and change
-          everything and can see the Finance's Activity — who added, changed,
-          or deleted what, and when. <strong>Members</strong> can add and change
+          everything, can invite people and remove members and viewers (but
+          not change anyone's role), and can see the Finance's Activity — who
+          added, changed, or deleted what, and when. <strong>Members</strong> can add and change
           records. <strong>Viewers</strong> can see everything a member could but
           can't change anything. Giving someone Admin means they can see each
           member's Activity in that Finance, so choose admins you trust. Roles

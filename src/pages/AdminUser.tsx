@@ -17,7 +17,7 @@ import {
 } from '../services/adminService'
 import type { DeviceSession } from '../types/auth'
 import { useAuth } from '../hooks/useAuth'
-import { Alert, Button, Card, Modal, SkeletonCard } from '../components/ui'
+import { Alert, Button, Card, Modal, SkeletonCard, Switch } from '../components/ui'
 import PasswordInput from '../components/auth/PasswordInput'
 import Badges from '../components/Badges'
 import RoleTags from '../components/RoleTags'
@@ -119,7 +119,7 @@ const ActionTile = ({
 const AdminUser = () => {
   const { userId = '' } = useParams()
   const navigate = useNavigate()
-  const { user: me } = useAuth()
+  const { user: me, refreshUser } = useAuth()
 
   const [profile, setProfile] = useState<AdminUserProfile | null>(null)
   const [sessions, setSessions] = useState<DeviceSession[]>([])
@@ -180,6 +180,8 @@ const AdminUser = () => {
       setAction(null)
       after?.()
       await load()
+      // Changed your own account (a badge, say): your profile should show it now.
+      if (profile?.isSelf) await refreshUser().catch(() => undefined)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'That didn’t work')
     } finally {
@@ -391,7 +393,7 @@ const AdminUser = () => {
                 title={profile.role === 'ADMIN' ? 'Remove admin access' : 'Make admin'}
                 body={profile.role === 'ADMIN' ? 'Back to a regular account.' : 'They’ll be able to manage every account.'}
                 onClick={() => openAction('role')}
-                disabled={profile.isSelf || deleted}
+                disabled={profile.isSelf || deleted || profile.badges.includes('FICO_OWNER')}
               />
               {profile.totpEnabled && (
                 <ActionTile
@@ -432,11 +434,25 @@ const AdminUser = () => {
         <div className="min-w-0 space-y-4">
           <Card>
             <h2 className="section-title">Badges</h2>
-            <p className="mt-1 text-xs text-muted">Shown on their profile. Fico Admin comes with the admin role.</p>
+            <p className="mt-1 text-xs text-muted">Shown on their profile.</p>
             <ul className="mt-3 space-y-2">
+              <li className="flex items-center justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-ink">Fico Admin</span>
+                  <span className="block text-xs text-muted">
+                    Comes with admin access — it asks for your password and a reason.
+                  </span>
+                </span>
+                <Switch
+                  checked={profile.role === 'ADMIN'}
+                  label="Fico Admin"
+                  disabled={busy || deleted || profile.isSelf || profile.badges.includes('FICO_OWNER')}
+                  onChange={() => openAction('role')}
+                />
+              </li>
               {(
                 [
-                  ['FICO_OWNER', 'Fico Owner', 'Only a Fico Owner can give or remove this.'],
+                  ['FICO_OWNER', 'Fico Owner', 'There’s only one — it can’t be given to anyone else.'],
                   ['BETA_TESTER', 'Beta tester', 'For people helping test Fico.'],
                 ] as const
               ).map(([badge, label, hint]) => {
@@ -447,19 +463,13 @@ const AdminUser = () => {
                       <span className="block text-sm font-medium text-ink">{label}</span>
                       <span className="block text-xs text-muted">{hint}</span>
                     </span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={has}
-                      aria-label={label}
-                      disabled={busy || deleted}
-                      onClick={() => void run(() => setUserBadge(profile.id, badge, !has))}
-                      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${has ? 'bg-brand' : 'bg-line'}`}
-                    >
-                      <span
-                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${has ? 'translate-x-5' : 'translate-x-0.5'}`}
-                      />
-                    </button>
+                    <Switch
+                      checked={has}
+                      label={label}
+                      // Fico Owner: only ever on your own account (the server checks the rest).
+                      disabled={busy || deleted || (badge === 'FICO_OWNER' && !profile.isSelf)}
+                      onChange={(on) => void run(() => setUserBadge(profile.id, badge, on))}
+                    />
                   </li>
                 )
               })}
