@@ -70,7 +70,9 @@ export const setItemChecked = async (
     'shoppingItem',
     id,
     checked ? 'CHECK' : 'UNCHECK',
-    { id, checked },
+    // The whole item — the server replaces its copy with what it's sent,
+    // and refuses a partial one (which is why check-offs used to fail).
+    item,
   )
   return item
 }

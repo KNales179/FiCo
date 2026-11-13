@@ -3,6 +3,9 @@ import type { SyncOperation } from '../../types/models'
 import type { MutationContext } from './context'
 import { emitMutation } from './events'
 import { isDemoSpace } from '../demo/space'
+import { fitToServerLimits } from './limits'
+import { requestBackgroundSync } from './background'
+import { changedFieldsOf } from '../../repositories/createRepository'
 
 /**
  * Records a local mutation on the outbound sync queue and nudges the sync
@@ -30,9 +33,17 @@ export const enqueueMutation = async (
     entityType,
     entityId,
     operation,
-    payload,
+    // Trimmed to the server's limits — an over-long field would otherwise
+    // be refused, and fail to sync every time.
+    payload: fitToServerLimits(entityType, payload),
     clientVersion,
+    // Which fields this edit touched, when known — lets the server merge
+    // instead of replacing the whole record.
+    changedFields:
+      operation !== 'CREATE' && operation !== 'DELETE' ? changedFieldsOf(payload) : undefined,
   })
   emitMutation()
+  // Android: upload even if Fico is closed before there's signal.
+  requestBackgroundSync()
   return event
 }

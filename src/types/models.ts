@@ -423,6 +423,8 @@ export interface SyncEvent {
   operation: SyncOperation
   payload: unknown
   clientVersion: number
+  /** For an edit: just the fields it changed (merged field by field on the server). */
+  changedFields?: string[]
   status: SyncEventStatus
   retryCount: number
   lastError?: string | null

@@ -127,10 +127,14 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
       }
       const response = await createSpaceRequest(name)
       await load()
-      await switchSpace(response.space.id)
+      // Switch straight to it. (Going through switchSpace here checked the
+      // list from *before* the reload, didn't find the new Finance, and so
+      // quietly stayed on the old one — anything added next landed there.)
+      setActiveSpaceId(response.space.id)
+      await metadataRepository.set(MetadataKeys.activeSpaceId, response.space.id)
       return response.space
     },
-    [load, switchSpace],
+    [load],
   )
 
   const realActiveSpace = useMemo(

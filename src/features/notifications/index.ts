@@ -1,7 +1,13 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { api, isNetworkError } from '../../lib/api'
 
-export type NotificationKind = 'FEEDBACK_DONE' | 'ADMIN_NOTICE' | 'ADMIN_ACTION'
+export type NotificationKind =
+  | 'FEEDBACK_DONE'
+  | 'ADMIN_NOTICE'
+  | 'ADMIN_ACTION'
+  // Made on this device by the sync (never on the server):
+  | 'SYNC_REJECTED'
+  | 'SYNC_OVERWRITTEN'
 
 export interface AppNotification {
   id: string
@@ -13,6 +19,10 @@ export interface AppNotification {
   popup: boolean
   readAt: string | null
   createdAt: string
+  /** Detail blocks (e.g. each change that couldn't sync, line by line). */
+  sections?: { heading: string; lines: { label: string; value: string }[] }[]
+  /** Lives only on this device. */
+  local?: boolean
 }
 
 interface State {
@@ -22,15 +32,34 @@ interface State {
 }
 
 const CACHE_KEY = 'fico.notifications'
+const LOCAL_KEY = 'fico.localNotifications'
+
+const readLocal = (): AppNotification[] => {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]') as AppNotification[]
+  } catch {
+    return []
+  }
+}
+let localItems: AppNotification[] = readLocal()
+const writeLocal = () => {
+  try {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(localItems.slice(0, 100)))
+  } catch {
+    // ignore
+  }
+}
+
+/** Server items + this device's own, newest first. */
+const combine = (serverItems: AppNotification[]) =>
+  [...serverItems.filter((n) => !n.local), ...localItems].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 const POLL_MS = 3 * 60 * 1000
 
 const readCache = (): State => {
   try {
     const raw = localStorage.getItem(CACHE_KEY)
-    if (raw) {
-      const items = JSON.parse(raw) as AppNotification[]
-      return { items, unread: items.filter((n) => !n.readAt).length, loaded: false }
-    }
+    const items = combine(raw ? (JSON.parse(raw) as AppNotification[]) : [])
+    return { items, unread: items.filter((n) => !n.readAt).length, loaded: false }
   } catch {
     // ignore
   }
@@ -41,13 +70,37 @@ let state: State = readCache()
 const listeners = new Set<() => void>()
 
 const set = (next: Partial<State>) => {
-  state = { ...state, ...next }
+  const items = next.items ? combine(next.items) : state.items
+  state = { ...state, ...next, items, unread: items.filter((n) => !n.readAt).length }
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(state.items))
+    localStorage.setItem(CACHE_KEY, JSON.stringify(items.filter((n) => !n.local)))
   } catch {
     // ignore
   }
   listeners.forEach((l) => l())
+}
+
+/** Add notifications made on this device (e.g. a change the server refused). */
+export const addLocalNotifications = (
+  list: Pick<AppNotification, 'kind' | 'title' | 'body' | 'sections'>[],
+): void => {
+  if (list.length === 0) return
+  const now = new Date().toISOString()
+  localItems = [
+    ...list.map((n, i) => ({
+      ...n,
+      id: `local-${Date.now()}-${i}`,
+      link: null,
+      senderName: 'Fico',
+      popup: true,
+      readAt: null,
+      createdAt: now,
+      local: true,
+    })),
+    ...localItems,
+  ]
+  writeLocal()
+  set({ items: state.items })
 }
 
 const subscribe = (l: () => void) => {
@@ -59,7 +112,7 @@ const subscribe = (l: () => void) => {
 export const refreshNotifications = async (): Promise<void> => {
   try {
     const res = await api<{ notifications: AppNotification[]; unread: number }>('/notifications')
-    set({ items: res.notifications, unread: res.unread, loaded: true })
+    set({ items: res.notifications, loaded: true })
   } catch (error) {
     if (!isNetworkError(error)) set({ loaded: true })
   }
@@ -68,10 +121,15 @@ export const refreshNotifications = async (): Promise<void> => {
 /** Mark some (or all) read — updated here at once, then confirmed by the server. */
 export const markNotificationsRead = async (ids: string[] | 'all'): Promise<void> => {
   const now = new Date().toISOString()
-  const items = state.items.map((n) => (!n.readAt && (ids === 'all' || ids.includes(n.id)) ? { ...n, readAt: now } : n))
-  set({ items, unread: items.filter((n) => !n.readAt).length })
+  const hit = (n: AppNotification) => !n.readAt && (ids === 'all' || ids.includes(n.id))
+  localItems = localItems.map((n) => (hit(n) ? { ...n, readAt: now } : n))
+  writeLocal()
+  const items = state.items.map((n) => (hit(n) ? { ...n, readAt: now } : n))
+  set({ items })
+  const serverIds = ids === 'all' ? 'all' : ids.filter((id) => !id.startsWith('local-'))
+  if (serverIds !== 'all' && serverIds.length === 0) return
   try {
-    await api('/notifications/read', { method: 'POST', body: ids === 'all' ? { all: true } : { ids } })
+    await api('/notifications/read', { method: 'POST', body: serverIds === 'all' ? { all: true } : { ids: serverIds } })
   } catch {
     // Offline: it's read here; the server catches up next time it's marked or listed.
   }
@@ -80,9 +138,11 @@ export const markNotificationsRead = async (ids: string[] | 'all'): Promise<void
 export const clearNotificationCache = () => {
   try {
     localStorage.removeItem(CACHE_KEY)
+    localStorage.removeItem(LOCAL_KEY)
   } catch {
     // ignore
   }
+  localItems = []
   state = { items: [], unread: 0, loaded: false }
   listeners.forEach((l) => l())
 }

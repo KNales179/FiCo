@@ -42,7 +42,7 @@ const Activity = () => {
       } catch (err) {
         setError(
           isNetworkError(err)
-            ? 'Activity is only available online'
+            ? 'You’re offline — activity loads once you’re back online.'
             : err instanceof Error
               ? err.message
               : 'Could not load activity',
@@ -98,7 +98,7 @@ const Activity = () => {
             </span>
           </li>
         ))}
-        {logs.length === 0 && (
+        {logs.length === 0 && !error && (
           <li className="px-4 py-2 text-sm text-muted">
             Nothing here yet.
           </li>

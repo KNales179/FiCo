@@ -21,6 +21,7 @@ import {
   IconUserPlus,
   IconX,
   IconUsers,
+  IconCloudOff,
 } from '../components/icons'
 
 const MemberAvatar = ({ member }: { member: SpaceMember }) => {
@@ -38,6 +39,24 @@ const MemberAvatar = ({ member }: { member: SpaceMember }) => {
   )
 }
 
+const MEMBERS_CACHE = 'fico.membersCache.'
+
+/** The member list as of the last time it loaded online — shown (read-only) offline. */
+const cacheMembers = (spaceId: string, members: SpaceMember[]) => {
+  try {
+    localStorage.setItem(MEMBERS_CACHE + spaceId, JSON.stringify(members))
+  } catch {
+    // ignore
+  }
+}
+const cachedMembers = (spaceId: string): SpaceMember[] => {
+  try {
+    return JSON.parse(localStorage.getItem(MEMBERS_CACHE + spaceId) || '[]') as SpaceMember[]
+  } catch {
+    return []
+  }
+}
+
 const Members = () => {
   const { activeSpace, refresh } = useSpace()
   const { user } = useAuth()
@@ -49,6 +68,8 @@ const Members = () => {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  // Offline: show who was here last time, and hold the actions that need the server.
+  const [offline, setOffline] = useState(false)
 
   const isOwner = activeSpace?.role === 'OWNER'
   const isFamily = activeSpace?.type === 'FAMILY'
@@ -61,18 +82,19 @@ const Members = () => {
     try {
       const m = await listMembers(spaceId)
       setMembers(m.members)
+      setOffline(false)
+      cacheMembers(spaceId, m.members)
       if (isOwner) {
         const inv = await listInvitations(spaceId)
         setInvites(inv.invitations)
       }
     } catch (err) {
-      setError(
-        isNetworkError(err)
-          ? 'Members are unavailable offline'
-          : err instanceof Error
-            ? err.message
-            : 'Could not load members',
-      )
+      if (isNetworkError(err)) {
+        setOffline(true)
+        setMembers(cachedMembers(spaceId))
+      } else {
+        setError(err instanceof Error ? err.message : 'Could not load members')
+      }
     } finally {
       setLoading(false)
     }
@@ -178,6 +200,14 @@ const Members = () => {
       </p>
 
       {error && <Alert>{error}</Alert>}
+      {offline && (
+        <p className="flex items-start gap-2 rounded-xl border border-line bg-panel-2 px-3.5 py-2.5 text-sm text-muted">
+          <IconCloudOff size={16} className="mt-0.5 shrink-0" />
+          {members.length
+            ? 'You’re offline — this is who was here the last time you checked. Inviting or removing people needs a connection.'
+            : 'You’re offline — the member list loads once you’re back online.'}
+        </p>
+      )}
 
       {loading ? (
         <Card>
@@ -219,7 +249,7 @@ const Members = () => {
                   </td>
                   {isOwner && (
                     <td className="text-right">
-                      {m.role !== 'OWNER' && (
+                      {m.role !== 'OWNER' && !offline && (
                         <span className="flex items-center justify-end gap-1">
                           <Button
                             size="sm"
@@ -288,7 +318,7 @@ const Members = () => {
                 required
                 className="min-w-[12rem] flex-1"
               />
-              <Button type="submit" variant="primary">
+              <Button type="submit" variant="primary" disabled={offline} title={offline ? 'Needs a connection' : undefined}>
                 <IconUserPlus size={16} />
                 Invite
               </Button>

@@ -94,6 +94,19 @@ export const syncEventRepository = {
     await tx.done
   },
 
+  /** Swap in a fresh payload (e.g. the record's latest local copy before a retry). */
+  async setPayload(id: string, payload: unknown): Promise<void> {
+    const db = await getDB()
+    const tx = db.transaction('syncEvents', 'readwrite')
+    const existing = await tx.store.get(id)
+    if (existing) {
+      existing.payload = payload
+      existing.updatedAt = new Date().toISOString()
+      await tx.store.put(existing)
+    }
+    await tx.done
+  },
+
   async remove(id: string): Promise<void> {
     const db = await getDB()
     await db.delete('syncEvents', id)

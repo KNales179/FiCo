@@ -32,6 +32,60 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.6.0',
+    date: '2026-11-13',
+    title: 'Offline, all the way',
+    highlights: [
+      {
+        icon: 'archive',
+        title: 'Syncs even after you close Fico',
+        body: 'On Android, changes you made offline now upload on their own as soon as you get signal — even if Fico is closed. On iPhone, Fico sends them the moment you leave the app, and again the next time you open it.',
+      },
+      {
+        icon: 'bell',
+        title: 'You’ll hear about every change that didn’t make it',
+        body: 'If the server can’t save something, or your offline edit was replaced by someone’s newer one, a notification lists exactly what it was — name, amount, Finance, and why — so nothing is lost. Notifications now open and close with a tap, too.',
+      },
+      {
+        icon: 'users',
+        title: 'Edits from two people no longer clash',
+        body: 'If you change a record’s amount while someone else renames it, both changes are kept. Only edits to the very same thing go to whoever changed it last.',
+      },
+      {
+        icon: 'wallet',
+        title: 'All your Finances, ready offline',
+        body: 'Every Finance you belong to now downloads in the background — and the status line tells you when it last synced, and how many changes are waiting.',
+      },
+    ],
+  },
+  {
+    version: '2.5.2',
+    date: '2026-11-13',
+    title: 'Offline mode, properly fixed',
+    highlights: [
+      {
+        icon: 'wrench',
+        title: 'Changes show up the moment you make them',
+        body: 'Offline, a record you added, edited or deleted used to stay invisible until you were back online. Now every screen updates right away — records, balances, bills, shopping and budget — and syncs later on its own.',
+      },
+      {
+        icon: 'key',
+        title: 'Your offline work is never thrown away',
+        body: 'If your sign-in expires while you’re offline, everything you recorded is kept and sent up as soon as you sign back in. And logging out with unsynced changes now asks first instead of deleting them.',
+      },
+      {
+        icon: 'archive',
+        title: 'Fewer “sync failed” surprises',
+        body: 'Checking off shopping items now syncs (it was being refused). Changes in every Finance sync — not just the one that’s open — one bad change no longer blocks the rest, and anything that was stuck gets another try.',
+      },
+      {
+        icon: 'camera',
+        title: 'Receipt photos actually upload now',
+        body: 'Photos you attach to a record go up to the server, so everyone in the Finance can see them. Attaching needs a connection — offline, the button tells you so. Scanned receipts still work offline and their photo uploads once you’re back online.',
+      },
+    ],
+  },
+  {
     version: '2.5.1',
     date: '2026-11-13',
     title: 'Edit your weekly staples',

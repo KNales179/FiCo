@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { gsap, prefersReducedMotion } from '../lib/motion'
 import { markNotificationsRead, useNotifications } from '../features/notifications'
-import { IconMessage, IconShield } from './icons'
+import { IconCloudOff, IconMessage, IconShield } from './icons'
 
 /**
  * A message from the admin team (or news about your account) pops up the
@@ -31,7 +31,16 @@ const NoticePopup = () => {
   }, [notice?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!notice) return null
-  const Icon = notice.kind === 'ADMIN_ACTION' ? IconShield : IconMessage
+  const sync = notice.kind === 'SYNC_REJECTED' || notice.kind === 'SYNC_OVERWRITTEN'
+  const Icon = sync ? IconCloudOff : notice.kind === 'ADMIN_ACTION' ? IconShield : IconMessage
+  const eyebrow =
+    notice.kind === 'SYNC_REJECTED'
+      ? 'Sync problem'
+      : notice.kind === 'SYNC_OVERWRITTEN'
+        ? 'Your edit was replaced'
+        : notice.kind === 'ADMIN_ACTION'
+          ? 'About your account'
+          : 'You have a message'
   const done = () => void markNotificationsRead([notice.id])
 
   return (
@@ -51,7 +60,7 @@ const NoticePopup = () => {
             </span>
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-brand">
-                {notice.kind === 'ADMIN_ACTION' ? 'About your account' : 'You have a message'}
+                {eyebrow}
               </p>
               <h2 id="notice-title" className="text-lg font-bold leading-tight text-ink">
                 {notice.title}
@@ -61,6 +70,26 @@ const NoticePopup = () => {
         </div>
         <div className="max-h-[50dvh] overflow-y-auto px-5 py-4">
           <p className="whitespace-pre-line text-sm leading-relaxed text-ink">{notice.body}</p>
+          {notice.sections && notice.sections.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {notice.sections.slice(0, 3).map((section, i) => (
+                <div key={i} className="rounded-xl border border-line bg-panel-2 px-3 py-2">
+                  <p className="text-sm font-semibold text-ink">{section.heading}</p>
+                  <dl className="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-xs">
+                    {section.lines.map((line, j) => (
+                      <div key={j} className="contents">
+                        <dt className="text-muted">{line.label}</dt>
+                        <dd className="break-words text-ink">{line.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              ))}
+              {notice.sections.length > 3 && (
+                <p className="text-xs text-muted">+{notice.sections.length - 3} more — see all in Notifications.</p>
+              )}
+            </div>
+          )}
           {notice.senderName && <p className="mt-3 text-xs text-muted">— {notice.senderName}</p>}
         </div>
         <div className="flex gap-2 border-t border-line px-5 py-3">

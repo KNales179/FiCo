@@ -32,16 +32,24 @@ export const applyRemoteRecord = async (
 ): Promise<void> => {
   const store = STORE_FOR[entityType]
   if (!store) return
+  const db = await getDB()
+
+  if (deletedAt) {
+    // A deletion: mark the copy this device has as deleted. A tombstone for
+    // something this device never had is simply nothing to do — writing it
+    // would leave an empty, half-formed record behind.
+    const id = payload.id as string | undefined
+    const existing = id ? ((await db.get(store, id)) as Record<string, unknown> | undefined) : undefined
+    const base = existing ?? (payload.spaceId ? payload : null)
+    if (!base) return
+    await db.put(store, { ...base, ...payload, deletedAt, syncStatus: 'SYNCED' } as never)
+    return
+  }
 
   const record: Record<string, unknown> = {
     ...payload,
     syncStatus: 'SYNCED',
   }
-  if (deletedAt) {
-    record.deletedAt = deletedAt
-  }
-
-  const db = await getDB()
   // Keyed by `id` for every applicable store.
   await db.put(store, record as never)
 }
@@ -103,4 +111,15 @@ export const clearFailedFlag = async (
     | undefined
   if (!existing || existing.syncStatus !== 'FAILED') return
   await db.put(store, { ...existing, syncStatus: 'SYNCED' } as never)
+}
+
+/** This device's current copy of a record, if it has one. */
+export const readLocalRecord = async (
+  entityType: string,
+  id: string,
+): Promise<Record<string, unknown> | null> => {
+  const store = STORE_FOR[entityType]
+  if (!store) return null
+  const db = await getDB()
+  return ((await db.get(store, id)) as Record<string, unknown> | undefined) ?? null
 }

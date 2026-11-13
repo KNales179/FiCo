@@ -66,8 +66,11 @@ describe('reconnection (Phase 24)', () => {
 
     restoreOffline()
 
-    const pendingBefore = await countPendingForSpace(c.spaceId)
+    // The raw queue holds every step; the person-facing count groups them
+    // (a shopping list and its items are one change).
+    const pendingBefore = (await syncEventRepository.listPending()).length
     expect(pendingBefore).toBeGreaterThanOrEqual(10)
+    expect(await countPendingForSpace()).toBeLessThan(pendingBefore)
 
     const server: ServerEvent[] = []
     const restore = mockFetch((url, init) => {

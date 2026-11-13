@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -8,7 +8,8 @@ import GoogleButton from '../components/auth/GoogleButton'
 import PasswordInput from '../components/auth/PasswordInput'
 import { friendlyAuthError } from '../components/auth/authErrors'
 import { useAuthNav } from '../components/auth/authNav'
-import { IconCompass, IconShield } from '../components/icons'
+import { IconCloudOff, IconCompass, IconShield } from '../components/icons'
+import { loadUnsyncedOwner, type UnsyncedOwner } from '../features/auth/localAuth'
 
 const Login = () => {
   const navigate = useNavigate()
@@ -22,6 +23,11 @@ const Login = () => {
   const [loading, setLoading] = useState(false)
   const [googleBusy, setGoogleBusy] = useState(false)
   const [demoBusy, setDemoBusy] = useState(false)
+  // Changes kept from a sign-out the person didn't choose (session expired while offline).
+  const [kept, setKept] = useState<UnsyncedOwner | null>(null)
+  useEffect(() => {
+    void loadUnsyncedOwner().then(setKept).catch(() => undefined)
+  }, [])
 
   const tryDemo = async () => {
     setError('')
@@ -144,6 +150,24 @@ const Login = () => {
         <h1 className="text-2xl font-bold tracking-tight text-ink">Welcome back</h1>
         <p className="mt-1 text-sm text-muted">Sign in to pick up right where you left off.</p>
       </div>
+
+      {kept && (
+        <div data-auth-item="" className="flex items-start gap-3 rounded-xl border border-brand/30 bg-brand/[0.06] px-3.5 py-3 text-sm">
+          <IconCloudOff size={18} className="mt-0.5 shrink-0 text-brand" />
+          <p className="text-ink">
+            <span className="font-semibold">
+              {kept.count} change{kept.count === 1 ? '' : 's'} saved on this device
+            </span>{' '}
+            {kept.count === 1 ? 'hasn’t' : 'haven’t'} synced yet. Sign in
+            {kept.username ? (
+              <>
+                {' '}as <span className="font-semibold">@{kept.username}</span>
+              </>
+            ) : null}{' '}
+            and {kept.count === 1 ? 'it' : 'they'}’ll be sent up automatically — nothing was lost.
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handlePasswordSubmit} className="space-y-4">
         <label data-auth-item="" className="block">

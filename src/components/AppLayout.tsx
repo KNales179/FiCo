@@ -42,6 +42,8 @@ import TourProvider from './tour/TourProvider'
 import ThemeToggle from './ThemeToggle'
 import FicoLogo from './FicoLogo'
 import NoticePopup from './NoticePopup'
+import PageErrorBoundary from './PageErrorBoundary'
+import { useGuardedLogout } from './useGuardedLogout'
 import DemoBanner from './DemoBanner'
 import { useNotificationPolling, useNotifications } from '../features/notifications'
 import { useStaggerIn } from '../lib/motion'
@@ -91,7 +93,8 @@ const primaryLink = ({ isActive }: { isActive: boolean }) =>
   }`
 
 const AppLayout = () => {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
+  const { requestLogout, logoutDialog } = useGuardedLogout()
   const { activeSpaceId } = useSpace()
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
@@ -319,7 +322,7 @@ const AppLayout = () => {
                             role="menuitem"
                             onClick={() => {
                               setMenuOpen(false)
-                              void logout()
+                              void requestLogout()
                             }}
                             className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-muted transition-colors hover:bg-danger/10 hover:text-danger"
                           >
@@ -348,6 +351,7 @@ const AppLayout = () => {
       <WhatsNewModal />
       <BirthdayGreeting />
       <NoticePopup />
+      {logoutDialog}
       <InstallPrompt />
       <NotificationPrompt />
       <PullToRefresh />
@@ -357,9 +361,11 @@ const AppLayout = () => {
             stay on screen while a page's code downloads — only the content
             area shows a skeleton. */}
         <div ref={pageRef}>
-          <Suspense fallback={<PageSkeleton />}>
-            <Outlet />
-          </Suspense>
+          <PageErrorBoundary key={location.pathname}>
+            <Suspense fallback={<PageSkeleton />}>
+              <Outlet />
+            </Suspense>
+          </PageErrorBoundary>
         </div>
 
         <footer className="mt-10 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">

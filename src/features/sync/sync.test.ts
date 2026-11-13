@@ -30,7 +30,7 @@ describe('sync engine (Phase 18/19)', () => {
 
   it('pushPending clears the queue and marks records SYNCED', async () => {
     const acc = await createAccount(c, { name: 'Cash', type: 'CASH' })
-    expect(await countPendingForSpace(c.spaceId)).toBeGreaterThan(0)
+    expect(await countPendingForSpace()).toBeGreaterThan(0)
 
     const restore = mockFetch((url, init) => {
       if (url.includes('/sync/push')) {
@@ -69,10 +69,10 @@ describe('sync engine (Phase 18/19)', () => {
     await pushPending(c)
     restore()
 
-    expect(await countFailedForSpace(c.spaceId)).toBe(1)
-    const requeued = await retryFailed(c.spaceId)
+    expect(await countFailedForSpace()).toBe(1)
+    const requeued = await retryFailed()
     expect(requeued).toBe(1)
-    expect(await countPendingForSpace(c.spaceId)).toBe(1)
+    expect(await countPendingForSpace()).toBe(1)
   })
 
   it('discardFailed drops rejected changes and clears the local flag', async () => {
@@ -89,12 +89,12 @@ describe('sync engine (Phase 18/19)', () => {
     await pushPending(c)
     restore()
 
-    expect(await countFailedForSpace(c.spaceId)).toBe(1)
+    expect(await countFailedForSpace()).toBe(1)
     expect((await accountRepository.get(acc.id))?.syncStatus).toBe('FAILED')
 
-    const discarded = await discardFailed(c.spaceId)
+    const discarded = await discardFailed()
     expect(discarded).toBe(1)
-    expect(await countFailedForSpace(c.spaceId)).toBe(0)
+    expect(await countFailedForSpace()).toBe(0)
     expect(await syncEventRepository.listByStatus('FAILED')).toHaveLength(0)
     expect((await accountRepository.get(acc.id))?.syncStatus).toBe('SYNCED')
   })

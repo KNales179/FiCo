@@ -1,3 +1,4 @@
+import { noteServerTime } from './clock'
 import { isDemoMode } from '../features/demo/demoMode'
 import { saveAuthNotice, type AuthNotice } from '../features/auth/authNotice'
 export const API_URL =
@@ -120,6 +121,7 @@ export const api = async <T>(
   // Everything else keeps going through as JSON, as before.
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
 
+  const sentAt = Date.now()
   try {
     response = await fetch(`${API_URL}${endpoint}`, {
       ...rest,
@@ -147,6 +149,9 @@ export const api = async <T>(
   } finally {
     clearTimeout(timer)
   }
+
+  const serverTime = Number(response.headers?.get?.('X-Server-Time'))
+  if (serverTime) noteServerTime(serverTime, sentAt, Date.now())
 
   type ErrorBody = {
     message?: string

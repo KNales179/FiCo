@@ -1,4 +1,5 @@
-import { lazy, Suspense } from 'react'
+import { Suspense } from 'react'
+import { lazyPage } from './lib/lazyPage'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { AuthProvider } from './context/AuthContext'
@@ -25,25 +26,25 @@ import Privacy from './pages/Privacy'
 import Home from './pages/Home'
 
 // Secondary routes are split out of the initial bundle (Roadmap Phase 26).
-const Shopping = lazy(() => import('./pages/Shopping'))
-const Bills = lazy(() => import('./pages/Bills'))
-const Budget = lazy(() => import('./pages/Budget'))
-const Analytics = lazy(() => import('./pages/Analytics'))
-const Categories = lazy(() => import('./pages/Categories'))
-const Members = lazy(() => import('./pages/Members'))
-const Activity = lazy(() => import('./pages/Activity'))
-const Account = lazy(() => import('./pages/Account'))
-const Settings = lazy(() => import('./pages/Settings'))
-const Tutorial = lazy(() => import('./pages/Tutorial'))
-const Credits = lazy(() => import('./pages/Credits'))
-const Updates = lazy(() => import('./pages/Updates'))
-const Notifications = lazy(() => import('./pages/Notifications'))
-const AdminUser = lazy(() => import('./pages/AdminUser'))
-const AdminAppeals = lazy(() => import('./pages/AdminAppeals'))
-const AdminAppeal = lazy(() => import('./pages/AdminAppeal'))
-const Admin = lazy(() => import('./pages/Admin'))
-const Feedback = lazy(() => import('./pages/Feedback'))
-const AdminFeedback = lazy(() => import('./pages/AdminFeedback'))
+const Shopping = lazyPage(() => import('./pages/Shopping'))
+const Bills = lazyPage(() => import('./pages/Bills'))
+const Budget = lazyPage(() => import('./pages/Budget'))
+const Analytics = lazyPage(() => import('./pages/Analytics'))
+const Categories = lazyPage(() => import('./pages/Categories'))
+const Members = lazyPage(() => import('./pages/Members'))
+const Activity = lazyPage(() => import('./pages/Activity'))
+const Account = lazyPage(() => import('./pages/Account'))
+const Settings = lazyPage(() => import('./pages/Settings'))
+const Tutorial = lazyPage(() => import('./pages/Tutorial'))
+const Credits = lazyPage(() => import('./pages/Credits'))
+const Updates = lazyPage(() => import('./pages/Updates'))
+const Notifications = lazyPage(() => import('./pages/Notifications'))
+const AdminUser = lazyPage(() => import('./pages/AdminUser'))
+const AdminAppeals = lazyPage(() => import('./pages/AdminAppeals'))
+const AdminAppeal = lazyPage(() => import('./pages/AdminAppeal'))
+const Admin = lazyPage(() => import('./pages/Admin'))
+const Feedback = lazyPage(() => import('./pages/Feedback'))
+const AdminFeedback = lazyPage(() => import('./pages/AdminFeedback'))
 
 const RouteFallback = () => (
   <div className="mx-auto max-w-5xl px-3 py-5 sm:px-4">

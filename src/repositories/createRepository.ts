@@ -7,6 +7,7 @@ import type {
 import { getDB } from '../db/database'
 import type { FicoDB, StoreName } from '../db/schema'
 import type { BaseEntity } from '../types/models'
+import { serverNowIso } from '../lib/clock'
 
 /** Store names whose value type is a soft-deletable entity with id + timestamps. */
 type EntityStoreName = {
@@ -30,7 +31,20 @@ export type NewRecordInput<T extends BaseEntity> = Omit<
   'id' | 'createdAt' | 'updatedAt' | 'deletedAt'
 > & { id?: string }
 
-const nowIso = () => new Date().toISOString()
+// Server-clock time, so "which edit is newer" doesn't depend on this device's clock.
+const nowIso = () => serverNowIso()
+
+// Fields not counted as "changed" by an edit — bookkeeping only.
+const BOOKKEEPING = new Set(['updatedAt', 'syncStatus', 'version'])
+const changedByUpdate = new WeakMap<object, string[]>()
+
+/**
+ * The fields the `update()` that produced this record actually changed — so
+ * the server can merge just those (two people editing *different* fields of
+ * the same record both keep their edit). Undefined for any other record.
+ */
+export const changedFieldsOf = (record: unknown): string[] | undefined =>
+  record && typeof record === 'object' ? changedByUpdate.get(record) : undefined
 
 /**
  * Builds a typed CRUD repository over one IndexedDB object store.
@@ -112,6 +126,17 @@ export function createRepository<K extends RepoStoreName>(storeName: K) {
 
     await tx.store.put(asStoreValue(next))
     await tx.done
+    // Only fields whose value really changed — forms often send every
+    // field back, and an unchanged one mustn't count as "edited" (it would
+    // override someone else's real change to it).
+    const before = existing as unknown as Record<string, unknown>
+    const after = patch as Record<string, unknown>
+    changedByUpdate.set(
+      next,
+      Object.keys(patch).filter(
+        (key) => !BOOKKEEPING.has(key) && JSON.stringify(before[key]) !== JSON.stringify(after[key]),
+      ),
+    )
     return next
   }
 

@@ -199,6 +199,7 @@ const useEditTransactionFields = (
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="What for?"
+            maxLength={120}
             required
             className="input min-w-[8rem] flex-1"
           />

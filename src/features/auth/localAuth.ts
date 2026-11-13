@@ -4,7 +4,9 @@ import { DB_VERSION } from '../../db/schema'
 import {
   MetadataKeys,
   metadataRepository,
+  attachmentRepository,
   sessionRepository,
+  syncEventRepository,
   userRepository,
 } from '../../repositories'
 import type { SessionInfo, User } from '../../types/auth'
@@ -148,9 +150,34 @@ export async function touchLocalAuth(): Promise<void> {
  */
 export async function clearLocalAuth({
   markSignedOut = false,
-}: { markSignedOut?: boolean } = {}): Promise<void> {
+  keepUnsynced = false,
+}: { markSignedOut?: boolean; keepUnsynced?: boolean } = {}): Promise<void> {
   await initDB()
   const deviceId = await getDeviceId()
+
+  // Signed out by the server (session expired after a long time offline,
+  // say) while this device still holds changes it never managed to send:
+  // never delete those. Keep everything, forget only the sign-in, and note
+  // whose changes they are — signing back in as that person sends them up;
+  // anyone else signing in gets a clean slate (see prepareLocalDataFor).
+  if (keepUnsynced) {
+    const unsynced = await countUnsyncedChanges()
+    if (unsynced > 0) {
+      const userId = await metadataRepository.get<string>(MetadataKeys.authUserId)
+      const user = userId ? await userRepository.get(userId) : undefined
+      if (userId) {
+        await metadataRepository.set(UNSYNCED_OWNER_KEY, {
+          userId,
+          username: user?.username ?? null,
+          count: unsynced,
+        } satisfies UnsyncedOwner)
+      }
+      await sessionRepository.revoke(deviceId).catch(() => undefined)
+      await metadataRepository.remove(MetadataKeys.authUserId)
+      if (markSignedOut) await metadataRepository.set(SIGNED_OUT_KEY, true)
+      return
+    }
+  }
 
   await deleteDatabase()
 
@@ -165,6 +192,51 @@ export async function clearLocalAuth({
   if (markSignedOut) {
     await metadataRepository.set(SIGNED_OUT_KEY, true)
   }
+}
+
+const UNSYNCED_OWNER_KEY = 'auth.unsyncedOwner'
+
+export interface UnsyncedOwner {
+  userId: string
+  username: string | null
+  count: number
+}
+
+/** Changes made on this device that the server hasn't accepted yet (waiting, or failed). */
+export async function countUnsyncedChanges(): Promise<number> {
+  await initDB()
+  const [pending, failed] = await Promise.all([
+    syncEventRepository.listPending(),
+    syncEventRepository.listByStatus('FAILED'),
+  ])
+  // Receipt photos aren't part of the change queue any more — count the
+  // ones still waiting on this device directly.
+  const photos = (await attachmentRepository.listPendingUpload()).filter((a) => !a.deletedAt).length
+  return [...pending, ...failed].filter((e) => e.entityType !== 'attachment').length + photos
+}
+
+/** Unsynced changes kept from a sign-out the person didn't choose (shown on the sign-in screen). */
+export async function loadUnsyncedOwner(): Promise<UnsyncedOwner | null> {
+  await initDB()
+  return (await metadataRepository.get<UnsyncedOwner>(UNSYNCED_OWNER_KEY)) ?? null
+}
+
+/**
+ * Right before a successful sign-in is stored: if this device still holds
+ * someone *else's* data (kept unsynced changes, or a previous account that
+ * was never cleared), wipe it first so one person's records never show up
+ * in another's account. The same person's kept changes stay, and sync.
+ */
+export async function prepareLocalDataFor(userId: string): Promise<void> {
+  await initDB()
+  const kept = await metadataRepository.get<UnsyncedOwner>(UNSYNCED_OWNER_KEY)
+  const previous = await metadataRepository.get<string>(MetadataKeys.authUserId)
+  const otherOwner = (kept && kept.userId !== userId) || (previous && previous !== userId)
+  if (otherOwner) {
+    await clearLocalAuth()
+    return
+  }
+  if (kept) await metadataRepository.remove(UNSYNCED_OWNER_KEY)
 }
 
 /** Did the user explicitly sign out (possibly while offline)? */

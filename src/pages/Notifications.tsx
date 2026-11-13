@@ -1,7 +1,17 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useEffect } from 'react'
 import { PageHeader, Button, Card, SkeletonRow } from '../components/ui'
-import { IconBell, IconCheck, IconChevronRight, IconMessage, IconShield, IconSparkles } from '../components/icons'
+import {
+  IconBell,
+  IconCheck,
+  IconChevronDown,
+  IconChevronRight,
+  IconCloudOff,
+  IconMessage,
+  IconRotateCcw,
+  IconShield,
+  IconSparkles,
+} from '../components/icons'
 import {
   markNotificationsRead,
   refreshNotifications,
@@ -9,10 +19,12 @@ import {
   type AppNotification,
 } from '../features/notifications'
 
-const KIND_LOOK: Record<AppNotification['kind'], { icon: typeof IconBell; tone: string; label: string }> = {
-  FEEDBACK_DONE: { icon: IconSparkles, tone: 'bg-success/15 text-success', label: 'Your feedback' },
-  ADMIN_NOTICE: { icon: IconMessage, tone: 'bg-brand/12 text-brand', label: 'Message' },
-  ADMIN_ACTION: { icon: IconShield, tone: 'bg-warning/15 text-warning', label: 'Your account' },
+const KIND_LOOK: Record<AppNotification['kind'], { icon: typeof IconBell; tone: string; label: string; fallbackTitle: string }> = {
+  FEEDBACK_DONE: { icon: IconSparkles, tone: 'bg-success/15 text-success', label: 'Your feedback', fallbackTitle: 'An update on your feedback' },
+  ADMIN_NOTICE: { icon: IconMessage, tone: 'bg-brand/12 text-brand', label: 'Message', fallbackTitle: 'A notice from the Fico Admin Team' },
+  ADMIN_ACTION: { icon: IconShield, tone: 'bg-warning/15 text-warning', label: 'Your account', fallbackTitle: 'An update about your account' },
+  SYNC_REJECTED: { icon: IconCloudOff, tone: 'bg-danger/12 text-danger', label: 'Sync', fallbackTitle: 'A change couldn’t be saved' },
+  SYNC_OVERWRITTEN: { icon: IconRotateCcw, tone: 'bg-warning/15 text-warning', label: 'Sync', fallbackTitle: 'An offline edit was replaced' },
 }
 
 const timeAgo = (iso: string) => {
@@ -30,19 +42,26 @@ const linkLabel = (link: string) => (link === '/updates' ? 'Go check Updates' : 
 
 /**
  * Everything Fico has told you: suggestions or bug reports marked done,
- * messages from the admin team, and changes an admin made to your account.
+ * messages from the admin team, changes an admin made to your account, and
+ * sync problems on this device. Each shows just its title; tap to open it.
  */
 const Notifications = () => {
   const { items, unread, loaded } = useNotifications()
   const navigate = useNavigate()
+  const [open, setOpen] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     void refreshNotifications()
   }, [])
 
-  const open = (n: AppNotification) => {
+  const toggle = (n: AppNotification) => {
     if (!n.readAt) void markNotificationsRead([n.id])
-    if (n.link && n.link !== '/notifications') navigate(n.link)
+    setOpen((prev) => {
+      const next = new Set(prev)
+      if (next.has(n.id)) next.delete(n.id)
+      else next.add(n.id)
+      return next
+    })
   }
 
   return (
@@ -81,48 +100,71 @@ const Notifications = () => {
       )}
 
       {items.length > 0 && (
-        <ul className="space-y-2.5">
+        <ul className="space-y-2">
           {items.map((n) => {
             const look = KIND_LOOK[n.kind] ?? KIND_LOOK.ADMIN_NOTICE
             const Icon = look.icon
-            const clickable = Boolean(n.link && n.link !== '/notifications') || !n.readAt
+            const expanded = open.has(n.id)
+            const title = n.title?.trim() || look.fallbackTitle
             return (
-              <li key={n.id}>
-                <div
-                  role={clickable ? 'button' : undefined}
-                  tabIndex={clickable ? 0 : undefined}
-                  onClick={() => open(n)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      open(n)
-                    }
-                  }}
-                  className={`card flex gap-3 transition-colors ${clickable ? 'cursor-pointer hover:border-brand/40' : ''} ${
-                    n.readAt ? '' : 'border-brand/40 bg-brand/[0.04]'
+              <li key={n.id} className={`card overflow-hidden p-0 ${n.readAt ? '' : 'border-brand/40'}`}>
+                <button
+                  type="button"
+                  onClick={() => toggle(n)}
+                  aria-expanded={expanded}
+                  className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-panel-2/60 ${
+                    n.readAt ? '' : 'bg-brand/[0.04]'
                   }`}
                 >
-                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${look.tone}`}>
-                    <Icon size={18} />
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${look.tone}`}>
+                    <Icon size={17} />
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className={`text-sm ${n.readAt ? 'font-medium' : 'font-bold'} text-ink`}>{n.title}</p>
-                      {!n.readAt && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" aria-label="Unread" />}
-                    </div>
-                    <p className="mt-0.5 whitespace-pre-line text-sm text-muted">{n.body}</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-                      <span>{look.label}</span>
-                      {n.senderName && <span>· from {n.senderName}</span>}
-                      <span>· {timeAgo(n.createdAt)}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className={`block truncate text-sm ${n.readAt ? 'font-medium' : 'font-bold'} text-ink`}>{title}</span>
+                    <span className="block text-xs text-muted">
+                      {look.label} · {timeAgo(n.createdAt)}
+                    </span>
+                  </span>
+                  {!n.readAt && <span className="h-2 w-2 shrink-0 rounded-full bg-brand" aria-label="Unread" />}
+                  <IconChevronDown size={16} className={`shrink-0 text-muted transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                </button>
+
+                {expanded && (
+                  <div className="border-t border-line px-4 py-3">
+                    {n.body && <p className="whitespace-pre-line text-sm text-ink">{n.body}</p>}
+
+                    {n.sections && n.sections.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {n.sections.map((section, i) => (
+                          <div key={i} className="rounded-xl border border-line bg-panel-2 px-3 py-2">
+                            <p className="text-sm font-semibold text-ink">{section.heading}</p>
+                            <dl className="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-xs">
+                              {section.lines.map((line, j) => (
+                                <div key={j} className="contents">
+                                  <dt className="text-muted">{line.label}</dt>
+                                  <dd className="break-words text-ink">{line.value}</dd>
+                                </div>
+                              ))}
+                            </dl>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                      {n.senderName && <span>from {n.senderName}</span>}
                       {n.link && n.link !== '/notifications' && (
-                        <span className="ml-auto inline-flex items-center gap-0.5 font-semibold text-brand">
+                        <button
+                          type="button"
+                          onClick={() => navigate(n.link!)}
+                          className="ml-auto inline-flex items-center gap-0.5 font-semibold text-brand hover:underline"
+                        >
                           {linkLabel(n.link)} <IconChevronRight size={14} />
-                        </span>
+                        </button>
                       )}
                     </div>
                   </div>
-                </div>
+                )}
               </li>
             )
           })}

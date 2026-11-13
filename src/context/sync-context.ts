@@ -21,6 +21,10 @@ export interface SyncContextValue {
   /** Changes the server permanently rejected — need a manual retry. */
   failedCount: number
   lastSyncAt: string | null
+  /** When the open Finance last got fresh data from the server. */
+  activeSyncedAt: string | null
+  /** False when the open Finance has never been downloaded to this device. */
+  activeDownloaded: boolean
   lastError: string | null
   /** Force a sync cycle now. */
   syncNow: () => Promise<void>

@@ -9,7 +9,7 @@ import {
 import { recognizeReceiptText } from '../../features/receipts/ocr'
 import { recordScannedReceipt } from '../../features/receipts'
 import { suggestForName } from '../../features/items'
-import { addAttachment } from '../../features/attachments'
+import { saveReceiptLocally } from '../../features/attachments'
 import { formatMoney, parseAmountToMinor } from '../../domain/money'
 import { Button, Card, Input } from '../ui'
 import { IconCamera, IconUpload, IconX } from '../icons'
@@ -244,7 +244,8 @@ const ScanReceipt = () => {
       })
 
       if (photo) {
-        await addAttachment(ctx, {
+        // Kept on this device, then uploaded once the record has synced.
+        await saveReceiptLocally(ctx, {
           entityType: 'TRANSACTION',
           entityId: transaction.id,
           file: photo,

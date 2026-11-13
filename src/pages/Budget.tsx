@@ -113,6 +113,7 @@ const EditableAmountList = ({
                   onChange={(e) => setEditName(e.target.value)}
                   aria-label="Name"
                   autoFocus
+                  maxLength={80}
                   className="input min-w-[8rem] flex-1 py-1.5 text-sm"
                 />
                 <input
@@ -172,6 +173,7 @@ const EditableAmountList = ({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={addPlaceholder}
+          maxLength={80}
           className="input min-w-[8rem] flex-1"
         />
         <input

@@ -26,12 +26,14 @@ import {
 import {
   clearLocalAuth,
   ensureDeviceId,
+  prepareLocalDataFor,
   loadLocalAuth,
   persistLocalAuth,
   wasSignedOut,
 } from '../features/auth/localAuth'
 import { useConnectivity } from '../hooks/useConnectivity'
 import { AuthContext } from './auth-context'
+import { onSessionRejected } from '../features/sync/events'
 import { clearNotificationCache, seedDemoNotifications } from '../features/notifications'
 import { DEMO_USER_ID, enterDemoMode, isDemoMode, leaveDemoMode, loadDemoUser } from '../features/demo/demoMode'
 import { purgeDemoData, seedDemoData } from '../features/demo/seed'
@@ -59,6 +61,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const applyServerAuth = useCallback(
     async (nextUser: User, session?: SessionInfo) => {
+      // Another account's leftovers on this device are cleared first; this
+      // account's own kept (unsynced) changes stay and get sent up.
+      await prepareLocalDataFor(nextUser.id)
       setUser(toUser(nextUser))
       setOffline(false)
       await persistLocalAuth(nextUser, session)
@@ -66,9 +71,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     [],
   )
 
+  /**
+   * The server ended this session (expired, revoked…): sign out, but keep
+   * any changes this device never got to send — they're the person's work,
+   * and they sync as soon as that person signs back in. Only an explicit
+   * "Log out" (which warns first) clears them.
+   */
   const dropAuth = useCallback(
-    async (options?: { markSignedOut?: boolean }) => {
-      await clearLocalAuth(options)
+    async (options?: { markSignedOut?: boolean; keepUnsynced?: boolean }) => {
+      await clearLocalAuth({ keepUnsynced: true, ...options })
       clearNotificationCache()
       setUser(null)
       setOffline(false)
@@ -169,6 +180,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       })
   }, [serverReachable, offline, user, applyServerAuth, dropAuth])
 
+  // A sync found the server no longer accepts this session — sign out now
+  // (keeping any unsynced changes) so the person can sign back in.
+  useEffect(() => {
+    if (!user || isDemoMode()) return
+    return onSessionRejected(() => {
+      void dropAuth()
+    })
+  }, [user, dropAuth])
+
   // Keep an actively used session alive: while the app is open and visible,
   // check in with the server now and then (and whenever it comes back to the
   // foreground). Each check slides the expiry forward server-side, so a
@@ -266,7 +286,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch {
       // Offline or already gone — clear locally regardless.
     } finally {
-      await dropAuth({ markSignedOut: true })
+      await dropAuth({ markSignedOut: true, keepUnsynced: false })
     }
   }
 

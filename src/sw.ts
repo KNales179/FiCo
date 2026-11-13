@@ -1,6 +1,8 @@
 /// <reference lib="webworker" />
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
+import { pushPending } from './features/sync/engine'
+import { MetadataKeys, metadataRepository } from './repositories'
 
 declare let self: ServiceWorkerGlobalScope
 
@@ -72,4 +74,28 @@ self.addEventListener('notificationclick', (event) => {
         return self.clients.openWindow(url)
       }),
   )
+})
+
+// ── Background sync (Android / Chrome) ────────────────────────────────
+// Changes made while offline upload even if Fico was closed: the app asks
+// for a 'fico-sync' when it queues a change, and the browser fires it here
+// once there's a connection. Same sync code as the app itself; throwing
+// (still no connection) makes the browser try again later.
+
+const backgroundPush = async () => {
+  const [userId, deviceId] = await Promise.all([
+    metadataRepository.get<string>(MetadataKeys.authUserId),
+    metadataRepository.get<string>(MetadataKeys.deviceId),
+  ])
+  if (!userId || !deviceId) return
+  const { pushed, rejected } = await pushPending({ spaceId: '', userId, deviceId })
+  if (pushed || rejected) {
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    for (const client of clients) client.postMessage({ type: 'fico-synced' })
+  }
+}
+
+self.addEventListener('sync', (event) => {
+  const e = event as ExtendableEvent & { tag?: string }
+  if (e.tag === 'fico-sync') e.waitUntil(backgroundPush())
 })
