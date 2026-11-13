@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import Badges from '../components/Badges'
+import { ROLE_HINT, ROLE_LABEL } from '../features/spaces/roles'
 import { Link, useNavigate } from 'react-router-dom'
 import { useSpace } from '../hooks/useSpace'
 import { useAuth } from '../hooks/useAuth'
@@ -8,11 +10,14 @@ import {
   listInvitations,
   listMembers,
   removeMember,
+  setMemberRole,
   revokeInvitation,
   transferOwnership,
   type PendingInvitation,
 } from '../services/spaceService'
 import { isNetworkError } from '../lib/api'
+import { isDemoMode } from '../features/demo/demoMode'
+import { loadDemoMembers, setDemoMemberRole } from '../features/demo/members'
 import type { SpaceMember } from '../types/space'
 import { PageHeader, Card, Button, Input, Alert, EmptyState, SkeletonRow } from '../components/ui'
 import {
@@ -74,11 +79,18 @@ const Members = () => {
   const isOwner = activeSpace?.role === 'OWNER'
   const isFamily = activeSpace?.type === 'FAMILY'
   const spaceId = activeSpace?.id
+  // The demo has a pretend household; only role changes work, on this device.
+  const demo = isDemoMode()
 
   const load = useCallback(async () => {
     if (!spaceId) return
     setLoading(true)
     setError('')
+    if (demo) {
+      setMembers(loadDemoMembers())
+      setLoading(false)
+      return
+    }
     try {
       const m = await listMembers(spaceId)
       setMembers(m.members)
@@ -98,12 +110,30 @@ const Members = () => {
     } finally {
       setLoading(false)
     }
-  }, [spaceId, isOwner])
+  }, [spaceId, isOwner, demo])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
   }, [load])
+
+  const changeRole = async (m: SpaceMember, role: 'ADMIN' | 'MEMBER' | 'VIEWER') => {
+    if (!spaceId) return
+    setMessage('')
+    setError('')
+    if (demo) {
+      setMembers(setDemoMemberRole(m.userId, role))
+      setMessage(`${m.displayName || m.username} is now ${role === 'ADMIN' ? 'an' : 'a'} ${ROLE_LABEL[role]} — in the demo, they’d now get that role’s access.`)
+      return
+    }
+    try {
+      const res = await setMemberRole(spaceId, m.userId, role)
+      setMessage(res.message)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not change their role')
+    }
+  }
 
   const invite = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -180,7 +210,7 @@ const Members = () => {
       <PageHeader
           icon={IconUsers}
         title={`${activeSpace.name} · members`}
-        description="Everyone here is a full participant. Only the owner can invite, remove, or hand over the Finance."
+        description="Owner manages members and roles · Admins edit everything and see Activity · Members add and edit · Viewers can only look."
         actions={
           !isOwner ? (
             <Button variant="ghost" onClick={() => void leave()} data-tour="members-leave">
@@ -232,24 +262,41 @@ const Members = () => {
                   <td>
                     <span className="flex items-center gap-2.5">
                       <MemberAvatar member={m} />
-                      <span>
-                        {m.displayName || m.username || m.userId}
-                        {m.userId === user?.id && (
-                          <span className="text-muted"> (you)</span>
-                        )}
+                      <span className="min-w-0">
+                        <span className="block">
+                          {m.displayName || m.username || m.userId}
+                          {m.userId === user?.id && (
+                            <span className="text-muted"> (you)</span>
+                          )}
+                        </span>
+                        <Badges badges={m.badges} size="xs" />
                       </span>
                     </span>
                   </td>
                   <td>
-                    {m.role === 'OWNER' ? (
-                      <span className="chip">owner</span>
+                    {isOwner && m.role !== 'OWNER' && !offline ? (
+                      <select
+                        value={m.role}
+                        aria-label={`Role for ${m.displayName || m.username}`}
+                        onChange={(e) => void changeRole(m, e.target.value as 'ADMIN' | 'MEMBER' | 'VIEWER')}
+                        className="select w-auto py-1 text-sm"
+                        title={ROLE_HINT[m.role]}
+                      >
+                        {(['ADMIN', 'MEMBER', 'VIEWER'] as const).map((r) => (
+                          <option key={r} value={r}>
+                            {ROLE_LABEL[r]}
+                          </option>
+                        ))}
+                      </select>
                     ) : (
-                      <span className="text-muted">member</span>
+                      <span className={m.role === 'OWNER' ? 'chip' : 'text-sm text-muted'} title={ROLE_HINT[m.role]}>
+                        {ROLE_LABEL[m.role]}
+                      </span>
                     )}
                   </td>
                   {isOwner && (
                     <td className="text-right">
-                      {m.role !== 'OWNER' && !offline && (
+                      {m.role !== 'OWNER' && !offline && !demo && (
                         <span className="flex items-center justify-end gap-1">
                           <Button
                             size="sm"
@@ -318,7 +365,12 @@ const Members = () => {
                 required
                 className="min-w-[12rem] flex-1"
               />
-              <Button type="submit" variant="primary" disabled={offline} title={offline ? 'Needs a connection' : undefined}>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={offline || demo}
+                title={demo ? 'Create a free account to invite real people' : offline ? 'Needs a connection' : undefined}
+              >
                 <IconUserPlus size={16} />
                 Invite
               </Button>
@@ -327,6 +379,11 @@ const Members = () => {
               If they already use Fico they're added straight away; otherwise
               they join automatically when they sign up with that email.
             </p>
+            {demo && (
+              <p className="mt-1 text-xs text-muted">
+                These are pretend members — create a free account to invite real people. You can still try changing roles above.
+              </p>
+            )}
             {message && <p className="mt-2 text-xs text-success">{message}</p>}
           </form>
         </Card>

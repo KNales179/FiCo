@@ -225,6 +225,7 @@ export const seedDemoData = async (userId: string): Promise<void> => {
       expectedAmountMinor: 260000,
       nextDueDate: daysAhead(4),
       tracksElectricity: true,
+      usageKind: 'ELECTRICITY',
     }),
     bill('demo-bill-internet', 'Internet (PLDT Fiber)', {
       expectedAmountMinor: 169900,
@@ -234,11 +235,13 @@ export const seedDemoData = async (userId: string): Promise<void> => {
       billType: 'VARIABLE',
       expectedAmountMinor: 48000,
       nextDueDate: daysAhead(19),
+      usageKind: 'WATER',
     }),
     bill('demo-bill-lpg', 'LPG refill', {
       recurrence: 'NONE',
       expectedAmountMinor: 98000,
       paymentAccountId: 'demo-cash',
+      usageKind: 'LPG',
     }),
   ]
   await billRepository.bulkPut(bills)
@@ -248,6 +251,7 @@ export const seedDemoData = async (userId: string): Promise<void> => {
   const kwh = [182, 205, 231]
   const electricAmounts = [231500, 259800, 287400]
   const waterAmounts = [41200, 46800, 45100]
+  const waterM3 = [14, 17, 16]
   for (let m = 3; m >= 1; m--) {
     const paid = new Date()
     paid.setUTCDate(1)
@@ -256,7 +260,7 @@ export const seedDemoData = async (userId: string): Promise<void> => {
     const paidAt = paid.toISOString()
     const key = paidAt.slice(0, 7)
     const i = 3 - m
-    const pay = (billId: string, name: string, amountMinor: number) => {
+    const pay = (billId: string, name: string, amountMinor: number, accountId = 'demo-bank') => {
       const txId = `demo-tx-${++n}`
       txns.push({
         ...base,
@@ -267,7 +271,7 @@ export const seedDemoData = async (userId: string): Promise<void> => {
         amountMinor,
         currency: 'PHP',
         title: name,
-        accountId: 'demo-bank',
+        accountId,
         categoryId: catId('Bills'),
         categoryName: 'Bills',
         occurredAt: paidAt,
@@ -285,7 +289,7 @@ export const seedDemoData = async (userId: string): Promise<void> => {
         amountMinor,
         paidAt,
         periodKey: key,
-        accountId: 'demo-bank',
+        accountId,
         transactionId: txId,
         createdBy: userId,
       }
@@ -301,10 +305,37 @@ export const seedDemoData = async (userId: string): Promise<void> => {
       billPaymentId: e.id,
       billingPeriod: key,
       amountMinor: electricAmounts[i],
+      usageKind: 'ELECTRICITY',
       consumptionKwh: kwh[i],
     })
     pay('demo-bill-internet', 'Internet (PLDT Fiber)', 169900)
-    pay('demo-bill-water', 'Water (Maynilad)', waterAmounts[i])
+    const w = pay('demo-bill-water', 'Water (Maynilad)', waterAmounts[i])
+    electricity.push({
+      ...base,
+      id: `demo-water-${key}`,
+      spaceId: S,
+      billId: 'demo-bill-water',
+      billPaymentId: w.id,
+      billingPeriod: key,
+      amountMinor: waterAmounts[i],
+      usageKind: 'WATER',
+      consumptionKwh: waterM3[i],
+    })
+    // An 11 kg LPG tank about every other month.
+    if (i !== 1) {
+      const g = pay('demo-bill-lpg', 'LPG refill', i === 0 ? 92000 : 98000, 'demo-cash')
+      electricity.push({
+        ...base,
+        id: `demo-lpg-${key}`,
+        spaceId: S,
+        billId: 'demo-bill-lpg',
+        billPaymentId: g.id,
+        billingPeriod: paidAt,
+        amountMinor: i === 0 ? 92000 : 98000,
+        usageKind: 'LPG',
+        consumptionKwh: 11,
+      })
+    }
   }
   await billPaymentRepository.bulkPut(payments)
   await electricityRecordRepository.bulkPut(electricity)

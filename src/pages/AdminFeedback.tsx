@@ -55,6 +55,9 @@ const AdminFeedback = () => {
   }
 
   const openCount = rows?.filter((r) => r.status === 'OPEN').length ?? 0
+  const [pageFilter, setPageFilter] = useState('')
+  const taggedPages = [...new Set((rows ?? []).map((r) => r.page).filter((p): p is string => Boolean(p)))].sort()
+  const shown = rows?.filter((r) => !pageFilter || (pageFilter === '__none' ? !r.page : r.page === pageFilter)) ?? null
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -75,13 +78,28 @@ const AdminFeedback = () => {
         </Card>
       )}
 
-      {rows && (
+      {rows && taggedPages.length > 0 && (
+        <label className="flex items-center gap-2 text-sm text-muted">
+          Page
+          <select value={pageFilter} onChange={(e) => setPageFilter(e.target.value)} className="select w-auto py-1.5 text-sm">
+            <option value="">All pages</option>
+            {taggedPages.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+            <option value="__none">Not tagged</option>
+          </select>
+        </label>
+      )}
+
+      {shown && (
         <Card>
           <ul className="divide-y divide-line">
-            {rows.length === 0 && (
+            {shown.length === 0 && (
               <li className="py-3 text-sm text-muted">Nothing reported yet.</li>
             )}
-            {rows.map((row) => (
+            {shown.map((row) => (
               <li
                 key={row.id}
                 className={`py-3 text-sm ${row.status === 'OPEN' ? 'bg-warning/5' : ''}`}
@@ -100,6 +118,14 @@ const AdminFeedback = () => {
                     <span className="ml-2 text-xs text-muted">
                       {row.reporter.displayName || row.reporter.username} · {formatDate(row.createdAt)}
                     </span>
+                    {row.page && (
+                      <p className="mt-1 flex flex-wrap gap-1 text-[11px]">
+                        <span className="rounded-full bg-brand/12 px-2 py-0.5 font-medium text-brand">{row.page}</span>
+                        {row.section && (
+                          <span className="rounded-full bg-brand/12 px-2 py-0.5 font-medium text-brand">{row.section}</span>
+                        )}
+                      </p>
+                    )}
                     <p className="mt-1 whitespace-pre-wrap">{row.message}</p>
                   </div>
                   <Button

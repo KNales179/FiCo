@@ -11,6 +11,7 @@ export interface AdminUser {
   totpEnabled: boolean
   emailVerified: boolean
   avatarUrl?: string | null
+  badges?: string[]
   restricted?: boolean
   createdAt: string
   isSelf: boolean
@@ -79,6 +80,8 @@ export interface AdminUserProfile {
   restriction: { reason: string; until: string | null; at: string } | null
   deletedByAdmin: { reason: string; at: string } | null
   stats: { finances: number; ownedFinances: number; feedbackOpen: number; feedbackTotal: number }
+  badges: string[]
+  financeRoles: { spaceId: string; name: string; role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER' }[]
 }
 
 export interface AdminAuditEntry {
@@ -111,3 +114,10 @@ export const unrestrictUser = (userId: string, note?: string) =>
 
 export const deleteUser = (userId: string, reason: string, confirmPassword: string) =>
   api<Ok>(`/admin/users/${userId}`, { method: 'DELETE', body: { reason, confirmPassword } })
+
+/** Give or take away a Fico badge (Beta tester; Fico Owner only by a Fico Owner). */
+export const setUserBadge = (userId: string, badge: 'FICO_OWNER' | 'BETA_TESTER', on: boolean) =>
+  api<{ success: boolean; message: string; badges: string[] }>(`/admin/users/${userId}/badges`, {
+    method: 'POST',
+    body: { badge, on },
+  })

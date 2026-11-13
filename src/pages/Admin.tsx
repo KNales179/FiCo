@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { listUsers, type AdminUser } from '../services/adminService'
 import { listAppeals } from '../services/appealService'
+import Badges from '../components/Badges'
 import { Link } from 'react-router-dom'
 import { PageHeader, Card, Alert, SkeletonRow } from '../components/ui'
 import { IconChevronRight, IconMessage, IconSearch, IconShield } from '../components/icons'
@@ -108,6 +109,7 @@ const Admin = () => {
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <span className="truncate text-sm font-semibold text-ink">{u.displayName || u.username}</span>
                       {u.isSelf && <span className="text-xs text-muted">(you)</span>}
+                      <Badges badges={u.badges} size="xs" />
                       {u.role === 'ADMIN' && (
                         <span className="rounded-full bg-brand/15 px-2 py-0.5 text-[11px] font-medium text-brand">admin</span>
                       )}

@@ -12,8 +12,11 @@ import {
   IconArrowUpRight,
   IconChart,
   IconClipboardCheck,
+  IconStar,
   IconWallet,
 } from '../components/icons'
+import { PinMenu } from '../components/money/PinnedBalance'
+import { loadPinned, savePinned, type PinnedChoice } from '../features/dashboard/pinnedBalance'
 import { BarChart, EmptyChart, RankedBars } from '../components/charts'
 import { dailySpending, spendingByCategory, startOfMonthIso } from '../domain/insights'
 import { RECEIPT_SCAN_ENABLED } from '../features/receipts/flags'
@@ -57,6 +60,22 @@ const SummaryCard = ({ onCashCheck }: { onCashCheck?: () => void }) => {
     return { spent, received, label: now.toLocaleDateString(undefined, { month: 'long' }) }
   }, [transactions, currency])
 
+  // A balance this person pinned to see first (next to the Total, or instead of it).
+  const spaceId = activeSpace?.id ?? null
+  const [pinState, setPinState] = useState<{ spaceId: string | null; choice: PinnedChoice | null }>(() => ({
+    spaceId,
+    choice: loadPinned(spaceId),
+  }))
+  const pinChoice = pinState.spaceId === spaceId ? pinState.choice : loadPinned(spaceId)
+  const choosePin = (choice: PinnedChoice | null) => {
+    if (!spaceId) return
+    savePinned(spaceId, choice)
+    setPinState({ spaceId, choice })
+  }
+  // Archived or deleted since? Quietly back to just the Total.
+  const pinned = pinChoice ? accounts.find((a) => a.id === pinChoice.accountId && a.status === 'ACTIVE') ?? null : null
+  const pinMode = pinChoice?.mode ?? 'beside'
+
   const otherTotals = Object.entries(totalsByCurrency).filter(([c]) => c !== currency)
   const activeCount = accounts.filter((a) => a.status === 'ACTIVE').length
   const roleNote =
@@ -80,19 +99,46 @@ const SummaryCard = ({ onCashCheck }: { onCashCheck?: () => void }) => {
         )}
       </div>
 
-      <div className="mt-5">
-        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted">
-          <IconWallet size={14} />
-          Total balance · {activeCount} account{activeCount === 1 ? '' : 's'}
-        </p>
-        <p className="mt-1 text-4xl font-bold tracking-tight tabular-nums text-ink sm:text-5xl">
-          {formatMoney(totalsByCurrency[currency] ?? 0, currency)}
-        </p>
-        <Approx minor={totalsByCurrency[currency] ?? 0} currency={currency} className="mt-0.5 text-sm" />
-        {otherTotals.length > 0 && (
-          <p className="mt-1 text-sm text-muted tabular-nums">
-            {otherTotals.map(([c, v]) => `+ ${formatMoney(v, c)}`).join('  ')}
-          </p>
+      <div className="mt-5 flex flex-col gap-4">
+        {pinned && (
+          <div className={pinMode === 'beside' ? 'order-2 border-t border-line/70 pt-3' : ''}>
+            <p className="flex flex-wrap items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted">
+              <IconStar size={14} className="text-brand" />
+              {pinned.name}
+              <PinMenu accounts={accounts} current={pinChoice} onChange={choosePin} />
+            </p>
+            <p
+              className={`mt-1 font-bold tracking-tight tabular-nums text-ink ${
+                pinMode === 'beside' ? 'text-3xl sm:text-4xl' : 'text-4xl sm:text-5xl'
+              }`}
+            >
+              {formatMoney(pinned.balanceMinor, pinned.currency)}
+            </p>
+            <Approx minor={pinned.balanceMinor} currency={pinned.currency} className="mt-0.5 text-sm" />
+          </div>
+        )}
+
+        {(!pinned || pinMode === 'beside') && (
+          <div className={pinned ? 'order-1' : ''}>
+            <p className="flex flex-wrap items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted">
+              <IconWallet size={14} />
+              Total balance · {activeCount} account{activeCount === 1 ? '' : 's'}
+              {!pinned && <PinMenu accounts={accounts} current={null} onChange={choosePin} />}
+            </p>
+            <p
+              className={`mt-1 font-bold tracking-tight tabular-nums text-ink ${
+                pinned ? 'text-3xl sm:text-4xl' : 'text-4xl sm:text-5xl'
+              }`}
+            >
+              {formatMoney(totalsByCurrency[currency] ?? 0, currency)}
+            </p>
+            <Approx minor={totalsByCurrency[currency] ?? 0} currency={currency} className="mt-0.5 text-sm" />
+            {otherTotals.length > 0 && (
+              <p className="mt-1 text-sm text-muted tabular-nums">
+                {otherTotals.map(([c, v]) => `+ ${formatMoney(v, c)}`).join('  ')}
+              </p>
+            )}
+          </div>
         )}
       </div>
 

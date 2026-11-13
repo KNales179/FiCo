@@ -23,6 +23,7 @@ import {
   IconCompass,
   IconShield,
   IconBell,
+  IconEye,
   IconChevronDown,
   IconLogOut,
   type IconProps,
@@ -44,6 +45,7 @@ import FicoLogo from './FicoLogo'
 import NoticePopup from './NoticePopup'
 import PageErrorBoundary from './PageErrorBoundary'
 import { useGuardedLogout } from './useGuardedLogout'
+import { canSeeActivity } from '../features/spaces/roles'
 import DemoBanner from './DemoBanner'
 import { useNotificationPolling, useNotifications } from '../features/notifications'
 import { useStaggerIn } from '../lib/motion'
@@ -53,7 +55,7 @@ type IconComponent = ComponentType<IconProps>
 /** Primary destinations — always visible (bottom bar on mobile, header on desktop). */
 const PRIMARY: { to: string; label: string; icon: IconComponent; end?: boolean }[] = [
   { to: '/', label: 'Dashboard', icon: IconHome, end: true },
-  { to: '/shopping', label: 'Shopping', icon: IconCart },
+  { to: '/shopping', label: 'To-buy', icon: IconCart },
   { to: '/bills', label: 'Bills', icon: IconReceipt },
   { to: '/budget', label: 'Budget', icon: IconCalendar },
   { to: '/analytics', label: 'Analytics', icon: IconChart },
@@ -95,7 +97,7 @@ const primaryLink = ({ isActive }: { isActive: boolean }) =>
 const AppLayout = () => {
   const { user } = useAuth()
   const { requestLogout, logoutDialog } = useGuardedLogout()
-  const { activeSpaceId } = useSpace()
+  const { activeSpaceId, activeSpace } = useSpace()
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
   const pageRef = useRef<HTMLDivElement>(null)
@@ -166,6 +168,11 @@ const AppLayout = () => {
 
   const initial = (user?.displayName || user?.username || '?').charAt(0).toUpperCase()
   const youItems = user?.role === 'ADMIN' ? [...MENU_YOU, ADMIN_ITEM] : MENU_YOU
+  // Activity (who changed what) is for a shared Finance's owner and admins.
+  const financeItems = MENU_FINANCE.filter(
+    (item) => item.to !== '/activity' || !activeSpace || activeSpace.type === 'PERSONAL' || canSeeActivity(activeSpace.role),
+  )
+  const viewer = activeSpace?.role === 'VIEWER'
 
   return (
     <TourProvider>
@@ -281,7 +288,7 @@ const AppLayout = () => {
                     role="menu"
                     className="absolute right-0 z-20 mt-1.5 w-52 overflow-hidden rounded-lg border border-line bg-panel py-1 shadow-lg"
                   >
-                    {[youItems, MENU_FINANCE, MENU_HELP].map((group, groupIndex) => (
+                    {[youItems, financeItems, MENU_HELP].map((group, groupIndex) => (
                       <div
                         key={groupIndex}
                         role="group"
@@ -360,6 +367,12 @@ const AppLayout = () => {
         {/* Suspense here (not just at the app root) so the header and nav
             stay on screen while a page's code downloads — only the content
             area shows a skeleton. */}
+        {viewer && (
+          <p className="mb-4 flex items-center gap-2 rounded-xl border border-line bg-panel-2 px-3.5 py-2.5 text-sm text-muted">
+            <IconEye size={16} className="shrink-0 text-brand" />
+            You’re a viewer in {activeSpace?.name} — you can see everything, but can’t add or change anything.
+          </p>
+        )}
         <div ref={pageRef}>
           <PageErrorBoundary key={location.pathname}>
             <Suspense fallback={<PageSkeleton />}>

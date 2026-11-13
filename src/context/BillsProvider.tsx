@@ -1,3 +1,4 @@
+import { canEditWith } from '../features/spaces/roles'
 import {
   useCallback,
   useEffect,
@@ -45,7 +46,8 @@ export const BillsProvider = ({ children }: { children: ReactNode }) => {
     void ensureDeviceId().then(setDeviceId).catch(() => setDeviceId(null))
   }, [])
 
-  const canEdit = Boolean(activeSpace?.role)
+  // Viewers can see everything but change nothing.
+  const canEdit = canEditWith(activeSpace?.role)
 
   const ctx: MutationContext | null =
     activeSpaceId && user?.id && deviceId

@@ -45,6 +45,7 @@ const toUser = (user: User): User => ({
   displayName: user.displayName ?? null,
   birthday: user.birthday ?? null,
   paydays: user.paydays ?? [],
+  badges: user.badges ?? [],
   role: user.role,
   totpEnabled: user.totpEnabled,
   emailVerified: user.emailVerified,
@@ -127,6 +128,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           displayName: local.user.displayName ?? null,
           birthday: local.user.birthday ?? null,
           paydays: local.user.paydays ?? [],
+          badges: local.user.badges ?? [],
         })
         setOffline(true) // optimistic — applyServerAuth below clears it once confirmed
         setLoading(false)

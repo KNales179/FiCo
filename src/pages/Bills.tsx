@@ -5,7 +5,8 @@ import { useAllTransactions } from '../hooks/useAllTransactions'
 import { useAuth } from '../hooks/useAuth'
 import { useSpace } from '../hooks/useSpace'
 import { formatMoney, parseAmountToMinor } from '../domain/money'
-import { costPerKwhMinor } from '../domain/electricity'
+import { compareElectricityPeriods, costPerKwhMinor } from '../domain/electricity'
+import { formatUsage, periodLabel, recordKindOf, sumByPeriod, USAGE, USAGE_KINDS, usageKindOf, type UsageKind } from '../features/bills/usage'
 import { billPayableFrom, isBillPayable } from '../features/bills'
 import { getLastSeenAt, isUnseen, markSeenNow } from '../features/seen'
 import { PageHeader, Button, Input, Select, Alert, SkeletonCard } from '../components/ui'
@@ -30,6 +31,33 @@ import { openSection } from '../lib/sections'
 import { BarChart, EmptyChart } from '../components/charts'
 import { monthlyInOut, shortMonth, startOfMonthIso } from '../domain/insights'
 import type { Bill, BillPayment, BillRecurrence, BillType } from '../types/models'
+
+
+/** "Track usage": none, or electricity (kWh), water (m³), LPG (kg), fuel (L). */
+const UsagePicker = ({
+  value,
+  onChange,
+  className = '',
+}: {
+  value: UsageKind | ''
+  onChange: (kind: UsageKind | '') => void
+  className?: string
+}) => (
+  <select
+    value={value}
+    onChange={(e) => onChange(e.target.value as UsageKind | '')}
+    aria-label="Track usage"
+    title={value ? `e.g. ${USAGE[value].examples}` : 'Track how much you use, to see cost per unit'}
+    className={`select ${className}`}
+  >
+    <option value="">No usage tracking</option>
+    {USAGE_KINDS.map((k) => (
+      <option key={k} value={k}>
+        Track {USAGE[k].option}
+      </option>
+    ))}
+  </select>
+)
 
 const SEEN_AREA = 'bills'
 
@@ -85,9 +113,7 @@ const EditBillForm = ({
     bill.scheduledDates ?? [],
   )
   const [scheduledInput, setScheduledInput] = useState('')
-  const [tracksElectricity, setTracksElectricity] = useState(
-    bill.tracksElectricity,
-  )
+  const [usageKind, setUsageKind] = useState<UsageKind | ''>(usageKindOf(bill) ?? '')
   const [categoryId, setCategoryId] = useState(bill.categoryId ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -146,7 +172,8 @@ const EditBillForm = ({
         expectedAmountMinor: expectedMinor,
         nextDueDate,
         scheduledDates,
-        tracksElectricity,
+        usageKind: usageKind || null,
+        tracksElectricity: usageKind === 'ELECTRICITY',
         categoryId: categoryId || null,
         categoryName: categoryId
           ? categories.find((c) => c.id === categoryId)?.name ?? null
@@ -213,14 +240,7 @@ const EditBillForm = ({
           onChange={setCategoryId}
           className="select w-auto"
         />
-        <label className="flex items-center gap-1.5 text-sm text-muted">
-          <input
-            type="checkbox"
-            checked={tracksElectricity}
-            onChange={(e) => setTracksElectricity(e.target.checked)}
-          />
-          Track kWh
-        </label>
+        <UsagePicker value={usageKind} onChange={setUsageKind} className="w-auto" />
       </div>
 
       {recurrence === 'SCHEDULED' && (
@@ -341,7 +361,7 @@ const UpcomingRow = ({
         amountMinor: minor,
         accountId: accountId || defaultAccount?.id || active[0]?.id || '',
         electricity:
-          bill.tracksElectricity && kwh.trim() !== ''
+          usageKindOf(bill) && kwh.trim() !== ''
             ? { consumptionKwh: Number(kwh) || null }
             : null,
       })
@@ -400,13 +420,14 @@ const UpcomingRow = ({
                 </option>
               ))}
             </Select>
-            {bill.tracksElectricity && (
+            {usageKindOf(bill) && (
               <Input
                 value={kwh}
                 onChange={(e) => setKwh(e.target.value)}
                 inputMode="decimal"
-                placeholder="kWh"
-                aria-label="kWh used"
+                placeholder={USAGE[usageKindOf(bill)!].unit}
+                aria-label={USAGE[usageKindOf(bill)!].inputLabel}
+                title={USAGE[usageKindOf(bill)!].inputLabel}
                 className="w-20"
               />
             )}
@@ -501,7 +522,12 @@ const PaidBills = ({
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const kwhByPayment = useMemo(
-    () => new Map(electricity.map((r) => [r.billPaymentId, r.consumptionKwh])),
+    () =>
+      new Map(
+        electricity
+          .filter((r) => r.consumptionKwh != null)
+          .map((r) => [r.billPaymentId, formatUsage(r.consumptionKwh!, recordKindOf(r))]),
+      ),
     [electricity],
   )
   const accountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? 'an account'
@@ -565,7 +591,7 @@ const PaidBills = ({
                     })}
                     {' · from '}
                     {accountName(p.accountId)}
-                    {kwh != null && ` · ${kwh} kWh`}
+                    {kwh != null && ` · ${kwh}`}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
@@ -811,7 +837,7 @@ const Bills = () => {
   // SCHEDULED only — one or more specific dates, built up before submit.
   const [scheduledDraft, setScheduledDraft] = useState<string[]>([])
   const [scheduledInput, setScheduledInput] = useState('')
-  const [tracksElectricity, setTracksElectricity] = useState(false)
+  const [usageKind, setUsageKind] = useState<UsageKind | ''>('')
   const [categoryId, setCategoryId] = useState(
     () => categories.find((c) => c.name === 'Bills')?.id ?? '',
   )
@@ -903,7 +929,8 @@ const Bills = () => {
         nextDueDate,
         scheduledDates,
         expectedAmountMinor: expectedMinor,
-        tracksElectricity,
+        usageKind: usageKind || null,
+        tracksElectricity: usageKind === 'ELECTRICITY',
         categoryId: categoryId || null,
         categoryName: categoryId
           ? categories.find((c) => c.id === categoryId)?.name ?? null
@@ -914,7 +941,7 @@ const Bills = () => {
       setDueDate('')
       setScheduledDraft([])
       setScheduledInput('')
-      setTracksElectricity(false)
+      setUsageKind('')
       setAdding(false)
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Could not create bill')
@@ -1096,14 +1123,7 @@ const Bills = () => {
                     onChange={setCategoryId}
                     className="select w-full"
                   />
-                  <label className="flex items-center gap-1.5 text-sm text-muted">
-                    <input
-                      type="checkbox"
-                      checked={tracksElectricity}
-                      onChange={(e) => setTracksElectricity(e.target.checked)}
-                    />
-                    Track kWh
-                  </label>
+                  <UsagePicker value={usageKind} onChange={setUsageKind} className="w-full" />
                 </div>
 
                 {formError && (
@@ -1211,87 +1231,6 @@ const Bills = () => {
             </ul>
           </CollapsibleCard>
 
-          <BillsOverview bills={bills} />
-
-          {electricity.length > 0 && (
-            <CollapsibleCard
-              id="bills.electricity"
-              title="Electricity"
-              icon={IconChart}
-              dataTour="bills-electricity"
-            >
-              <div className="grid gap-4 xl:grid-cols-2">
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-muted">Cost per billing period</p>
-                  <div className="mt-2">
-                    <BarChart
-                      ariaLabel="Electricity cost per billing period"
-                      data={[...electricity]
-                        .sort((a, b) => a.billingPeriod.localeCompare(b.billingPeriod))
-                        .slice(-6)
-                        .map((r) => ({
-                          key: r.id,
-                          label: r.billingPeriod.length === 7 ? shortMonth(r.billingPeriod) : r.billingPeriod.slice(5),
-                          title: `${r.billingPeriod}${r.consumptionKwh != null ? ` · ${r.consumptionKwh} kWh` : ''}`,
-                          values: [r.amountMinor],
-                        }))}
-                      series={[{ name: 'Cost', color: 'var(--brand)' }]}
-                      height={150}
-                    />
-                  </div>
-                </div>
-                <div className="min-w-0">
-                  {electricityError && (
-                    <p role="alert" className="mb-1 text-xs text-danger">
-                      {electricityError}
-                    </p>
-                  )}
-                  <table className="w-full text-sm">
-                    <thead className="text-left text-xs text-muted">
-                      <tr>
-                        <th className="py-1">Period</th>
-                        <th className="py-1 text-right">Amount</th>
-                        <th className="py-1 text-right">kWh</th>
-                        <th className="py-1 text-right">₱/kWh</th>
-                        {canEdit && <th className="py-1" />}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {electricity.map((r) => {
-                        const perKwh = costPerKwhMinor(r.amountMinor, r.consumptionKwh)
-                        return (
-                          <tr key={r.id} className="border-t">
-                            <td className="py-1.5">{r.billingPeriod}</td>
-                            <td className="py-1.5 text-right tabular-nums">{formatMoney(r.amountMinor)}</td>
-                            <td className="py-1.5 text-right tabular-nums">{r.consumptionKwh ?? '—'}</td>
-                            <td className="py-1.5 text-right tabular-nums">
-                              {perKwh != null ? formatMoney(perKwh) : '—'}
-                            </td>
-                            {canEdit && (
-                              <td className="py-1 text-right">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  iconOnly
-                                  aria-label="Delete"
-                                  title="Delete"
-                                  className="hover:text-danger"
-                                  onClick={() => void removeElectricityRecord(r.billPaymentId)}
-                                  disabled={electricityBusyId === r.billPaymentId}
-                                >
-                                  <IconTrash size={13} />
-                                </Button>
-                              </td>
-                            )}
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </CollapsibleCard>
-          )}
 
           {archived.length > 0 && (
             <CollapsibleCard
@@ -1384,7 +1323,138 @@ const Bills = () => {
           )}
         </div>
 
-        <aside className="min-w-0">
+        {/* Totals and usage sit above the Paid bills list. */}
+        <aside className="min-w-0 space-y-4">
+          <BillsOverview bills={bills} />
+
+          {USAGE_KINDS.filter(
+            // Only for someone actually paying this kind of bill, once there's a reading.
+            (kind) => electricity.some((r) => recordKindOf(r) === kind) && bills.some((b) => usageKindOf(b) === kind),
+          ).map((kind, index) => {
+            const recs = electricity.filter((r) => recordKindOf(r) === kind)
+            const info = USAGE[kind]
+            const monthly = sumByPeriod(recs)
+            const trend = compareElectricityPeriods(monthly)
+            const latest = trend[trend.length - 1]
+            const used = trend.filter((t) => t.consumptionKwh != null)
+            const avgUse = used.length ? used.reduce((n, t) => n + (t.consumptionKwh ?? 0), 0) / used.length : null
+            return (
+            <CollapsibleCard
+              key={kind}
+              id={kind === 'ELECTRICITY' ? 'bills.electricity' : `bills.usage.${kind.toLowerCase()}`}
+              title={info.label}
+              icon={IconChart}
+              dataTour={index === 0 ? 'bills-electricity' : undefined}
+            >
+              {latest && (
+                <div className="mb-3 grid grid-cols-3 gap-2">
+                  <div className="stat-tile">
+                    <p className="text-[11px] text-muted">Last bill</p>
+                    <p className="text-sm font-semibold tabular-nums text-ink">{formatMoney(latest.amountMinor)}</p>
+                    {latest.amountVsPriorPct != null && (
+                      <p className={`text-[11px] tabular-nums ${latest.amountVsPriorPct > 0 ? 'text-danger' : 'text-success'}`}>
+                        {latest.amountVsPriorPct > 0 ? '▲' : '▼'} {Math.abs(latest.amountVsPriorPct).toFixed(0)}% vs before
+                      </p>
+                    )}
+                  </div>
+                  <div className="stat-tile">
+                    <p className="text-[11px] text-muted">Used</p>
+                    <p className="text-sm font-semibold tabular-nums text-ink">
+                      {latest.consumptionKwh != null ? formatUsage(latest.consumptionKwh, kind) : '—'}
+                    </p>
+                    {latest.kwhVsPriorPct != null && (
+                      <p className={`text-[11px] tabular-nums ${latest.kwhVsPriorPct > 0 ? 'text-danger' : 'text-success'}`}>
+                        {latest.kwhVsPriorPct > 0 ? '▲' : '▼'} {Math.abs(latest.kwhVsPriorPct).toFixed(0)}% vs before
+                      </p>
+                    )}
+                  </div>
+                  <div className="stat-tile">
+                    <p className="text-[11px] text-muted">Avg use</p>
+                    <p className="text-sm font-semibold tabular-nums text-ink">
+                      {avgUse != null ? formatUsage(Math.round(avgUse * 10) / 10, kind) : '—'}
+                    </p>
+                    {latest.costPerKwhMinor != null && (
+                      <p className="text-[11px] tabular-nums text-muted">
+                        {formatMoney(latest.costPerKwhMinor)}
+                        {info.perUnit} now
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+              <div className="grid gap-4">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-muted">Cost per billing period</p>
+                  <div className="mt-2">
+                    <BarChart
+                      ariaLabel={`${info.label} cost per billing period`}
+                      data={monthly
+                        .slice(-6)
+                        .map((r) => ({
+                          key: r.billingPeriod,
+                          label: r.billingPeriod.length === 7 ? shortMonth(r.billingPeriod) : r.billingPeriod.slice(5),
+                          title: `${r.billingPeriod}${r.consumptionKwh != null ? ` · ${formatUsage(r.consumptionKwh, kind)}` : ''}`,
+                          values: [r.amountMinor],
+                        }))}
+                      series={[{ name: 'Cost', color: 'var(--brand)' }]}
+                      height={150}
+                    />
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  {electricityError && (
+                    <p role="alert" className="mb-1 text-xs text-danger">
+                      {electricityError}
+                    </p>
+                  )}
+                  <table className="w-full text-sm">
+                    <thead className="text-left text-xs text-muted">
+                      <tr>
+                        <th className="py-1">Period</th>
+                        <th className="py-1 text-right">Amount</th>
+                        <th className="py-1 text-right">{info.unit}</th>
+                        <th className="py-1 text-right">₱{info.perUnit}</th>
+                        {canEdit && <th className="py-1" />}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recs.map((r) => {
+                        const perKwh = costPerKwhMinor(r.amountMinor, r.consumptionKwh)
+                        return (
+                          <tr key={r.id} className="border-t">
+                            <td className="py-1.5">{periodLabel(r.billingPeriod)}</td>
+                            <td className="py-1.5 text-right tabular-nums">{formatMoney(r.amountMinor)}</td>
+                            <td className="py-1.5 text-right tabular-nums">{r.consumptionKwh ?? '—'}</td>
+                            <td className="py-1.5 text-right tabular-nums">
+                              {perKwh != null ? formatMoney(perKwh) : '—'}
+                            </td>
+                            {canEdit && (
+                              <td className="py-1 text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  iconOnly
+                                  aria-label="Delete"
+                                  title="Delete"
+                                  className="hover:text-danger"
+                                  onClick={() => void removeElectricityRecord(r.billPaymentId)}
+                                  disabled={electricityBusyId === r.billPaymentId}
+                                >
+                                  <IconTrash size={13} />
+                                </Button>
+                              </td>
+                            )}
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </CollapsibleCard>
+            )
+          })}
+
           <PaidBills
             payments={payments}
             billName={billName}

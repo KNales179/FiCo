@@ -5,6 +5,8 @@ export type NotificationKind =
   | 'FEEDBACK_DONE'
   | 'ADMIN_NOTICE'
   | 'ADMIN_ACTION'
+  | 'FINANCE_ROLE'
+  | 'BADGE'
   // Made on this device by the sync (never on the server):
   | 'SYNC_REJECTED'
   | 'SYNC_OVERWRITTEN'

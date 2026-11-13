@@ -56,6 +56,13 @@ export const transferOwnership = (spaceId: string, userId: string) =>
     { method: 'POST', body: { userId } },
   )
 
+/** Owner only: make someone an admin, a member, or a viewer. */
+export const setMemberRole = (spaceId: string, userId: string, role: 'ADMIN' | 'MEMBER' | 'VIEWER') =>
+  api<{ success: boolean; message: string }>(`/spaces/${spaceId}/members/${userId}/role`, {
+    method: 'PATCH',
+    body: { role },
+  })
+
 export const removeMember = (spaceId: string, userId: string) =>
   api<{ success: boolean; message: string }>(
     `/spaces/${spaceId}/members/${userId}`,

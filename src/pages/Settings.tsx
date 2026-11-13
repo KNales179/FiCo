@@ -388,7 +388,7 @@ const NOTIFICATION_CATEGORIES: {
   adminOnly?: boolean
 }[] = [
   { key: 'billReminders', label: 'Bill due reminders', hint: 'A bill of yours is coming due, or overdue.' },
-  { key: 'shoppingUpdates', label: 'Shopping list activity', hint: 'Someone else in your Finance starts a shopping list.' },
+  { key: 'shoppingUpdates', label: 'To-buy list activity', hint: 'Someone else in your Finance starts a to-buy list.' },
   { key: 'billUpdates', label: 'Bill activity', hint: 'Someone else adds a bill, or pays one.' },
   { key: 'accountActivity', label: 'Account activity', hint: 'Someone else records a transaction on an account you added.' },
   { key: 'feedbackReports', label: 'New feedback reports', hint: 'Someone submits a bug report or suggestion.', adminOnly: true },

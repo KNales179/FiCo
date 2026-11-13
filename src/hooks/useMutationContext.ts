@@ -3,6 +3,7 @@ import { ensureDeviceId } from '../features/auth/localAuth'
 import type { MutationContext } from '../features/sync/context'
 import { useAuth } from './useAuth'
 import { useSpace } from './useSpace'
+import { canEditWith } from '../features/spaces/roles'
 
 /**
  * Assembles the `{ spaceId, userId, deviceId }` needed to make a local change
@@ -20,8 +21,8 @@ export const useMutationContext = (): {
     void ensureDeviceId().then(setDeviceId).catch(() => setDeviceId(null))
   }, [])
 
-  // Every member of a Finance can edit it — there is no view-only role.
-  const canEdit = Boolean(activeSpace?.role)
+  // Viewers can see everything but change nothing.
+  const canEdit = canEditWith(activeSpace?.role)
 
   const ctx =
     activeSpaceId && user?.id && deviceId

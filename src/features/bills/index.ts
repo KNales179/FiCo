@@ -5,6 +5,7 @@ import {
   transactionRepository,
 } from '../../repositories'
 import { recordTransaction } from '../money'
+import { usageKindOf, type UsageKind } from './usage'
 import { enqueueMutation } from '../sync/enqueue'
 import type { MutationContext } from '../sync/context'
 import {
@@ -45,6 +46,7 @@ export interface NewBillInput {
   categoryName?: string | null
   paymentAccountId?: string | null
   tracksElectricity?: boolean
+  usageKind?: UsageKind | null
 }
 
 export interface PayBillInput {
@@ -109,7 +111,8 @@ export const createBill = async (
     active: true,
     visibility: 'SPACE',
     createdBy: ctx.userId,
-    tracksElectricity: input.tracksElectricity ?? false,
+    tracksElectricity: (input.usageKind ?? null) === 'ELECTRICITY' || (input.tracksElectricity ?? false),
+    usageKind: input.usageKind ?? (input.tracksElectricity ? 'ELECTRICITY' : null),
     syncStatus: 'PENDING',
     version: 1,
   })
@@ -133,6 +136,7 @@ export const updateBill = async (
       | 'categoryName'
       | 'paymentAccountId'
       | 'tracksElectricity'
+      | 'usageKind'
       | 'active'
     >
   >,
@@ -272,7 +276,8 @@ export const payBill = async (
   })
   await enqueueMutation(ctx, 'billPayment', payment.id, 'PAY', payment)
 
-  if (bill.tracksElectricity && input.electricity) {
+  const usageKind = usageKindOf(bill)
+  if (usageKind && input.electricity) {
     const e = input.electricity
     const record = await electricityRecordRepository.create({
       spaceId: ctx.spaceId,
@@ -280,6 +285,7 @@ export const payBill = async (
       billPaymentId: payment.id,
       billingPeriod: key,
       amountMinor: input.amountMinor,
+      usageKind,
       consumptionKwh: e.consumptionKwh ?? null,
       energyChargeMinor: e.energyChargeMinor ?? null,
       transmissionMinor: e.transmissionMinor ?? null,

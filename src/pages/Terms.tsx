@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-const LAST_UPDATED = 'November 12, 2026'
+const LAST_UPDATED = 'November 13, 2026'
 
 const Terms = () => (
   <main className="mx-auto max-w-2xl px-4 py-10">
@@ -34,7 +34,7 @@ const Terms = () => (
       <section>
         <h2 className="section-title">1. What Fico is</h2>
         <p className="mt-2">
-          Fico is a local-first personal and family finance tracker. It
+          Fico is a local-first personal and shared finance tracker. It
           stores your data on your own device first and, when you're
           online, synchronizes it to a server so it can be shared with
           other members of a Finance you belong to and backed up. Fico
@@ -69,9 +69,9 @@ const Terms = () => (
       <section>
         <h2 className="section-title">3. Shared Finances</h2>
         <p className="mt-2">
-          If you create or join a shared ("Family") Finance, every member
+          If you create or join a shared Finance, every member
           can see and add to the records in it, subject to what each
-          record's own visibility is set to. That includes shopping lists
+          record's own visibility is set to. That includes to-buy lists
           and bills: in a shared Finance, other members can see, add to,
           tick off, pay, and complete them, unless something is marked
           Private. The Finance's currency is shared too and can be changed
@@ -80,6 +80,17 @@ const Terms = () => (
           stops future access but does not erase what already happened
           while they were a member. Choose who you share a Finance with
           accordingly.
+        </p>
+        <p className="mt-2">
+          Each member of a shared Finance has a role. The <strong>Owner</strong>{' '}
+          invites and removes people, sets everyone else's role, and can hand
+          ownership to someone else. <strong>Admins</strong> can add and change
+          everything and can see the Finance's Activity — who added, changed,
+          or deleted what, and when. <strong>Members</strong> can add and change
+          records. <strong>Viewers</strong> can see everything a member could but
+          can't change anything. Giving someone Admin means they can see each
+          member's Activity in that Finance, so choose admins you trust. Roles
+          are enforced by Fico's server, not just hidden in the app.
         </p>
       </section>
 
@@ -92,6 +103,13 @@ const Terms = () => (
           financial, tax, or legal advice, and not a guarantee of your
           actual financial position. Decisions you make based on what Fico
           shows you are your own responsibility.
+        </p>
+        <p className="mt-2">
+          The same goes for usage tracking on bills (electricity in kWh,
+          water in m³, LPG in kg, fuel in litres): cost per unit and usage
+          trends are worked out only from the amounts and readings you type
+          in. They aren't read from your meter or provider and won't match
+          your provider's official rates or computations exactly.
         </p>
       </section>
 
@@ -111,13 +129,20 @@ const Terms = () => (
       </section>
 
       <section>
-        <h2 className="section-title">6. Guided tours and sample data</h2>
+        <h2 className="section-title">6. Guided tours, the demo, and sample data</h2>
         <p className="mt-2">
           The guided tours under "How Fico works" show a temporary Sample
           Finance filled with made-up records. It exists only on your
           device while a tour runs, is never sent to the server or shared
           with anyone, and is deleted when the tour ends. It isn't real
           and doesn't reflect your own finances.
+        </p>
+        <p className="mt-2">
+          "Try the demo" on the sign-in screen works the same way: a
+          pretend account with made-up records and pretend members, kept
+          only on your device. Nothing you do in the demo reaches the
+          server, and leaving the demo erases all of it — it can't be
+          turned into a real account's data.
         </p>
       </section>
 
@@ -158,7 +183,19 @@ const Terms = () => (
       </section>
 
       <section>
-        <h2 className="section-title">10. Limitation of liability</h2>
+        <h2 className="section-title">10. Badges</h2>
+        <p className="mt-2">
+          Fico may show badges on a profile, such as Fico Owner, Fico Admin,
+          or Beta tester. Badges are given at Fico's discretion as a thank
+          you or to show someone's role in running Fico. They have no cash
+          value, can't be bought, sold, or transferred, and may be changed
+          or removed at any time. A badge on its own doesn't give its holder
+          any access to your Finances.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="section-title">11. Limitation of liability</h2>
         <p className="mt-2">
           Fico is provided "as is." To the fullest extent the law allows,
           we're not liable for financial decisions made using it, for data
@@ -169,7 +206,7 @@ const Terms = () => (
       </section>
 
       <section>
-        <h2 className="section-title">11. Changes to these terms</h2>
+        <h2 className="section-title">12. Changes to these terms</h2>
         <p className="mt-2">
           We may update these terms as Fico changes. Continuing to use
           Fico after an update means you accept the revised terms; if a
@@ -180,7 +217,7 @@ const Terms = () => (
       </section>
 
       <section>
-        <h2 className="section-title">12. Contact</h2>
+        <h2 className="section-title">13. Contact</h2>
         <p className="mt-2">
           Questions about these terms, or about your data, can be raised
           through Fico's own "Report & feedback" page once you're signed

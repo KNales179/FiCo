@@ -24,6 +24,8 @@ export interface User {
   birthday?: Birthday | null
   /** Days of the month they usually get paid (31 = last day), at most two. */
   paydays?: number[]
+  /** Fico badges (Fico Owner, Fico Admin, Beta tester…). */
+  badges?: string[]
   role?: UserRole
   totpEnabled?: boolean
   emailVerified?: boolean

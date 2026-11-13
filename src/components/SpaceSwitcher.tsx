@@ -151,7 +151,7 @@ const SpaceSwitcher = () => {
                   autoFocus
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  placeholder="Name it, e.g. Family Expenses"
+                  placeholder="Name it, e.g. Household or My Store"
                   maxLength={60}
                   className="input py-1.5 text-sm"
                 />

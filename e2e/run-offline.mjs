@@ -11,6 +11,10 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { MongoMemoryReplSet } from 'mongodb-memory-server'
 import { runScenarios } from './offline.scenarios.mjs'
+import { runRoleScenarios } from './roles.scenarios.mjs'
+
+// `--roles` runs only the roles/badges suite; `--offline` only the offline one.
+const only = process.argv.find((a) => a === '--roles' || a === '--offline')
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const frontend = path.resolve(here, '..')
@@ -57,9 +61,23 @@ const waitFor = async (url, label, timeoutMs = 120_000) => {
   throw new Error(`${label} didn't start (${url})`)
 }
 
+const portInUse = async (port) => {
+  try {
+    await fetch(`http://localhost:${port}/`, { signal: AbortSignal.timeout(1500) })
+    return true
+  } catch {
+    return false
+  }
+}
+
 let mongo
 let exitCode = 1
 try {
+  // Something already running on our ports would silently be tested instead.
+  for (const port of [API_PORT, WEB_PORT]) {
+    if (await portInUse(port)) throw new Error(`port ${port} is already in use — stop whatever is running there first`)
+  }
+
   console.log('• starting a throwaway database…')
   mongo = await MongoMemoryReplSet.create({ replSet: { count: 1 } })
   const MONGODB_URI = mongo.getUri('fico_e2e')
@@ -96,7 +114,10 @@ try {
   await waitFor(`http://localhost:${API_PORT}/api/health`, 'Backend')
   await waitFor(`http://localhost:${WEB_PORT}/`, 'App')
 
-  const failures = await runScenarios(`http://localhost:${WEB_PORT}/`)
+  const base = `http://localhost:${WEB_PORT}/`
+  let failures = 0
+  if (only !== '--roles') failures += await runScenarios(base)
+  if (only !== '--offline') failures += await runRoleScenarios(base, MONGODB_URI)
   exitCode = failures === 0 ? 0 : 1
 } catch (error) {
   console.error('\n✗ Could not run the offline tests:', error.message)

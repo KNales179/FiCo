@@ -1,7 +1,7 @@
 {
   "name": "fico",
   "private": true,
-  "version": "2.6.0",
+  "version": "2.8.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "test:offline": "node e2e/run-offline.mjs"
+    "test:offline": "node e2e/run-offline.mjs --offline",
+    "test:e2e": "node e2e/run-offline.mjs"
   },
   "dependencies": {
     "@fontsource-variable/baloo-2": "^5.3.0",

@@ -11,6 +11,8 @@ import {
   IconRotateCcw,
   IconShield,
   IconSparkles,
+  IconUsers,
+  IconAward,
 } from '../components/icons'
 import {
   markNotificationsRead,
@@ -23,6 +25,8 @@ const KIND_LOOK: Record<AppNotification['kind'], { icon: typeof IconBell; tone: 
   FEEDBACK_DONE: { icon: IconSparkles, tone: 'bg-success/15 text-success', label: 'Your feedback', fallbackTitle: 'An update on your feedback' },
   ADMIN_NOTICE: { icon: IconMessage, tone: 'bg-brand/12 text-brand', label: 'Message', fallbackTitle: 'A notice from the Fico Admin Team' },
   ADMIN_ACTION: { icon: IconShield, tone: 'bg-warning/15 text-warning', label: 'Your account', fallbackTitle: 'An update about your account' },
+  FINANCE_ROLE: { icon: IconUsers, tone: 'bg-brand/12 text-brand', label: 'Your Finances', fallbackTitle: 'Your role in a Finance changed' },
+  BADGE: { icon: IconAward, tone: 'bg-warning/15 text-warning', label: 'Badge', fallbackTitle: 'You got a new badge' },
   SYNC_REJECTED: { icon: IconCloudOff, tone: 'bg-danger/12 text-danger', label: 'Sync', fallbackTitle: 'A change couldn’t be saved' },
   SYNC_OVERWRITTEN: { icon: IconRotateCcw, tone: 'bg-warning/15 text-warning', label: 'Sync', fallbackTitle: 'An offline edit was replaced' },
 }

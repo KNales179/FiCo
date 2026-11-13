@@ -86,7 +86,7 @@ const DetailsCard = () => {
               className="input pl-7"
             />
           </span>
-          <span className="mt-1 block text-xs text-muted">How family members find you. Letters, numbers and underscores.</span>
+          <span className="mt-1 block text-xs text-muted">How people in your shared Finances find you. Letters, numbers and underscores.</span>
         </label>
         {error && <Alert>{error}</Alert>}
         <div className="flex items-center gap-3">

@@ -171,7 +171,7 @@ const Register = () => {
             <FieldMessage id="username-msg">{shown('username')}</FieldMessage>
           ) : (
             <span id="username-msg" className="mt-1.5 block text-xs text-muted">
-              3–30 letters, numbers or underscores. This is how family members find you.
+              3–30 letters, numbers or underscores. This is how people in your shared Finances find you.
             </span>
           )}
         </label>

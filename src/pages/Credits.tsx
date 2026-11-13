@@ -36,11 +36,11 @@ const Credits = () => (
     <Card>
       <h2 className="section-title">What Fico is</h2>
       <p className="mt-2 text-sm leading-relaxed text-muted">
-        Fico is a local-first personal and family finance app — recording
+        Fico is a local-first personal and shared finance app — recording
         income, expenses, and transfers; managing cash and bank balances;
-        turning a shopping list into an expense automatically; tracking
+        turning a to-buy list into an expense automatically; tracking
         bills and electricity usage; reconciling cash on hand; and sharing
-        selected records with family. It works offline on a device that's
+        selected records with the people they share a Finance with. It works offline on a device that's
         already signed in, and syncs when a connection comes back. Every
         number in it is typed in by hand — Fico doesn't connect to any
         bank, e-wallet, or payment provider.

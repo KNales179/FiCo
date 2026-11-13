@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import type { HighlightIcon } from '../features/whatsNew/changelog'
 import {
   IconArchive,
+  IconAward,
   IconBell,
   IconCamera,
   IconChart,
@@ -21,6 +22,7 @@ import {
 /** The icon for each kind of release highlight (What's new pop-up + Updates page). */
 export const RELEASE_ICONS: Record<HighlightIcon, ComponentType<IconProps>> = {
   palette: IconPalette,
+  award: IconAward,
   layout: IconHome,
   chart: IconChart,
   compass: IconCompass,

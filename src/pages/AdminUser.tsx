@@ -7,6 +7,7 @@ import {
   restrictUser,
   revokeUserSession,
   sendUserNotice,
+  setUserBadge,
   setUserPassword,
   setUserRole,
   signOutUserEverywhere,
@@ -18,6 +19,8 @@ import type { DeviceSession } from '../types/auth'
 import { useAuth } from '../hooks/useAuth'
 import { Alert, Button, Card, Modal, SkeletonCard } from '../components/ui'
 import PasswordInput from '../components/auth/PasswordInput'
+import Badges from '../components/Badges'
+import RoleTags from '../components/RoleTags'
 import ReasonTemplates from '../components/admin/ReasonTemplates'
 import type { TemplateKind } from '../features/admin/reasonTemplates'
 import { describeUntil } from '../features/auth/authNotice'
@@ -57,6 +60,8 @@ const ACTION_LABEL: Record<string, string> = {
   UNRESTRICT: 'Lifted restriction',
   DELETE_USER: 'Deleted account',
   STEP_UP_FAILED: 'Wrong admin password',
+  SET_BADGE: 'Changed a badge',
+  APPEAL_DECISION: 'Decided an appeal',
 }
 
 type ActionKey = 'notice' | 'signout' | 'restrict' | 'password' | 'role' | 'twofa' | 'delete' | null
@@ -294,6 +299,16 @@ const AdminUser = () => {
               )}
               {deleted && <span className="rounded-full bg-danger/12 px-2.5 py-1 text-danger">Deleted</span>}
             </div>
+            {profile.badges.length > 0 && (
+              <div className="mt-2 flex justify-center sm:justify-start">
+                <Badges badges={profile.badges} />
+              </div>
+            )}
+            {profile.financeRoles.length > 0 && (
+              <div className="mt-2">
+                <RoleTags finances={profile.financeRoles} align="center" />
+              </div>
+            )}
           </div>
         </div>
         <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -415,6 +430,42 @@ const AdminUser = () => {
         </div>
 
         <div className="min-w-0 space-y-4">
+          <Card>
+            <h2 className="section-title">Badges</h2>
+            <p className="mt-1 text-xs text-muted">Shown on their profile. Fico Admin comes with the admin role.</p>
+            <ul className="mt-3 space-y-2">
+              {(
+                [
+                  ['FICO_OWNER', 'Fico Owner', 'Only a Fico Owner can give or remove this.'],
+                  ['BETA_TESTER', 'Beta tester', 'For people helping test Fico.'],
+                ] as const
+              ).map(([badge, label, hint]) => {
+                const has = profile.badges.includes(badge)
+                return (
+                  <li key={badge} className="flex items-center justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-ink">{label}</span>
+                      <span className="block text-xs text-muted">{hint}</span>
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={has}
+                      aria-label={label}
+                      disabled={busy || deleted}
+                      onClick={() => void run(() => setUserBadge(profile.id, badge, !has))}
+                      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${has ? 'bg-brand' : 'bg-line'}`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${has ? 'translate-x-5' : 'translate-x-0.5'}`}
+                      />
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </Card>
+
           <Card>
             <h2 className="section-title">Signed-in devices</h2>
             <ul className="mt-2 divide-y divide-line text-sm">

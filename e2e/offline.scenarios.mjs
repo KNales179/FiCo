@@ -144,7 +144,7 @@ const switchFinance = async (page, name) => {
 const createFinance = async (page, name) => {
   await page.getByRole('button', { name: 'Switch Finance' }).click()
   await page.getByText('Add another Finance').click()
-  await page.fill('input[placeholder="Name it, e.g. Family Expenses"]', name)
+  await page.fill('input[placeholder^="Name it"]', name)
   await page.getByRole('button', { name: 'Create Finance' }).click()
   await page.waitForTimeout(3000)
 }
@@ -225,7 +225,7 @@ export const runScenarios = async (base) => {
     await quickAdd(A.page, '500', 'Groceries')
 
     // Shopping trip offline.
-    await A.page.click('header nav >> text=Shopping')
+    await A.page.click('header nav >> text=To-buy')
     await A.page.waitForTimeout(1200)
     await A.page.fill('input[placeholder="New list (e.g. Weekend grocery)"]', 'Palengke')
     await A.page.locator('form:has(input[placeholder="New list (e.g. Weekend grocery)"]) button[type=submit]').click()

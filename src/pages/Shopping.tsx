@@ -145,18 +145,18 @@ const ShoppingTrend = () => {
   const has = monthly.some((m) => m.values[0] > 0)
 
   return (
-    <CollapsibleCard id="shopping.trend" title="Shopping spend · last 6 months" icon={IconChart} dataTour="shopping-trend">
+    <CollapsibleCard id="shopping.trend" title="To-buy spend · last 6 months" icon={IconChart} dataTour="shopping-trend">
       <div>
         {has ? (
           <BarChart
-            ariaLabel="Shopping spending per month for the last six months"
+            ariaLabel="To-buy list spending per month for the last six months"
             data={monthly}
             series={[{ name: 'Spent', color: 'var(--brand)' }]}
             currency={currency}
             height={150}
           />
         ) : (
-          <EmptyChart>Completed shopping trips show up here.</EmptyChart>
+          <EmptyChart>Finished to-buy lists show up here.</EmptyChart>
         )}
       </div>
     </CollapsibleCard>
@@ -319,7 +319,7 @@ const Shopping = () => {
     <div className="space-y-4">
       <PageHeader
         icon={IconCart}
-        title="Shopping"
+        title="To-buy lists"
         description="Plan a trip, tick items off at the store, and record it as one expense."
       />
 
@@ -514,8 +514,8 @@ const Shopping = () => {
                           )
                           setCompletion(
                             r.createdCount === 0
-                              ? 'Shopping done — nothing new to record.'
-                              : `Shopping done — ${formatMoney(r.spentMinor)} recorded across ${r.itemCount} item${r.itemCount === 1 ? '' : 's'}.`,
+                              ? 'All bought — nothing new to record.'
+                              : `All bought — ${formatMoney(r.spentMinor)} recorded across ${r.itemCount} item${r.itemCount === 1 ? '' : 's'}.`,
                           )
                           setPayCategoryId('')
                         } catch (err) {
@@ -528,7 +528,7 @@ const Shopping = () => {
                       }}
                     >
                       <IconCheck size={15} />
-                      Complete shopping
+                      Finish list
                     </Button>
                   </div>
 
@@ -579,8 +579,8 @@ const Shopping = () => {
           {shownLists.length === 0 && (
             <p className="text-sm text-muted">
               {archivedLists.length > 0
-                ? 'No open shopping lists — older ones are in the archive.'
-                : 'No shopping lists yet.'}
+                ? 'No open to-buy lists — older ones are in the archive.'
+                : 'No to-buy lists yet.'}
             </p>
           )}
 

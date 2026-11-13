@@ -21,6 +21,7 @@ export type HighlightIcon =
   | 'wallet'
   | 'text'
   | 'users'
+  | 'award'
 
 export interface Release {
   version: string
@@ -31,6 +32,55 @@ export interface Release {
 }
 
 export const RELEASES: Release[] = [
+  {
+    version: '2.8.0',
+    date: '2026-11-13',
+    title: 'Shared Finances, grown up',
+    highlights: [
+      {
+        icon: 'users',
+        title: 'Roles: Owner, Admin, Member, Viewer',
+        body: 'The owner of a shared Finance now picks everyone’s role on the Members page. Admins edit everything and see Activity (who changed what), Members add and edit records, and Viewers can look but not change anything. You can try it on the demo’s Members page.',
+      },
+      {
+        icon: 'award',
+        title: 'Badges and role tags on your profile',
+        body: 'Your Account page shows tags like “Owner · 2” and “Admin · 1” — tap one to see which Finances. And look out for Fico badges like Beta tester.',
+      },
+      {
+        icon: 'receipt',
+        title: '“Shopping” is now “To-buy lists”',
+        body: 'Same lists, clearer name — so it never looks like you can buy something inside Fico. And shared Finances are simply “Shared” now, ready for a household, a group, or a small business.',
+      },
+      {
+        icon: 'receipt',
+        title: 'A tidier Bills page',
+        body: 'Your bill totals and usage charts now sit right above Paid bills — and a usage chart only appears for a kind of bill you actually pay.',
+      },
+      {
+        icon: 'chart',
+        title: 'Track water, LPG and fuel — not just kWh',
+        body: 'A bill can now track water (m³ — PrimeWater, Maynilad, Manila Water), LPG (kg per refill) or fuel (litres) as well as electricity. Enter how much you used when you pay, and Bills and Analytics show cost per unit, so you can tell a price increase apart from using more.',
+      },
+    ],
+  },
+  {
+    version: '2.7.0',
+    date: '2026-11-13',
+    title: 'Your balance, your way',
+    highlights: [
+      {
+        icon: 'wallet',
+        title: 'Pin the balance you check most',
+        body: 'On the dashboard, tap “Pin a balance” and choose an account — say, On hand. Show it right next to your Total balance, or let it take the Total’s place. Each Finance remembers its own pin.',
+      },
+      {
+        icon: 'heart',
+        title: 'Point us to the exact spot',
+        body: 'When you report a bug or suggest something, you can now pick which page it’s about — and then which part of that page — so the Fico team knows exactly where to look.',
+      },
+    ],
+  },
   {
     version: '2.6.0',
     date: '2026-11-13',

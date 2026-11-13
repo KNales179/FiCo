@@ -190,7 +190,7 @@ const useEditTransactionFields = (
         {txn.sourceType !== 'MANUAL' && (
           <p className="text-xs text-warning">
             This came from{' '}
-            {txn.sourceType === 'BILL_PAYMENT' ? 'a bill payment' : 'a shopping trip'}
+            {txn.sourceType === 'BILL_PAYMENT' ? 'a bill payment' : 'a to-buy list'}
             — that record won't follow this edit.
           </p>
         )}

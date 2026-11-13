@@ -254,7 +254,7 @@ const AuthShowcase = ({ variant }: { variant: 'panel' | 'backdrop' }) => {
       </div>
 
       <p className="relative px-8 pb-6 text-center text-xs text-muted">
-        Personal & family finance — typed in by you, kept on your device, synced when you're online.
+        Personal & shared finance — typed in by you, kept on your device, synced when you're online.
       </p>
     </div>
   )

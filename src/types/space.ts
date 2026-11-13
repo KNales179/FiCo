@@ -18,6 +18,8 @@ export interface SpaceMember {
   username: string | null
   displayName: string | null
   avatarUrl?: string | null
+  /** Fico badges (Fico Owner, Fico Admin, Beta tester…). */
+  badges?: string[]
   role: MembershipRole
   joinedAt?: string
 }

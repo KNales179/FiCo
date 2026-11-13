@@ -11,6 +11,7 @@ import {
 import { computeEngagement, type MemberEngagement } from '../features/engagement'
 import type { AnalyticsPeriod } from '../domain/analytics'
 import { compareElectricityPeriods } from '../domain/electricity'
+import { formatUsage, recordKindOf, sumByPeriod, USAGE, USAGE_KINDS } from '../features/bills/usage'
 import { formatMoney } from '../domain/money'
 import { shortMonth, longMonth } from '../domain/insights'
 import type { SpaceMember } from '../types/space'
@@ -269,8 +270,15 @@ const Analytics = () => {
   // Electricity specifically — not "bills in general": a FIXED bill's
   // amount never moves, but electricity's amount *and* consumption both
   // move on their own, and telling them apart is the useful part.
-  const electricityTrend = useMemo(
-    () => compareElectricityPeriods(electricity).slice(-6).reverse(),
+  // …and the same for water (m³), LPG (kg) and fuel (L), when tracked.
+  const usageTrends = useMemo(
+    () =>
+      USAGE_KINDS.map((kind) => ({
+        kind,
+        trend: compareElectricityPeriods(sumByPeriod(electricity.filter((r) => recordKindOf(r) === kind)))
+          .slice(-6)
+          .reverse(),
+      })).filter((u) => u.trend.length > 0),
     [electricity],
   )
 
@@ -442,7 +450,7 @@ const Analytics = () => {
                 </h2>
                 <p className="mt-1 text-xs text-muted">
                   How much each of you actually used Fico this period: recording
-                  transactions, starting shopping trips, adding and paying bills.
+                  transactions, starting to-buy lists, adding and paying bills.
                 </p>
                 <ul className="mt-3 space-y-3">
                   {engagement.map((e) => {
@@ -484,7 +492,7 @@ const Analytics = () => {
                 <span className="card-icon">
                   <IconCart size={16} />
                 </span>
-                Shopping
+                To-buy lists
               </h2>
               <p className="mt-1 text-xs text-muted">
                 {data.shopping.listCount} completed list{data.shopping.listCount === 1 ? '' : 's'} this period.
@@ -492,7 +500,7 @@ const Analytics = () => {
               <div className="mt-3">
                 {data.shopping.listCount > 0 ? (
                   <BarChart
-                    ariaLabel="Shopping planned versus actually spent"
+                    ariaLabel="To-buy lists: planned versus actually spent"
                     data={[{ key: 'shop', label: 'This period', values: [data.shopping.plannedMinor, data.shopping.actualMinor] }]}
                     series={[
                       { name: 'Planned', color: 'var(--chart-1)' },
@@ -502,26 +510,26 @@ const Analytics = () => {
                     height={150}
                   />
                 ) : (
-                  <EmptyChart>Finish a shopping list to compare planned vs actual.</EmptyChart>
+                  <EmptyChart>Finish a to-buy list to compare planned vs actual.</EmptyChart>
                 )}
               </div>
             </section>
 
-            {electricityTrend.length > 0 && (
-              <section className="card min-w-0 lg:col-span-2">
-                <h2 className="section-title">Electricity</h2>
+            {usageTrends.map(({ kind, trend: electricityTrend }) => (
+              <section key={kind} className="card min-w-0 lg:col-span-2">
+                <h2 className="section-title">{USAGE[kind].label}</h2>
                 <p className="mt-1 text-xs text-muted">
-                  Amount up but kWh flat means the rate went up, not your usage —
-                  amount and kWh both up means you're using more.
+                  Amount up but {USAGE[kind].unit} flat means the price went up, not your usage —
+                  amount and {USAGE[kind].unit} both up means you're using more.
                 </p>
                 <div className="mt-3 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
                   <div className="min-w-0">
                     <BarChart
-                      ariaLabel="Electricity cost per billing period"
+                      ariaLabel={`${USAGE[kind].label} cost per billing period`}
                       data={[...electricityTrend].reverse().map((r) => ({
                         key: r.billingPeriod,
                         label: r.billingPeriod.length === 7 ? shortMonth(r.billingPeriod) : r.billingPeriod.slice(5),
-                        title: `${r.billingPeriod}${r.consumptionKwh != null ? ` · ${r.consumptionKwh} kWh` : ''}`,
+                        title: `${r.billingPeriod}${r.consumptionKwh != null ? ` · ${formatUsage(r.consumptionKwh, kind)}` : ''}`,
                         values: [r.amountMinor],
                       }))}
                       series={[{ name: 'Cost', color: 'var(--brand)' }]}
@@ -535,7 +543,7 @@ const Analytics = () => {
                           <th>Period</th>
                           <th className="text-right">Amount</th>
                           <th className="text-right">vs last</th>
-                          <th className="text-right">kWh</th>
+                          <th className="text-right">{USAGE[kind].unit}</th>
                           <th className="text-right">vs last</th>
                         </tr>
                       </thead>
@@ -558,7 +566,7 @@ const Analytics = () => {
                   </div>
                 </div>
               </section>
-            )}
+            ))}
           </div>
 
           <p className="text-xs text-muted">

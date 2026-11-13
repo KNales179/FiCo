@@ -67,6 +67,7 @@ export const enterDemoMode = (): User => {
   try {
     localStorage.setItem(FLAG_KEY, '1')
     localStorage.removeItem(USER_KEY)
+    localStorage.removeItem('fico.demoMembers')
   } catch {
     // ignore
   }
@@ -77,6 +78,7 @@ export const leaveDemoMode = () => {
   try {
     localStorage.removeItem(FLAG_KEY)
     localStorage.removeItem(USER_KEY)
+    localStorage.removeItem('fico.demoMembers')
   } catch {
     // ignore
   }

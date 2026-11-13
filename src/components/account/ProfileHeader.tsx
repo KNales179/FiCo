@@ -1,6 +1,10 @@
 import { useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { useSpace } from '../../hooks/useSpace'
+import { isDemoSpace } from '../../features/demo/space'
+import Badges from '../Badges'
+import RoleTags from '../RoleTags'
 import { deleteAvatar, uploadAvatar } from '../../services/authService'
 import { openSection } from '../../lib/sections'
 import { scrollToAndHighlight } from '../../lib/motion'
@@ -21,12 +25,15 @@ const paydaySummary = (paydays: number[]) =>
  */
 const ProfileHeader = () => {
   const { user, refreshUser } = useAuth()
+  const { spaces } = useSpace()
   const fileInput = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   if (!user) return null
   const name = user.displayName || user.username
+  // Their role in each shared Finance — the Owner · n / Admin · n tags.
+  const sharedRoles = spaces.filter((s) => s.type !== 'PERSONAL' && !isDemoSpace(s.id)).map((s) => ({ name: s.name, role: s.role }))
   const initial = name.charAt(0).toUpperCase()
 
   const pick = (event: ChangeEvent<HTMLInputElement>) => {
@@ -105,6 +112,17 @@ const ProfileHeader = () => {
               </span>
             )}
           </p>
+
+          {(user.badges?.length ?? 0) > 0 && (
+            <div className="mt-2 flex justify-center sm:justify-start">
+              <Badges badges={user.badges} />
+            </div>
+          )}
+          {sharedRoles.length > 0 && (
+            <div className="mt-2">
+              <RoleTags finances={sharedRoles} align="center" />
+            </div>
+          )}
 
           <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
             {birthdayChip && (

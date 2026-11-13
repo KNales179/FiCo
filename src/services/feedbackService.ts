@@ -8,6 +8,9 @@ export interface FeedbackEntry {
   type: FeedbackType
   message: string
   status: FeedbackStatus
+  /** Where in the app it's about (optional tags). */
+  page?: string | null
+  section?: string | null
   createdAt: string
   createdBy: string | null
   reporter: {
@@ -17,10 +20,14 @@ export interface FeedbackEntry {
 }
 
 /** Anyone signed in — a bug report or a suggestion, not tied to one Finance. */
-export const submitFeedback = (type: FeedbackType, message: string) =>
+export const submitFeedback = (
+  type: FeedbackType,
+  message: string,
+  tags: { page?: string; section?: string } = {},
+) =>
   api<{ success: boolean; message: string }>('/feedback', {
     method: 'POST',
-    body: { type, message },
+    body: { type, message, page: tags.page || undefined, section: tags.section || undefined },
   })
 
 /** Admin only. */

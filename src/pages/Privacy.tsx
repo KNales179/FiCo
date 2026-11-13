@@ -46,7 +46,7 @@ const Privacy = () => (
           </li>
           <li>
             <strong>Financial records you type in</strong>: transactions,
-            accounts, bills, shopping lists, categories, budgets — every
+            accounts, bills, to-buy lists, categories, budgets — every
             number in Fico is something you or a member of your shared
             Finance entered by hand. Fico does not connect to, read from,
             or share data with any bank, e-wallet, or payment provider.
@@ -66,6 +66,15 @@ const Privacy = () => (
             restricts or deletes your account, the reason they gave is
             stored with it so Fico can show it to you, and the action is
             recorded in an admin audit log.
+          </li>
+          <li>
+            <strong>Roles and badges</strong>: your role in each shared
+            Finance (Owner, Admin, Member, or Viewer) and any Fico badges
+            you hold. Other members of a Finance see your role and badges
+            there. Fico admins can see your badges and which shared
+            Finances you belong to, with your role in each, but not the
+            records inside them. Giving or removing a badge is recorded in
+            the admin audit log.
           </li>
           <li>
             <strong>Basic technical logs</strong>: request metadata (route,

@@ -52,6 +52,7 @@ export interface LocalUser extends BaseEntity {
    *  greeting and payday hints work offline too. */
   birthday?: { month: number; day: number; year?: number | null } | null
   paydays?: number[]
+  badges?: string[]
   status: UserStatus
 }
 
@@ -82,7 +83,7 @@ export interface Space extends SyncableEntity {
 
 /** No view-only role — every member is a full participant; the owner alone
  *  can remove members, transfer ownership, and delete the Finance. */
-export type MembershipRole = 'OWNER' | 'MEMBER'
+export type MembershipRole = 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER'
 export type MembershipStatus = 'ACTIVE' | 'INVITED' | 'REVOKED'
 
 export interface Membership extends SyncableEntity {
@@ -276,6 +277,8 @@ export interface Bill extends SyncableEntity {
   createdBy?: string
   /** Show optional kWh / charge-breakdown fields when paying (§16). */
   tracksElectricity: boolean
+  /** What usage this bill tracks (kWh, m³, kg, L). Older bills: see tracksElectricity. */
+  usageKind?: 'ELECTRICITY' | 'WATER' | 'LPG' | 'FUEL' | null
 }
 
 export interface BillPayment extends SyncableEntity {
@@ -296,6 +299,9 @@ export interface ElectricityRecord extends SyncableEntity {
   billPaymentId: string
   billingPeriod: string
   amountMinor: number
+  /** Which utility this reading is for (absent = electricity, from before others existed). */
+  usageKind?: 'ELECTRICITY' | 'WATER' | 'LPG' | 'FUEL' | null
+  /** How much was used, in the kind's unit (kWh, m³, kg, L) — named for its electricity origins. */
   consumptionKwh?: number | null
   energyChargeMinor?: number | null
   transmissionMinor?: number | null

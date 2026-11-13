@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSpace } from '../hooks/useSpace'
+import { canSeeActivity } from '../features/spaces/roles'
 import { isNetworkError } from '../lib/api'
 import {
   fetchActionLogs,
@@ -27,7 +28,7 @@ const Activity = () => {
 
   const load = useCallback(
     async (before?: string) => {
-      if (!activeSpaceId) return
+      if (!activeSpaceId || (activeSpace && !canSeeActivity(activeSpace.role))) return
       setError('')
       if (!before) setLoading(true)
       try {
@@ -51,13 +52,25 @@ const Activity = () => {
         setLoading(false)
       }
     },
-    [activeSpaceId],
+    [activeSpaceId, activeSpace],
   )
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
   }, [load])
+
+  if (activeSpace && activeSpace.type !== 'PERSONAL' && !canSeeActivity(activeSpace.role)) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <PageHeader
+          icon={IconClock}
+          title="Activity"
+          description="Only the owner and admins of a shared Finance can see who changed what."
+        />
+      </div>
+    )
+  }
 
   if (activeSpace?.type === 'PERSONAL') {
     return (

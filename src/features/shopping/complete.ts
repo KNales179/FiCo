@@ -107,7 +107,7 @@ export const completeListWithExpenses = async (
   const txn = await recordTransaction(ctx, {
     type: 'EXPENSE',
     amountMinor: spentMinor,
-    title: list?.title ?? 'Shopping',
+    title: list?.title ?? 'To-buy list',
     accountId,
     categoryId: tripCategoryId,
     categoryName: tripCategoryName,
