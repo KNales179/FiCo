@@ -314,7 +314,7 @@ export const runRoleScenarios = async (base, mongoUri) => {
     // A first-time visitor gets the front page; its Sign up goes to sign-up.
     await C.page.goto(base)
     await C.page.waitForTimeout(2000)
-    check('a first-time visitor sees the front page', (await C.page.getByRole('heading', { name: /Your money/ }).count()) === 1)
+    check('a first-time visitor sees the front page', (await C.page.getByRole('heading', { name: /Know where/ }).count()) === 1)
     check('the front page offers Download and Sign up', (await C.page.getByRole('button', { name: 'Download the app' }).count()) > 0 && (await C.page.getByRole('link', { name: 'Sign up' }).count()) > 0)
     // "Take the guided demo" goes straight to How Fico works, in demo mode.
     const D = await device(browser)

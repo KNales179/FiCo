@@ -33,6 +33,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.16.3',
+    date: '2026-11-17',
+    title: 'Clearer words',
+    highlights: [
+      {
+        icon: 'text',
+        title: 'Fico keeps track, never your money',
+        body: 'The front page now says “Know where your money goes” and “Every peso, accounted for”, and states plainly that Fico never holds, sends or asks for your money.',
+      },
+    ],
+  },
+  {
     version: '2.16.2',
     date: '2026-11-17',
     title: 'Someone’s typing…',

@@ -327,9 +327,9 @@ const Landing = () => {
             </p>
             <p className="mt-5 text-sm font-semibold uppercase tracking-[0.18em] text-muted">Fico · Your Financial Companion</p>
             <h1 className="mt-3 text-4xl font-extrabold leading-[1.08] tracking-tight text-ink sm:text-5xl lg:text-6xl">
-              Your money,
+              Know where
               <br />
-              <span className="text-brand">in its place.</span>
+              <span className="text-brand">your money goes.</span>
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-lg text-muted sm:mx-0">
               Fico is a simple, private money tracker for you and the people you share costs with: family,
@@ -499,8 +499,11 @@ const Landing = () => {
             <div className="auth-panel-grid opacity-60" aria-hidden="true" />
             <div className="relative">
               <FicoLogo className="mx-auto h-14 w-14" />
-              <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">Put your money in its place</h2>
+              <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">Start keeping track today</h2>
               <p className="mx-auto mt-3 max-w-lg text-muted">Install Fico on your phone or computer, or start right here in your browser.</p>
+              <p className="mx-auto mt-2 max-w-lg text-sm text-muted">
+                Fico only keeps track: it never holds, sends or asks for your money.
+              </p>
               <div className="mt-8">
                 <Actions center onDownload={() => void download()} helpOpen={helpOpen} platform={platform} onDemo={() => void tryDemo()} demoBusy={demoBusy} signedIn={isAuthenticated} />
               </div>

@@ -13,7 +13,7 @@ import {
 import { IconCalendar, IconChart, IconHeart, IconUsers, IconWallet } from '../icons'
 
 const TAGLINES = [
-  'Every peso, in its place.',
+  'Every peso, accounted for.',
   'Bills on time. Budgets that hold.',
   'One household, one shared picture.',
   'Works offline — your records go where you go.',

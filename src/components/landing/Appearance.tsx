@@ -123,7 +123,7 @@ const FontRoll = () => {
         <span className="font-semibold text-ink">{font.label}</span> · {font.group} · {font.hint}
       </p>
       <p className="mt-3 text-lg text-ink" style={{ fontFamily: font.stack }}>
-        Every peso, in its place. ₱1,234.50
+        Every peso, accounted for. ₱1,234.50
       </p>
     </div>
   )
