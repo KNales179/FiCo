@@ -56,7 +56,34 @@
           if (saved.theme === 'light' || saved.theme === 'dark') {
             root.setAttribute('data-theme', saved.theme)
           }
-          if (saved.palette && saved.palette !== 'purple') {
+          if (saved.palette === 'custom') {
+            // Same light/dark versions as src/features/theme/color.ts.
+            var hex = saved.customColor
+            if (/^#[0-9a-f]{6}$/i.test(hex || '')) {
+              var rgb = function (h) { var n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255] }
+              var lum = function (h) {
+                var c = rgb(h).map(function (v) { v = v / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) })
+                return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+              }
+              var mix = function (h, to, t) {
+                var a = rgb(h), b = rgb(to)
+                return '#' + a.map(function (v, i) { return ('0' + Math.round(v + (b[i] - v) * t).toString(16)).slice(-2) }).join('')
+              }
+              var ink = function (h) { return lum(h) > 0.45 ? '#1a1626' : '#ffffff' }
+              var light = lum(hex) > 0.6 ? mix(hex, '#000000', 0.25) : hex
+              var dark = lum(hex) < 0.18 ? mix(hex, '#ffffff', 0.35) : hex
+              var l = '--brand: ' + light + '; --brand-ink: ' + ink(light) + ';'
+              var d = '--brand: ' + dark + '; --brand-ink: ' + ink(dark) + ';'
+              var style = document.createElement('style')
+              style.id = 'fico-custom-palette'
+              style.textContent =
+                ':root[data-palette="custom"] { ' + l + ' }' +
+                '@media (prefers-color-scheme: dark) { :root:not([data-theme="light"])[data-palette="custom"] { ' + d + ' } }' +
+                ':root[data-theme="dark"][data-palette="custom"] { ' + d + ' }'
+              document.head.appendChild(style)
+              root.setAttribute('data-palette', 'custom')
+            }
+          } else if (saved.palette && saved.palette !== 'purple') {
             root.setAttribute('data-palette', saved.palette)
           }
           if (saved.fontSize && saved.fontSize !== 'md') {

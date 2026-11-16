@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import RollingNumber from '../RollingNumber'
 import { gsap, prefersReducedMotion } from '../../lib/motion'
 import {
   LEAF_GRADIENT,
@@ -220,7 +221,7 @@ const AuthShowcase = ({ variant }: { variant: 'panel' | 'backdrop' }) => {
         </span>
         <span>
           <span className="block text-[11px] text-muted">Salary</span>
-          <span className="block font-semibold text-success">+₱25,000</span>
+          <span className="block font-semibold text-success"><RollingNumber spinOnHover value="+₱25,000" /></span>
         </span>
       </div>
       <div className="auth-chip auth-chip-tr right-[7%] top-[16%]" style={{ animationDelay: '-2.2s' }} aria-hidden="true">

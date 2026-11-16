@@ -10,6 +10,8 @@ import {
 import { gsap, prefersReducedMotion } from '../lib/motion'
 import { OPEN_SECTION_EVENT as OPEN_EVENT } from '../lib/sections'
 import { IconChevronDown, type IconProps } from './icons'
+import SuccessCheck from './SuccessCheck'
+import { CELEBRATE_EVENT } from '../features/ui/celebrate'
 
 const STORAGE_KEY = 'fico.collapsed'
 
@@ -84,10 +86,31 @@ const CollapsibleCard = ({
       gsap.fromTo(
         el,
         { height: 0, autoAlpha: 0, overflow: 'hidden' },
-        { height: 'auto', autoAlpha: 1, duration: 0.4, ease: 'power3.out', clearProps: 'height,opacity,visibility,overflow' },
+        // Fast, then slow: most of the height arrives at once, the rest settles in.
+        { height: 'auto', autoAlpha: 1, duration: 0.55, ease: 'expo.out', clearProps: 'height,opacity,visibility,overflow' },
       )
     }
   }, [open])
+
+  // A success check next to the title (celebrate(id) after an action works).
+  // It briefly takes the arrow's place, so it never squeezes the title.
+  const [cheers, setCheers] = useState(0)
+  const [cheering, setCheering] = useState(false)
+  useEffect(() => {
+    let timer = 0
+    const onCheer = (e: Event) => {
+      if ((e as CustomEvent<string>).detail !== id) return
+      setCheers((n) => n + 1)
+      setCheering(true)
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => setCheering(false), 1600)
+    }
+    window.addEventListener(CELEBRATE_EVENT, onCheer)
+    return () => {
+      window.removeEventListener(CELEBRATE_EVENT, onCheer)
+      window.clearTimeout(timer)
+    }
+  }, [id])
 
   useEffect(() => {
     const onOpen = (e: Event) => {
@@ -109,8 +132,8 @@ const CollapsibleCard = ({
       gsap.to(el, {
         height: 0,
         autoAlpha: 0,
-        duration: 0.3,
-        ease: 'power2.inOut',
+        duration: 0.28,
+        ease: 'power3.out',
         onComplete: () => {
           setOpen(false)
           gsap.set(el, { clearProps: 'height,opacity,visibility,overflow' })
@@ -137,10 +160,14 @@ const CollapsibleCard = ({
           )}
           <span className="section-title truncate">{title}</span>
           {!open && subtitle && <span className="truncate text-xs text-muted">{subtitle}</span>}
-          <IconChevronDown
-            size={16}
-            className={`shrink-0 text-muted transition-transform duration-300 group-hover:text-ink ${open ? '' : '-rotate-90'}`}
-          />
+          {cheering ? (
+            <SuccessCheck key={cheers} />
+          ) : (
+            <IconChevronDown
+              size={16}
+              className={`shrink-0 text-muted transition-transform duration-300 group-hover:text-ink ${open ? '' : '-rotate-90'}`}
+            />
+          )}
         </button>
         {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
       </div>

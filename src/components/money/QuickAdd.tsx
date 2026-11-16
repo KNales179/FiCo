@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { celebrate } from '../../features/ui/celebrate'
 import { useMoney } from '../../hooks/useMoney'
 import { useMutationContext } from '../../hooks/useMutationContext'
 import {
@@ -266,6 +267,7 @@ const QuickAdd = () => {
       setDestinationTouched(false)
       setDate(today())
       setSaved(true)
+      celebrate('dash.quickadd')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save')
     } finally {

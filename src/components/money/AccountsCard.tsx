@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import RollingNumber from '../RollingNumber'
+import { celebrate } from '../../features/ui/celebrate'
 import { useMoney } from '../../hooks/useMoney'
 import { useSpace } from '../../hooks/useSpace'
 import {
@@ -84,6 +86,7 @@ const AccountsCard = () => {
       setType('CASH')
       setCurrency(spaceCurrency)
       setOpen(false)
+      celebrate('dash.accounts')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add account')
     } finally {
@@ -141,7 +144,7 @@ const AccountsCard = () => {
                   account.balanceMinor < 0 ? 'text-danger' : 'text-ink'
                 }`}
               >
-                {formatMoney(account.balanceMinor, account.currency)}
+                <RollingNumber value={formatMoney(account.balanceMinor, account.currency)} />
               </span>
               {canEdit &&
                 (account.isDefault ? (
@@ -215,7 +218,7 @@ const AccountsCard = () => {
                   </span>
                   <span className="flex shrink-0 items-center gap-1">
                     <span className="mr-2 tabular-nums text-muted">
-                      {formatMoney(account.balanceMinor, account.currency)}
+                      <RollingNumber value={formatMoney(account.balanceMinor, account.currency)} />
                     </span>
                     {canEdit && (
                       <Button

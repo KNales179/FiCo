@@ -1,3 +1,4 @@
+import { HEX_RE, applyCustomPalette } from './color'
 /**
  * Appearance preferences (Settings page): theme mode, accent palette, and
  * font size. Deliberately local-only (localStorage, not synced) — this is
@@ -24,6 +25,8 @@ export type Palette =
   | 'lime'
   | 'crimson'
   | 'brown'
+  /** Any colour, from the colour wheel (Appearance.customColor). */
+  | 'custom'
 export type FontSize = 'sm' | 'md' | 'lg'
 /** Bundled typefaces (src/fonts.css) — all work offline. */
 export type FontFamily =
@@ -61,6 +64,8 @@ export interface Appearance {
   density: Density
   /** How many rows the Records list opens with — still changeable per-visit there. */
   defaultPageSize: number
+  /** The colour for palette "custom" ("#rrggbb"), picked on a colour wheel. */
+  customColor?: string | null
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
@@ -71,6 +76,7 @@ export const DEFAULT_APPEARANCE: Appearance = {
   displayCurrency: null,
   density: 'comfortable',
   defaultPageSize: 25,
+  customColor: null,
 }
 
 export const PALETTES: { value: Palette; label: string; swatch: string }[] = [
@@ -137,7 +143,10 @@ export const applyAppearance = (appearance: Appearance): void => {
   if (appearance.theme === 'system') root.removeAttribute('data-theme')
   else root.setAttribute('data-theme', appearance.theme)
 
-  if (appearance.palette === 'purple') root.removeAttribute('data-palette')
+  // A custom colour without a valid colour falls back to the default purple.
+  const custom = appearance.palette === 'custom' && HEX_RE.test(appearance.customColor ?? '')
+  applyCustomPalette(custom ? appearance.customColor! : null)
+  if (appearance.palette === 'purple' || (appearance.palette === 'custom' && !custom)) root.removeAttribute('data-palette')
   else root.setAttribute('data-palette', appearance.palette)
 
   if (appearance.fontSize === 'md') root.removeAttribute('data-font-size')

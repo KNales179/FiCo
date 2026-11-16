@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import RollingNumber from '../components/RollingNumber'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useSpace } from '../hooks/useSpace'
@@ -112,7 +113,7 @@ const SummaryCard = ({ onCashCheck }: { onCashCheck?: () => void }) => {
                 pinMode === 'beside' ? 'text-3xl sm:text-4xl' : 'text-4xl sm:text-5xl'
               }`}
             >
-              {formatMoney(pinned.balanceMinor, pinned.currency)}
+              <RollingNumber value={formatMoney(pinned.balanceMinor, pinned.currency)} />
             </p>
             <Approx minor={pinned.balanceMinor} currency={pinned.currency} className="mt-0.5 text-sm" />
           </div>
@@ -130,7 +131,7 @@ const SummaryCard = ({ onCashCheck }: { onCashCheck?: () => void }) => {
                 pinned ? 'text-3xl sm:text-4xl' : 'text-4xl sm:text-5xl'
               }`}
             >
-              {formatMoney(totalsByCurrency[currency] ?? 0, currency)}
+              <RollingNumber value={formatMoney(totalsByCurrency[currency] ?? 0, currency)} />
             </p>
             <Approx minor={totalsByCurrency[currency] ?? 0} currency={currency} className="mt-0.5 text-sm" />
             {otherTotals.length > 0 && (
@@ -149,7 +150,7 @@ const SummaryCard = ({ onCashCheck }: { onCashCheck?: () => void }) => {
             Spent in {month.label}
           </p>
           <p className="mt-0.5 text-lg font-semibold tabular-nums text-ink">
-            {formatMoney(month.spent, currency)}
+            <RollingNumber value={formatMoney(month.spent, currency)} />
           </p>
           <Approx minor={month.spent} currency={currency} />
         </div>
@@ -159,7 +160,7 @@ const SummaryCard = ({ onCashCheck }: { onCashCheck?: () => void }) => {
             Received in {month.label}
           </p>
           <p className="mt-0.5 text-lg font-semibold tabular-nums text-ink">
-            {formatMoney(month.received, currency)}
+            <RollingNumber value={formatMoney(month.received, currency)} />
           </p>
           <Approx minor={month.received} currency={currency} />
         </div>

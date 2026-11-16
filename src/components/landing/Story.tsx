@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import RollingNumber from '../RollingNumber'
 import { IconCheck, IconCompass, IconLock, IconReceipt, IconUsers } from '../icons'
 
 /**
@@ -32,7 +33,7 @@ export const PurposeArt = () => (
       <div className="text-sm">
         <div className="flex items-center justify-between">
           <span className="text-ink">Groceries budget</span>
-          <span className="font-semibold tabular-nums text-ink">₱1,240 left</span>
+          <span className="font-semibold tabular-nums text-ink"><RollingNumber spinOnHover value="₱1,240" /> left</span>
         </div>
         <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-panel-2">
           <span className="block h-full w-[62%] rounded-full bg-brand" />
@@ -56,7 +57,7 @@ export const MissionArt = () => (
       <div className="min-w-0 flex-1">
         <p className="font-bold text-ink">Simple</p>
         <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-line bg-panel-2 px-2.5 py-1.5 text-xs text-muted">
-          <span className="font-semibold tabular-nums text-ink">₱150</span>
+          <span className="font-semibold tabular-nums text-ink"><RollingNumber spinOnHover value="₱150" /></span>
           <span className="truncate">Lunch</span>
           <span className="ml-auto rounded-md bg-brand px-2 py-0.5 font-semibold text-brand-ink">Add</span>
         </div>
@@ -143,7 +144,7 @@ export const VisionArt = () => {
       <div className="mt-4 flex items-center justify-between rounded-xl border border-line bg-panel-2 px-4 py-3">
         <span className="text-sm text-muted">Left at month’s end</span>
         <span className="inline-flex items-center gap-1.5 font-bold tabular-nums text-success">
-          <IconCheck size={15} /> ₱4,200
+          <IconCheck size={15} /> <RollingNumber spinOnHover value="₱4,200" />
         </span>
       </div>
     </div>

@@ -1,52 +1,22 @@
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import RollingNumber from '../RollingNumber'
 import FicoLogo from '../FicoLogo'
-import { FONTS, PALETTES } from '../../features/theme'
+import ColorWheel from '../ColorWheel'
+import { FONTS, PALETTES, applyAppearance, loadAppearance, saveAppearance, type Appearance as Look } from '../../features/theme'
+import { wheelColor, wheelPosition } from '../../features/theme/color'
 import { IconCheck, IconHome, IconMoon, IconReceipt, IconSun } from '../icons'
 
 /**
  * Front page → "Make it yours": a showcase of how Fico can look. A small
  * Fico card you can recolour with a colour wheel (or the 16 suggested
  * colours), and a big "Font" that rolls through every bundled typeface.
- * Nothing here changes the visitor's saved settings — it's a preview.
+ * The colour picked here recolours the whole page and is kept on this
+ * device, so Fico opens in it after signing up (Settings → Colour).
  */
 
-// ── colour helpers ─────────────────────────────────────────────────────
-const hslToHex = (h: number, s: number, l: number) => {
-  const a = (s * Math.min(l, 1 - l)) / 1
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12
-    const c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))
-    return Math.round(c * 255).toString(16).padStart(2, '0')
-  }
-  return `#${f(0)}${f(8)}${f(4)}`
-}
-
-/** Dark or light text, whichever reads better on this colour. */
-const inkFor = (hex: string) => {
-  const n = parseInt(hex.slice(1), 16)
-  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
-    const c = v / 255
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
-  })
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.45 ? '#1a1626' : '#ffffff'
-}
-
 // ── the object: a little Fico card that wears the picked colour ────────
-const PreviewCard = ({ color }: { color: string }) => (
-  <div
-    className="card w-full max-w-sm overflow-hidden p-0 sm:p-0"
-    // The colour (and the logo's shades of it) apply to this card only.
-    style={
-      {
-        '--brand': color,
-        '--brand-ink': inkFor(color),
-        '--logo-from': `color-mix(in srgb, ${color} 62%, #000)`,
-        '--logo-to': color,
-        '--logo-leaf-from': `color-mix(in srgb, ${color} 62%, #fff)`,
-        '--logo-leaf-to': `color-mix(in srgb, ${color} 80%, #fff)`,
-      } as CSSProperties
-    }
-  >
+const PreviewCard = () => (
+  <div className="card w-full max-w-sm overflow-hidden p-0 sm:p-0">
     <div className="flex items-center justify-between border-b border-line px-4 py-3">
       <span className="flex items-center gap-2">
         <FicoLogo className="h-7 w-7" />
@@ -57,12 +27,12 @@ const PreviewCard = ({ color }: { color: string }) => (
     <div className="space-y-4 p-4">
       <div>
         <p className="text-xs text-muted">Total balance</p>
-        <p className="text-3xl font-extrabold tabular-nums text-ink">₱61,513.00</p>
+        <p className="text-3xl font-extrabold tabular-nums text-ink"><RollingNumber spinOnHover value="₱61,513.00" /></p>
       </div>
       <div>
         <div className="flex justify-between text-xs">
           <span className="text-muted">Groceries budget</span>
-          <span className="font-semibold text-ink">62%</span>
+          <span className="font-semibold text-ink"><RollingNumber spinOnHover value="62%" /></span>
         </div>
         <span className="mt-1.5 block h-2 overflow-hidden rounded-full bg-panel-2">
           <span className="block h-full w-[62%] rounded-full bg-brand" />
@@ -92,61 +62,6 @@ const PreviewCard = ({ color }: { color: string }) => (
     </div>
   </div>
 )
-
-// ── the colour wheel ───────────────────────────────────────────────────
-const ColorWheel = ({ hue, sat, onPick }: { hue: number; sat: number; onPick: (h: number, s: number) => void }) => {
-  const ref = useRef<HTMLDivElement>(null)
-  const pickAt = (e: PointerEvent<HTMLDivElement>) => {
-    const r = ref.current!.getBoundingClientRect()
-    const dx = e.clientX - (r.left + r.width / 2)
-    const dy = e.clientY - (r.top + r.height / 2)
-    const h = ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360
-    const s = Math.min(1, Math.hypot(dx, dy) / (r.width / 2))
-    onPick(h, s)
-  }
-  const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
-    const step = e.shiftKey ? 15 : 5
-    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') onPick((hue + step) % 360, sat)
-    else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') onPick((hue - step + 360) % 360, sat)
-    else return
-    e.preventDefault()
-  }
-  // Where the marker sits: angle from the top, distance from the centre.
-  const rad = (hue * Math.PI) / 180
-  const x = 50 + Math.sin(rad) * sat * 50
-  const y = 50 - Math.cos(rad) * sat * 50
-  return (
-    <div
-      ref={ref}
-      role="slider"
-      tabIndex={0}
-      aria-label="Colour wheel"
-      aria-valuemin={0}
-      aria-valuemax={359}
-      aria-valuenow={Math.round(hue)}
-      aria-valuetext={`Hue ${Math.round(hue)} degrees`}
-      onKeyDown={onKey}
-      onPointerDown={(e) => {
-        e.currentTarget.setPointerCapture(e.pointerId)
-        pickAt(e)
-      }}
-      onPointerMove={(e) => {
-        if (e.buttons) pickAt(e)
-      }}
-      className="relative aspect-square w-52 shrink-0 cursor-crosshair touch-none rounded-full shadow-lg ring-1 ring-line sm:w-60"
-      style={{
-        background:
-          'radial-gradient(circle closest-side, #fff 0%, rgb(255 255 255 / 0) 100%), conic-gradient(from 0deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)',
-      }}
-    >
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white shadow-md"
-        style={{ left: `${x}%`, top: `${y}%`, background: hslToHex(hue, 1, 1 - sat / 2) }}
-      />
-    </div>
-  )
-}
 
 // ── the rolling "Font" ─────────────────────────────────────────────────
 const ROLL_MS = 1000
@@ -216,15 +131,17 @@ const FontRoll = () => {
 
 // ── the section ────────────────────────────────────────────────────────
 const Appearance = () => {
-  const [hue, setHue] = useState(275)
-  const [sat, setSat] = useState(0.85)
-  const [color, setColor] = useState('#9333ea')
-
-  const pick = (h: number, s: number) => {
-    setHue(h)
-    setSat(s)
-    setColor(hslToHex(h, 1, 1 - s / 2))
+  // What's picked is the page's real look: applied at once, and saved.
+  const [look, setLook] = useState<Look>(loadAppearance)
+  const set = (patch: Partial<Look>) => {
+    const next = { ...loadAppearance(), ...patch }
+    applyAppearance(next)
+    saveAppearance(next)
+    setLook(next)
   }
+  const swatch = PALETTES.find((p) => p.value === look.palette)?.swatch
+  const color = look.palette === 'custom' && look.customColor ? look.customColor : (swatch ?? '#9333ea')
+  const pos = wheelPosition(color)
   const groups = [...new Set(FONTS.map((f) => f.group))]
 
   return (
@@ -240,10 +157,10 @@ const Appearance = () => {
       {/* Colour */}
       <div className="mt-12 grid items-center gap-10 lg:grid-cols-2">
         <div className="flex justify-center lg:justify-end">
-          <PreviewCard color={color} />
+          <PreviewCard />
         </div>
         <div className="flex flex-col items-center gap-5 lg:items-start">
-          <ColorWheel hue={hue} sat={sat} onPick={pick} />
+          <ColorWheel hue={pos.hue} sat={pos.sat} onPick={(h, sat) => set({ palette: 'custom', customColor: wheelColor(h, sat) })} />
           <div className="flex items-center gap-2 text-sm text-muted">
             <span className="h-4 w-4 rounded-full ring-1 ring-line" style={{ background: color }} />
             <span className="font-mono uppercase text-ink">{color}</span>
@@ -257,8 +174,8 @@ const Appearance = () => {
                   type="button"
                   title={p.label}
                   aria-label={`${p.label} colour`}
-                  aria-pressed={color.toLowerCase() === p.swatch.toLowerCase()}
-                  onClick={() => setColor(p.swatch)}
+                  aria-pressed={look.palette === p.value}
+                  onClick={() => set({ palette: p.value })}
                   className="h-7 w-7 rounded-full ring-1 ring-line transition-transform hover:scale-110 aria-pressed:ring-2 aria-pressed:ring-offset-2 aria-pressed:ring-offset-surface"
                   style={{ background: p.swatch }}
                 />
@@ -266,8 +183,13 @@ const Appearance = () => {
             </div>
           </div>
           <p className="max-w-xs text-center text-xs text-muted lg:text-left">
-            Today Fico comes in {PALETTES.length} colours. Picking any colour you like, like on this wheel, is coming to
-            Settings soon.
+            {PALETTES.length} ready-made colours, or any colour on the wheel. Your pick is kept on this device, so Fico opens
+            in it, and you can change it any time in Settings → Colour.{' '}
+            {look.palette !== 'purple' && (
+              <button type="button" onClick={() => set({ palette: 'purple' })} className="font-medium text-brand underline">
+                Back to purple
+              </button>
+            )}
           </p>
         </div>
       </div>

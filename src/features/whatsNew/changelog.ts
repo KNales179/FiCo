@@ -33,6 +33,50 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.16.0',
+    date: '2026-11-17',
+    title: 'Little moments of motion',
+    highlights: [
+      {
+        icon: 'heart',
+        title: 'Buttons that press back',
+        body: 'Every button now sinks a little when you press it and springs back, so taps feel real.',
+      },
+      {
+        icon: 'chart',
+        title: 'Numbers that roll',
+        body: 'Your balances and monthly totals roll to their new value instead of jumping. On the front page, hover over a number to watch it spin.',
+      },
+      {
+        icon: 'award',
+        title: 'A tick when it worked',
+        body: 'Add a record, add an account, pay or add a bill, or save an edit, and a small check draws itself next to that card’s title.',
+      },
+      {
+        icon: 'layout',
+        title: 'Smoother cards and refresh',
+        body: 'Cards open fast and settle in gently, and pulling down to refresh shows a round icon that fills as you pull, then spins.',
+      },
+    ],
+  },
+  {
+    version: '2.15.0',
+    date: '2026-11-17',
+    title: 'Any colour you like',
+    highlights: [
+      {
+        icon: 'palette',
+        title: 'Pick your own colour',
+        body: 'Settings → Look → Colour has a new Custom option: drag on a colour wheel or type a colour code, and all of Fico follows. Fico adjusts it a little in light or dark mode when needed, so text stays readable.',
+      },
+      {
+        icon: 'layout',
+        title: 'Try it on the front page',
+        body: 'The colour wheel on the website now recolours the whole page, and your pick is kept, so Fico opens in your colour.',
+      },
+    ],
+  },
+  {
     version: '2.14.0',
     date: '2026-11-17',
     title: 'Make it yours',

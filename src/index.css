@@ -1013,3 +1013,87 @@ h3 {
 .auth-backdrop::after {
   background-size: 40px 40px;
 }
+
+/* ── Button press: sink to 95%, spring back ─────────────────────────
+   Uses the `scale` property (not transform), so it never fights a
+   button's own translate/rotate. Unlayered on purpose, to sit over the
+   utilities' transition lists. */
+:where(button, .btn, [role="button"]):not(:disabled) {
+  transition:
+    scale 420ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    opacity 150ms ease;
+}
+:where(button, .btn, [role="button"]):not(:disabled):active {
+  scale: 0.95;
+  transition-duration: 90ms, 150ms, 150ms, 150ms, 150ms, 150ms;
+  transition-timing-function: ease-out;
+}
+
+/* ── Success: a circle draws, then a check inside it, then fades ──── */
+.success-check {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--success);
+  animation: success-fade 1600ms ease forwards;
+}
+.success-check svg { overflow: visible; }
+.success-check-circle,
+.success-check-tick {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.success-check-circle {
+  stroke-dasharray: 63;
+  stroke-dashoffset: 63;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  animation: success-draw 420ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+.success-check-tick {
+  stroke-dasharray: 16;
+  stroke-dashoffset: 16;
+  animation: success-draw 260ms 380ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+@keyframes success-draw { to { stroke-dashoffset: 0; } }
+@keyframes success-fade {
+  0%, 75% { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 0.9; }
+}
+
+/* ── Rolling numbers ──────────────────────────────────────────────── */
+.rolling-number { display: inline-flex; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.roll-digit {
+  display: inline-block;
+  height: 1.2em;
+  line-height: 1.2em;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+.roll-strip {
+  display: flex;
+  flex-direction: column;
+  transform: translateY(calc(var(--d) * -1.2em));
+  transition: transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.roll-strip > span { height: 1.2em; }
+/* Hover spin: from the same digit one round up, back down to it. */
+.roll-spin { animation: roll-spin 900ms calc(var(--i) * 45ms) cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+@keyframes roll-spin {
+  from { transform: translateY(calc((var(--d) + 10) * -1.2em)); }
+  to { transform: translateY(calc(var(--d) * -1.2em)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(button, .btn, [role="button"]):not(:disabled):active { scale: none; }
+  .success-check { animation-duration: 1600ms; }
+  .success-check-circle, .success-check-tick { animation: none; stroke-dashoffset: 0; }
+  .roll-strip { transition: none; }
+  .roll-spin { animation: none; }
+}

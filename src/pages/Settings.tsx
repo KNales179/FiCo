@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import ColorWheel from '../components/ColorWheel'
+import { HEX_RE, wheelColor, wheelPosition } from '../features/theme/color'
 import { useSpace } from '../hooks/useSpace'
 import { useDisplayCurrency } from '../hooks/useDisplayCurrency'
 import { updateNotificationPreferences } from '../services/authService'
@@ -159,9 +161,70 @@ const LookTab = () => {
               </button>
             )
           })}
+          <button
+            type="button"
+            onClick={() => change({ palette: 'custom', customColor: appearance.customColor ?? '#9333ea' })}
+            aria-pressed={appearance.palette === 'custom'}
+            title="Any colour you like"
+            className={cx(
+              'flex items-center gap-2 rounded-lg border-2 px-2.5 py-1.5 text-sm font-medium transition-colors',
+              appearance.palette === 'custom' ? 'border-brand bg-panel-2' : 'border-line hover:bg-panel-2',
+            )}
+          >
+            <span
+              aria-hidden="true"
+              className="h-4.5 w-4.5 rounded-full border border-black/10"
+              style={{ background: 'conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)' }}
+            />
+            <span className="text-ink">Custom</span>
+          </button>
         </div>
+        {appearance.palette === 'custom' && (
+          <CustomColour value={appearance.customColor ?? '#9333ea'} onChange={(customColor) => change({ palette: 'custom', customColor })} />
+        )}
       </Row>
     </Card>
+  )
+}
+
+/** Settings → Colour → Custom: the wheel, plus a box to type a colour code. */
+const CustomColour = ({ value, onChange }: { value: string; onChange: (hex: string) => void }) => {
+  const [typed, setTyped] = useState(value)
+  const pos = wheelPosition(value)
+  return (
+    <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-center">
+      <ColorWheel
+        hue={pos.hue}
+        sat={pos.sat}
+        className="w-44"
+        onPick={(h, s) => {
+          const hex = wheelColor(h, s)
+          setTyped(hex)
+          onChange(hex)
+        }}
+      />
+      <div className="space-y-2 text-sm">
+        <label className="block">
+          <span className="field-label">Colour code</span>
+          <input
+            value={typed}
+            onChange={(e) => {
+              const v = e.target.value.trim()
+              setTyped(v)
+              const hex = v.startsWith('#') ? v : `#${v}`
+              if (HEX_RE.test(hex)) onChange(hex.toLowerCase())
+            }}
+            maxLength={7}
+            spellCheck={false}
+            className="input w-32 font-mono uppercase"
+            aria-label="Colour code, like #3858FF"
+          />
+        </label>
+        <p className="max-w-[16rem] text-xs text-muted">
+          Drag on the wheel or type a code. Fico adjusts it a little in light or dark mode when needed, so text stays readable.
+        </p>
+      </div>
+    </div>
   )
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { celebrate } from '../features/ui/celebrate'
 import { useBills } from '../hooks/useBills'
 import { useMoney } from '../hooks/useMoney'
 import { useAllTransactions } from '../hooks/useAllTransactions'
@@ -365,6 +366,7 @@ const UpcomingRow = ({
             ? { consumptionKwh: Number(kwh) || null }
             : null,
       })
+      celebrate('bills.upcoming')
       setKwh('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not record payment')
@@ -943,6 +945,7 @@ const Bills = () => {
       setScheduledInput('')
       setUsageKind('')
       setAdding(false)
+      celebrate('bills.all')
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Could not create bill')
     }

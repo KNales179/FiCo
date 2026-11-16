@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { celebrate } from '../../features/ui/celebrate'
 import { useMoney } from '../../hooks/useMoney'
 import { useAuth } from '../../hooks/useAuth'
 import { useMutationContext } from '../../hooks/useMutationContext'
@@ -178,6 +179,7 @@ const useEditTransactionFields = (
         categoryId: categoryId || null,
       })
       onDone()
+      celebrate('dash.records')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save')
     } finally {
