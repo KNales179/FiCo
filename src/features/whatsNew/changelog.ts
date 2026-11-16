@@ -33,6 +33,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.13.2',
+    date: '2026-11-17',
+    title: 'A grid that follows you',
+    highlights: [
+      {
+        icon: 'palette',
+        title: 'Grid lines light up under your mouse',
+        body: 'On a computer, the background grid now glows softly in your accent colour around the mouse pointer, on the front page, the sign-in screens and in the app. It stays off on touch screens and when your device asks for less motion.',
+      },
+    ],
+  },
+  {
     version: '2.13.1',
     date: '2026-11-17',
     title: 'No more blank screen after updates',

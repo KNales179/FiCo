@@ -14,6 +14,7 @@ import AppLayout from './components/AppLayout'
 import ConnectionStatus from './components/ConnectionStatus'
 import UpdateBanner from './components/UpdateBanner'
 import IntroSplash from './components/IntroSplash'
+import GridGlow from './components/GridGlow'
 import AuthLayout from './components/auth/AuthLayout'
 import { PageSkeleton } from './components/ui'
 
@@ -62,6 +63,8 @@ const App = () => {
     <BrowserRouter>
       {/* The opening animation plays over the app while it loads underneath. */}
       <IntroSplash />
+      {/* Grid lines near the mouse light up (front page, sign-in and the app). */}
+      <GridGlow />
       <AuthProvider>
         <SpaceProvider>
           <SyncProvider>

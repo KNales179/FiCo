@@ -987,3 +987,29 @@ h3 {
   background: linear-gradient(#3a3842, #1d1b22);
   box-shadow: 0 18px 30px -18px rgb(0 0 0 / 0.6);
 }
+
+/* ── Grid hover glow (adopted from Resolve UK) ─────────────────────
+   Only the grid LINES near the cursor light up, not a soft blob: a
+   second copy of the grid in the accent colour, matching the base grid
+   cell for cell, masked down to a small circle at the cursor. Both
+   backdrops are fixed to the screen, so the cursor's screen position
+   (--spot-x/--spot-y on <html>, set by GridGlow) is all it needs. */
+.app-backdrop::after,
+.auth-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--brand) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--brand) 55%, transparent) 1px, transparent 1px);
+  -webkit-mask-image: radial-gradient(circle 150px at var(--spot-x, -999px) var(--spot-y, -999px), black 0%, transparent 100%);
+  mask-image: radial-gradient(circle 150px at var(--spot-x, -999px) var(--spot-y, -999px), black 0%, transparent 100%);
+}
+.app-backdrop::after {
+  background-size: 36px 36px;
+  background-position: center top;
+}
+.auth-backdrop::after {
+  background-size: 40px 40px;
+}
