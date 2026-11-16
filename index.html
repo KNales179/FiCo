@@ -2,6 +2,42 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Self-repair after an update: if this page is an old saved copy whose
+      // code files no longer exist (a white screen), drop the outdated saved
+      // copy and reload once. Only the app's cached files are cleared, never
+      // your records or unsynced changes (those live in IndexedDB).
+      (function () {
+        var KEY = 'fico.selfRepairAt'
+        function repair() {
+          try {
+            var last = Number(sessionStorage.getItem(KEY) || 0)
+            if (Date.now() - last < 60000) return // tried a moment ago: don't loop
+            sessionStorage.setItem(KEY, String(Date.now()))
+          } catch (e) {}
+          var done = function () { location.reload() }
+          var regs = navigator.serviceWorker && navigator.serviceWorker.getRegistrations
+            ? navigator.serviceWorker.getRegistrations().then(function (rs) {
+                return Promise.all(rs.map(function (r) { return r.unregister() }))
+              })
+            : Promise.resolve()
+          regs
+            .then(function () {
+              return window.caches
+                ? caches.keys().then(function (ks) {
+                    return Promise.all(ks.filter(function (k) { return k.indexOf('workbox') === 0 }).map(function (k) { return caches.delete(k) }))
+                  })
+                : null
+            })
+            .then(done, done)
+        }
+        window.addEventListener('error', function (e) {
+          var t = e.target
+          var src = t && (t.src || t.href)
+          if (src && (t.tagName === 'SCRIPT' || t.tagName === 'LINK') && src.indexOf('/assets/') !== -1) repair()
+        }, true)
+      })()
+    </script>
     <link rel="icon" type="image/png" href="/favicon-48.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

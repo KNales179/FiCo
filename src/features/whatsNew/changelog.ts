@@ -33,6 +33,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.13.1',
+    date: '2026-11-17',
+    title: 'No more blank screen after updates',
+    highlights: [
+      {
+        icon: 'wrench',
+        title: 'Fico repairs itself after an update',
+        body: 'If your device was still holding an outdated copy of Fico after an update, it could open to a blank white page. It now notices, refreshes its saved copy and reloads by itself. Your records and unsynced changes are never touched.',
+      },
+    ],
+  },
+  {
     version: '2.13.0',
     date: '2026-11-17',
     title: 'Your month on a calendar',
