@@ -9,6 +9,7 @@ import { MoneyProvider } from './context/MoneyProvider'
 import { ShoppingProvider } from './context/ShoppingProvider'
 import { BillsProvider } from './context/BillsProvider'
 import ProtectedRoute from './components/ProtectedRoute'
+import GuestRoute from './components/GuestRoute'
 import AppLayout from './components/AppLayout'
 import ConnectionStatus from './components/ConnectionStatus'
 import UpdateBanner from './components/UpdateBanner'
@@ -43,6 +44,7 @@ const AdminUser = lazyPage(() => import('./pages/AdminUser'))
 const AdminAppeals = lazyPage(() => import('./pages/AdminAppeals'))
 const AdminAppeal = lazyPage(() => import('./pages/AdminAppeal'))
 const Admin = lazyPage(() => import('./pages/Admin'))
+const Welcome = lazyPage(() => import('./pages/Welcome'))
 const AdminInvites = lazyPage(() => import('./pages/AdminInvites'))
 const AdminLayout = lazyPage(() => import('./components/admin/AdminLayout'))
 const Feedback = lazyPage(() => import('./pages/Feedback'))
@@ -71,12 +73,17 @@ const App = () => {
                   <Suspense fallback={<RouteFallback />}>
                     <Routes>
                       <Route element={<AuthLayout />}>
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/register" element={<Register />} />
+                        {/* Already signed in? These send you to your dashboard. */}
+                        <Route element={<GuestRoute />}>
+                          <Route path="/login" element={<Login />} />
+                          <Route path="/register" element={<Register />} />
+                        </Route>
                         <Route path="/forgot-password" element={<ForgotPassword />} />
                         <Route path="/reset-password" element={<ResetPassword />} />
                       </Route>
                       <Route path="/verify-email" element={<VerifyEmail />} />
+                      {/* The front page, on purpose (from the sign-in screen's logo). */}
+                      <Route path="/welcome" element={<Welcome />} />
                       <Route path="/terms" element={<Terms />} />
                       <Route path="/privacy" element={<Privacy />} />
 

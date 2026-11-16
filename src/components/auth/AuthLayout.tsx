@@ -161,7 +161,7 @@ const AuthLayout = () => {
         <div className="relative mx-auto grid min-h-[100dvh] w-full max-w-7xl gap-8 px-4 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:px-8 lg:py-8">
           <section className="flex min-w-0 flex-col">
             <header className="flex items-center justify-between">
-              <Link to="/login" className="flex items-center gap-2" aria-label="Fico">
+              <Link to="/welcome" className="flex items-center gap-2" aria-label="Fico, about">
                 <FicoLogo className="h-9 w-9" />
                 <span className="text-xl font-extrabold tracking-tight text-ink">Fico</span>
               </Link>

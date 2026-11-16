@@ -36,6 +36,7 @@ import { AuthContext } from './auth-context'
 import { onSessionRejected } from '../features/sync/events'
 import { clearNotificationCache, seedDemoNotifications } from '../features/notifications'
 import { DEMO_USER_ID, enterDemoMode, isDemoMode, leaveDemoMode, loadDemoUser } from '../features/demo/demoMode'
+import { markSignedIn } from '../features/auth/returning'
 import { purgeDemoData, seedDemoData } from '../features/demo/seed'
 
 const toUser = (user: User): User => ({
@@ -65,6 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Another account's leftovers on this device are cleared first; this
       // account's own kept (unsynced) changes stay and get sent up.
       await prepareLocalDataFor(nextUser.id)
+      markSignedIn()
       setUser(toUser(nextUser))
       setOffline(false)
       await persistLocalAuth(nextUser, session)

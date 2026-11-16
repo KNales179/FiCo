@@ -55,7 +55,12 @@ const register = async (page, base, code) => {
   return u
 }
 const signIn = async (page, base, u) => {
+  // Signed in already? /login would send us home — sign out first.
+  await page.evaluate(() => fetch('http://localhost:5099/api/auth/logout', { method: 'POST', credentials: 'include' })).catch(() => undefined)
+  await page.goto(base)
+  await page.waitForTimeout(2500)
   await page.goto(base + 'login')
+  await page.waitForSelector('#identifier', { timeout: 30_000 })
   await page.fill('#identifier', u)
   await page.fill('#password', PASSWORD)
   await page.click('button[type=submit]')
@@ -186,6 +191,19 @@ export const runRoleScenarios = async (base, mongoUri) => {
     await adminTag.click()
     check('the tag opens the list of those Finances', (await B.page.getByText('My Store').count()) > 0)
 
+    // Signed in: sign-in and sign-up send you home; the front page says "Open Fico".
+    await B.page.goto(base + 'login')
+    await B.page.waitForTimeout(2000)
+    check('signed in, /login goes to the dashboard', new URL(B.page.url()).pathname === '/')
+    await B.page.goto(base + 'register')
+    await B.page.waitForTimeout(2000)
+    check('signed in, /register goes to the dashboard', new URL(B.page.url()).pathname === '/')
+    await closePopups(B.page)
+    await B.page.locator('header button[aria-haspopup="menu"]').click()
+    await B.page.getByRole('menuitem', { name: 'About Fico' }).click()
+    await B.page.waitForTimeout(2000)
+    check('About Fico opens the front page without signing out', new URL(B.page.url()).pathname === '/welcome' && (await B.page.getByRole('link', { name: 'Open Fico' }).count()) > 0)
+
     console.log('\n8. Fico badges')
     // Make A a Fico admin (the way the first admin is made: in the database).
     await mongo.db().collection('users').updateOne({ username: owner }, { $set: { role: 'ADMIN' } })
@@ -267,6 +285,14 @@ export const runRoleScenarios = async (base, mongoUri) => {
     console.log('\n9. Invite-only sign-up')
     // No code: the form won't send, and the server refuses anyway.
     const C = await device(browser)
+    // A first-time visitor gets the front page; its Sign up goes to sign-up.
+    await C.page.goto(base)
+    await C.page.waitForTimeout(2000)
+    check('a first-time visitor sees the front page', (await C.page.getByRole('heading', { name: /Your money/ }).count()) === 1)
+    check('the front page offers Download and Sign up', (await C.page.getByRole('button', { name: 'Download the app' }).count()) > 0 && (await C.page.getByRole('link', { name: 'Sign up' }).count()) > 0)
+    await C.page.getByRole('link', { name: 'Sign up' }).first().click()
+    await C.page.waitForURL(/\/register/, { timeout: 10_000 }).catch(() => undefined)
+    check('Sign up on the front page opens sign-up', C.page.url().includes('/register'))
     await C.page.goto(base + 'register')
     await C.page.waitForTimeout(1000)
     check('the sign-up page says it’s invite-only', (await C.page.getByText('Sign-up is invite-only for now').count()) === 1)

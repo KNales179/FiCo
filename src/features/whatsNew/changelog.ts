@@ -33,6 +33,33 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.11.0',
+    date: '2026-11-16',
+    title: 'A front door for Fico',
+    highlights: [
+      {
+        icon: 'layout',
+        title: 'Fico has a front page',
+        body: 'New visitors to the website now see what Fico is (features, how it works, why Fico and answers to common questions) with buttons to download the app or sign up. The installed app skips it and opens straight into Fico.',
+      },
+      {
+        icon: 'compass',
+        title: 'About Fico, from the menu',
+        body: 'Open the front page any time from the menu without signing out. It shows “Open Fico” to bring you straight back.',
+      },
+      {
+        icon: 'key',
+        title: 'No more sign-in screen when you’re signed in',
+        body: 'If you’re already signed in, the sign-in and sign-up pages take you straight to your dashboard.',
+      },
+      {
+        icon: 'palette',
+        title: 'A lighter sign-in screen',
+        body: 'The panel behind the Fico logo on the sign-in and sign-up screens is now almost see-through: just a soft glow and a faint edge.',
+      },
+    ],
+  },
+  {
     version: '2.10.0',
     date: '2026-11-16',
     title: 'Activity, in tabs',

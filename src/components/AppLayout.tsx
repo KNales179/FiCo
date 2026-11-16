@@ -46,6 +46,7 @@ import NoticePopup from './NoticePopup'
 import PageErrorBoundary from './PageErrorBoundary'
 import { useGuardedLogout } from './useGuardedLogout'
 import { canSeeActivity } from '../features/spaces/roles'
+import { isRunningInstalled } from '../features/pwa/installPrompt'
 import DemoBanner from './DemoBanner'
 import { useNotificationPolling, useNotifications } from '../features/notifications'
 import { useStaggerIn } from '../lib/motion'
@@ -82,6 +83,7 @@ const MENU_HELP: MenuItem[] = [
   { to: '/tutorial', label: 'How Fico works', icon: IconCompass },
   { to: '/updates', label: 'Updates', icon: IconSparkles },
   { to: '/credits', label: 'Credits', icon: IconInfo },
+  { to: '/welcome', label: 'About Fico', icon: IconHome },
   { to: '/feedback', label: 'Report & feedback', icon: IconMessage },
 ]
 
@@ -173,6 +175,8 @@ const AppLayout = () => {
     (item) => item.to !== '/activity' || !activeSpace || activeSpace.type === 'PERSONAL' || canSeeActivity(activeSpace.role),
   )
   const viewer = activeSpace?.role === 'VIEWER'
+  // The installed app is the app itself: no trip out to the website's front page.
+  const helpItems = isRunningInstalled() ? MENU_HELP.filter((item) => item.to !== '/welcome') : MENU_HELP
 
   return (
     <TourProvider>
@@ -288,7 +292,7 @@ const AppLayout = () => {
                     role="menu"
                     className="absolute right-0 z-20 mt-1.5 w-52 overflow-hidden rounded-lg border border-line bg-panel py-1 shadow-lg"
                   >
-                    {[youItems, financeItems, MENU_HELP].map((group, groupIndex) => (
+                    {[youItems, financeItems, helpItems].map((group, groupIndex) => (
                       <div
                         key={groupIndex}
                         role="group"
