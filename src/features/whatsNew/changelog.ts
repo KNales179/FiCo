@@ -33,6 +33,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.17.3',
+    date: '2026-11-17',
+    title: 'Gentler chart details',
+    highlights: [
+      {
+        icon: 'chart',
+        title: 'Chart details ease in',
+        body: 'Hovering a chart now fades its details in smoothly, glides them from bar to bar as you move, and fades them out when you leave, instead of snapping.',
+      },
+    ],
+  },
+  {
     version: '2.17.2',
     date: '2026-11-17',
     title: 'Tags everywhere, smoother FAQ',

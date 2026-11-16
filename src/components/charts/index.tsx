@@ -57,9 +57,39 @@ export const Legend = ({ items }: { items: { label: string; color: string }[] })
   </ul>
 )
 
-const Tooltip = ({ x, y, width, children }: { x: number; y: number; width: number; children: ReactNode }) => (
+/**
+ * Keeps the last hovered point for a moment after the mouse leaves, so the
+ * details box can fade out instead of vanishing.
+ */
+const useLingeringHover = (hover: number | null, ms = 260) => {
+  const [last, setLast] = useState<number | null>(hover)
+  useEffect(() => {
+    if (hover !== null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLast(hover)
+      return
+    }
+    const timer = window.setTimeout(() => setLast(null), ms)
+    return () => window.clearTimeout(timer)
+  }, [hover, ms])
+  return { index: hover ?? last, leaving: hover === null && last !== null }
+}
+
+const Tooltip = ({
+  x,
+  y,
+  width,
+  leaving = false,
+  children,
+}: {
+  x: number
+  y: number
+  width: number
+  leaving?: boolean
+  children: ReactNode
+}) => (
   <div
-    className="chart-tooltip"
+    className={`chart-tooltip${leaving ? ' is-leaving' : ''}`}
     style={{
       left: Math.min(Math.max(x, 8), Math.max(8, width - 140)),
       top: Math.max(y - 8, 0),
@@ -104,6 +134,7 @@ export const BarChart = ({
   const [wrapRef, width] = useWidth<HTMLDivElement>()
   const svgRef = useRef<SVGSVGElement>(null)
   const [hover, setHover] = useState<number | null>(null)
+  const tip = useLingeringHover(hover)
   // Animate when the numbers change — not every time a parent re-renders
   // with a fresh (but identical) array.
   const signature = JSON.stringify(data.map((d) => [d.key, d.values]))
@@ -193,10 +224,15 @@ export const BarChart = ({
           })}
         </svg>
       )}
-      {hover !== null && data[hover] && (
-        <Tooltip x={padL + band * hover + band / 2 - 60} y={y(Math.max(...data[hover].values))} width={width}>
-          <div className="font-semibold">{data[hover].title ?? data[hover].label}</div>
-          {data[hover].values.map((v, s) => (
+      {tip.index !== null && data[tip.index] && (
+        <Tooltip
+          x={padL + band * tip.index + band / 2 - 60}
+          y={y(Math.max(...data[tip.index].values))}
+          width={width}
+          leaving={tip.leaving}
+        >
+          <div className="font-semibold">{data[tip.index].title ?? data[tip.index].label}</div>
+          {data[tip.index].values.map((v, s) => (
             <div key={s} className="mt-0.5 flex items-center justify-between gap-3">
               <span className="flex items-center gap-1.5 text-muted">
                 <span className="h-2 w-2 rounded-sm" style={{ background: series[s].color }} />
@@ -415,6 +451,7 @@ export const AreaChart = ({
   const lineRef = useRef<SVGPathElement>(null)
   const areaRef = useRef<SVGPathElement>(null)
   const [hover, setHover] = useState<number | null>(null)
+  const areaTip = useLingeringHover(hover)
   const signature = JSON.stringify(points.map((p) => [p.key, p.value]))
 
   const padL = 44
@@ -493,10 +530,10 @@ export const AreaChart = ({
           )}
         </svg>
       )}
-      {hover !== null && points[hover] && (
-        <Tooltip x={x(hover) - 60} y={y(points[hover].value)} width={width}>
-          <div className="text-muted">{points[hover].title ?? points[hover].label}</div>
-          <div className="font-semibold tabular-nums">{formatMoney(points[hover].value, currency)}</div>
+      {areaTip.index !== null && points[areaTip.index] && (
+        <Tooltip x={x(areaTip.index) - 60} y={y(points[areaTip.index].value)} width={width} leaving={areaTip.leaving}>
+          <div className="text-muted">{points[areaTip.index].title ?? points[areaTip.index].label}</div>
+          <div className="font-semibold tabular-nums">{formatMoney(points[areaTip.index].value, currency)}</div>
         </Tooltip>
       )}
     </div>
