@@ -128,12 +128,10 @@ const Calendar = () => {
                     {d.day}
                   </span>
                   {(d.spentMinor > 0 || d.receivedMinor > 0) && (
-                    <span className="mt-0.5 hidden text-[10px] leading-none tabular-nums sm:block">
-                      {d.spentMinor > 0 ? (
-                        <span className="text-danger">−{compact(d.spentMinor, currency)}</span>
-                      ) : (
-                        <span className="text-success">+{compact(d.receivedMinor, currency)}</span>
-                      )}
+                    // Both, when both happened: received on top, spent below.
+                    <span className="mt-0.5 hidden flex-col items-center gap-0.5 text-[10px] leading-none tabular-nums sm:flex">
+                      {d.receivedMinor > 0 && <span className="text-success">+{compact(d.receivedMinor, currency)}</span>}
+                      {d.spentMinor > 0 && <span className="text-danger">−{compact(d.spentMinor, currency)}</span>}
                     </span>
                   )}
                   {hasRecords && (

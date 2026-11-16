@@ -33,6 +33,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.17.4',
+    date: '2026-11-17',
+    title: 'Money in and out, day by day',
+    highlights: [
+      {
+        icon: 'chart',
+        title: 'The calendar shows both',
+        body: 'On the Calendar, a day where money came in and went out now shows both: what you received in green, and what you spent in red.',
+      },
+    ],
+  },
+  {
     version: '2.17.3',
     date: '2026-11-17',
     title: 'Gentler chart details',
