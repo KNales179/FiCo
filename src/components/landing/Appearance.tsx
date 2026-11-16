@@ -16,7 +16,7 @@ import { IconCheck, IconHome, IconMoon, IconReceipt, IconSun } from '../icons'
 
 // ── the object: a little Fico card that wears the picked colour ────────
 const PreviewCard = () => (
-  <div className="card w-full max-w-sm overflow-hidden p-0 sm:p-0">
+  <div className="card hover-card w-full max-w-sm overflow-hidden p-0 sm:p-0">
     <div className="flex items-center justify-between border-b border-line px-4 py-3">
       <span className="flex items-center gap-2">
         <FicoLogo className="h-7 w-7" />
@@ -204,7 +204,7 @@ const Appearance = () => {
 
       {/* And the rest */}
       <ul className="mx-auto mt-14 grid max-w-4xl gap-3 sm:grid-cols-3">
-        <li className="card flex items-center gap-3 p-4">
+        <li className="card hover-card flex items-center gap-3 p-4">
           <span className="flex gap-1 text-brand">
             <IconSun size={18} />
             <IconMoon size={18} />
@@ -214,7 +214,7 @@ const Appearance = () => {
             <span className="text-muted">Follows your device if you like</span>
           </span>
         </li>
-        <li className="card flex items-center gap-3 p-4">
+        <li className="card hover-card flex items-center gap-3 p-4">
           <span className="flex items-end gap-0.5 font-bold text-brand" aria-hidden="true">
             <span className="text-xs">A</span>
             <span className="text-sm">A</span>
@@ -225,7 +225,7 @@ const Appearance = () => {
             <span className="text-muted">Small, regular or large</span>
           </span>
         </li>
-        <li className="card flex items-center gap-3 p-4">
+        <li className="card hover-card flex items-center gap-3 p-4">
           <span className="flex flex-col gap-0.5" aria-hidden="true">
             <span className="h-1 w-5 rounded bg-brand" />
             <span className="h-1 w-5 rounded bg-brand/60" />

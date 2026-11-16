@@ -235,7 +235,18 @@ const Landing = () => {
   }
 
   return (
-    <div className="relative min-h-[100dvh] overflow-x-clip">
+    <div
+      className="relative min-h-[100dvh] overflow-x-clip"
+      onPointerMove={(e) => {
+        // Where the spotlight sits inside whichever card is under the mouse.
+        if (e.pointerType !== 'mouse') return
+        const card = (e.target as Element).closest<HTMLElement>('.hover-card')
+        if (!card) return
+        const r = card.getBoundingClientRect()
+        card.style.setProperty('--mx', `${e.clientX - r.left}px`)
+        card.style.setProperty('--my', `${e.clientY - r.top}px`)
+      }}
+    >
       <div className="auth-backdrop" aria-hidden="true">
         <span className="auth-blob auth-blob-1" />
         <span className="auth-blob auth-blob-2" />
@@ -252,7 +263,7 @@ const Landing = () => {
           <ul className="hidden items-center gap-6 text-sm font-medium text-muted md:flex">
             {NAV.map((n) => (
               <li key={n.href}>
-                <a href={n.href} className="transition-colors hover:text-ink">
+                <a href={n.href} className="link-underline transition-colors hover:text-ink">
                   {n.label}
                 </a>
               </li>
@@ -323,8 +334,8 @@ const Landing = () => {
           </div>
           <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map(({ icon: Icon, title, body }) => (
-              <li key={title} className="card p-5">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
+              <li key={title} className="card hover-card p-5">
+                <span className="hover-icon flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
                   <Icon size={20} />
                 </span>
                 <h3 className="mt-4 text-lg font-bold text-ink">{title}</h3>
@@ -360,8 +371,8 @@ const Landing = () => {
           </div>
           <ol className="mt-10 grid gap-4 sm:grid-cols-3">
             {STEPS.map((s, i) => (
-              <li key={s.title} className="card p-5 text-center sm:text-left">
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand text-sm font-bold text-brand-ink">
+              <li key={s.title} className="card hover-card p-5 text-center sm:text-left">
+                <span className="step-badge inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand text-sm font-bold text-brand-ink">
                   {i + 1}
                 </span>
                 <h3 className="mt-3 text-lg font-bold text-ink">{s.title}</h3>
@@ -443,7 +454,7 @@ const Landing = () => {
           </div>
           <div className="mt-8 space-y-3">
             {FAQ.map((f) => (
-              <details key={f.q} className="card group p-0 sm:p-0">
+              <details key={f.q} className="card hover-card group p-0 sm:p-0">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-semibold text-ink">
                   {f.q}
                   <IconChevronDown size={18} className="shrink-0 text-muted transition-transform group-open:rotate-180" />
@@ -487,7 +498,7 @@ const Landing = () => {
               <ul className="mt-2 space-y-1.5 text-muted">
                 {NAV.map((n) => (
                   <li key={n.href}>
-                    <a href={n.href} className="hover:text-ink">
+                    <a href={n.href} className="link-underline hover:text-ink">
                       {n.label}
                     </a>
                   </li>
@@ -499,19 +510,19 @@ const Landing = () => {
               <ul className="mt-2 space-y-1.5 text-muted">
                 {isAuthenticated ? (
                   <li>
-                    <Link to="/" className="hover:text-ink">
+                    <Link to="/" className="link-underline hover:text-ink">
                       Open Fico
                     </Link>
                   </li>
                 ) : (
                   <>
                     <li>
-                      <Link to="/login" className="hover:text-ink">
+                      <Link to="/login" className="link-underline hover:text-ink">
                         Sign in
                       </Link>
                     </li>
                     <li>
-                      <Link to="/register" className="hover:text-ink">
+                      <Link to="/register" className="link-underline hover:text-ink">
                         Sign up
                       </Link>
                     </li>
@@ -523,12 +534,12 @@ const Landing = () => {
               <p className="font-semibold text-ink">Legal & contact</p>
               <ul className="mt-2 space-y-1.5 text-muted">
                 <li>
-                  <Link to="/terms" className="hover:text-ink">
+                  <Link to="/terms" className="link-underline hover:text-ink">
                     Terms
                   </Link>
                 </li>
                 <li>
-                  <Link to="/privacy" className="hover:text-ink">
+                  <Link to="/privacy" className="link-underline hover:text-ink">
                     Privacy
                   </Link>
                 </li>

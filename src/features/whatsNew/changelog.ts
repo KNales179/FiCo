@@ -33,6 +33,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.16.1',
+    date: '2026-11-17',
+    title: 'A livelier front page',
+    highlights: [
+      {
+        icon: 'layout',
+        title: 'Hover effects on the website',
+        body: 'On a computer, the front page’s cards rise and glow where your mouse is, icons tilt, the step numbers spin, the devices lift, and links get a sliding underline.',
+      },
+    ],
+  },
+  {
     version: '2.16.0',
     date: '2026-11-17',
     title: 'Little moments of motion',

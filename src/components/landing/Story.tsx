@@ -20,7 +20,7 @@ export const PurposeArt = () => (
     <Bubble className="-rotate-2 self-start">Who paid the electric bill?</Bubble>
     <Bubble className="rotate-1 self-end">Do we still have money for groceries?</Bubble>
     <Bubble className="-rotate-1 ml-6 self-start">Wait… did we pay the water already??</Bubble>
-    <div className="card mt-2 space-y-3 p-4">
+    <div className="card hover-card mt-2 space-y-3 p-4">
       <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand">
         <IconReceipt size={14} /> One honest place
       </p>
@@ -50,7 +50,7 @@ export const PurposeArt = () => (
 /** Mission: the three promises, as three small cards. */
 export const MissionArt = () => (
   <div className="mx-auto grid w-full max-w-md gap-3">
-    <div className="card flex items-center gap-4 p-4">
+    <div className="card hover-card flex items-center gap-4 p-4">
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
         <IconCompass size={22} />
       </span>
@@ -63,7 +63,7 @@ export const MissionArt = () => (
         </div>
       </div>
     </div>
-    <div className="card flex items-center gap-4 p-4">
+    <div className="card hover-card flex items-center gap-4 p-4">
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
         <IconLock size={22} />
       </span>
@@ -72,7 +72,7 @@ export const MissionArt = () => (
         <p className="mt-0.5 text-xs text-muted">No bank logins to hand over · No ads · No tracking</p>
       </div>
     </div>
-    <div className="card flex items-center gap-4 p-4">
+    <div className="card hover-card flex items-center gap-4 p-4">
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
         <IconUsers size={22} />
       </span>
@@ -106,7 +106,7 @@ export const VisionArt = () => {
   const paid = new Set([3, 8, 16])
   const payday = new Set([15, 30])
   return (
-    <div className="card mx-auto w-full max-w-md p-5">
+    <div className="card hover-card mx-auto w-full max-w-md p-5">
       <div className="flex items-center justify-between">
         <p className="font-bold text-ink">November</p>
         <p className="text-xs text-muted">No surprises this month</p>

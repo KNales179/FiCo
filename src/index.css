@@ -1097,3 +1097,60 @@ h3 {
   .roll-strip { transition: none; }
   .roll-spin { animation: none; }
 }
+
+/* ── Front page hover effects (mouse only; off with reduced motion) ── */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  /* Cards rise a little, the border takes the accent, and a soft
+     spotlight follows the mouse inside (--mx/--my set by the page). */
+  .hover-card {
+    position: relative;
+    transition:
+      transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 200ms ease,
+      box-shadow 260ms ease;
+  }
+  .hover-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 200ms ease;
+    background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--brand) 14%, transparent), transparent 70%);
+  }
+  /* transform, not translate: it stacks with an element's own Tailwind translate. */
+  .hover-card:hover {
+    transform: translateY(-4px);
+    border-color: color-mix(in srgb, var(--brand) 45%, var(--line));
+    box-shadow: 0 18px 40px -22px color-mix(in srgb, var(--brand) 55%, transparent);
+  }
+  .hover-card:hover::after { opacity: 1; }
+
+  /* Feature icons grow and tilt; step numbers spin. */
+  .hover-icon { transition: scale 300ms cubic-bezier(0.34, 1.56, 0.64, 1), rotate 300ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .hover-card:hover .hover-icon { scale: 1.12; rotate: -8deg; }
+  .step-badge { transition: rotate 500ms cubic-bezier(0.34, 1.56, 0.64, 1), scale 300ms ease; }
+  .hover-card:hover .step-badge { rotate: 360deg; scale: 1.08; }
+
+  /* Devices lift on their own. */
+  .hover-device { transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .hover-device:hover { transform: translateY(-8px); }
+}
+
+/* Links: an underline that slides in from the middle. */
+.link-underline { position: relative; }
+.link-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--brand);
+  transform: scaleX(0);
+  transition: transform 250ms ease;
+}
+.link-underline:hover::after,
+.link-underline:focus-visible::after { transform: scaleX(1); }
