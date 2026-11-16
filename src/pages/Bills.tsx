@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import SmartDateInput from '../components/SmartDateInput'
 import { celebrate } from '../features/ui/celebrate'
 import { useBills } from '../hooks/useBills'
 import { useMoney } from '../hooks/useMoney'
@@ -228,12 +229,7 @@ const EditBillForm = ({
           className="w-32"
         />
         {(recurrence === 'MONTHLY' || recurrence === 'YEARLY') && (
-          <Input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className="w-auto"
-          />
+          <SmartDateInput value={dueDate} onChange={setDueDate} prefer="future" aria-label="Next due date" />
         )}
         <CategoryPicker
           kind="EXPENSE"
@@ -248,12 +244,7 @@ const EditBillForm = ({
         <div className="border-t border-line pt-3">
           <p className="field-label">Dates</p>
           <div className="flex flex-wrap items-center gap-2">
-            <Input
-              type="date"
-              value={scheduledInput}
-              onChange={(e) => setScheduledInput(e.target.value)}
-              className="w-auto"
-            />
+            <SmartDateInput value={scheduledInput} onChange={setScheduledInput} prefer="future" aria-label="Scheduled date" />
             <Button type="button" size="sm" onClick={addDraftDate}>
               <IconPlus size={13} />
               Add date
@@ -1066,12 +1057,7 @@ const Bills = () => {
                     placeholder="Expected amount"
                   />
                   {(recurrence === 'MONTHLY' || recurrence === 'YEARLY') && (
-                    <Input
-                      type="date"
-                      value={dueDate}
-                      onChange={(e) => setDueDate(e.target.value)}
-                      aria-label="Next due date"
-                    />
+                    <SmartDateInput value={dueDate} onChange={setDueDate} prefer="future" aria-label="Next due date" />
                   )}
                 </div>
 
@@ -1081,11 +1067,7 @@ const Bills = () => {
                       Dates (e.g. this term's tuition — add as many as you already know)
                     </p>
                     <div className="flex items-center gap-2">
-                      <Input
-                        type="date"
-                        value={scheduledInput}
-                        onChange={(e) => setScheduledInput(e.target.value)}
-                      />
+                      <SmartDateInput value={scheduledInput} onChange={setScheduledInput} prefer="future" aria-label="Scheduled date" />
                       <Button type="button" onClick={addScheduledDraftDate}>
                         <IconPlus size={13} />
                         Add date

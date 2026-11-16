@@ -1,6 +1,8 @@
 /// <reference lib="webworker" />
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
+import { CacheFirst } from 'workbox-strategies'
+import { CacheableResponsePlugin } from 'workbox-cacheable-response'
 import { pushPending } from './features/sync/engine'
 import { MetadataKeys, metadataRepository } from './repositories'
 
@@ -12,6 +14,14 @@ declare let self: ServiceWorkerGlobalScope
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html')))
+
+// Fonts not pre-downloaded above (the extra ones in Settings → Text): fetched
+// the first time they're used, then served from this cache — so a font you
+// picked keeps working offline.
+registerRoute(
+  ({ request }) => request.destination === 'font',
+  new CacheFirst({ cacheName: 'fico-fonts', plugins: [new CacheableResponsePlugin({ statuses: [0, 200] })] }),
+)
 
 // Do NOT call self.skipWaiting() unconditionally here — that would activate
 // a new version (and reload every open tab) the instant it's downloaded,

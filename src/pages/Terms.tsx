@@ -1,12 +1,11 @@
 import { Link } from 'react-router-dom'
+import BackLink from '../components/BackLink'
 
 const LAST_UPDATED = 'November 16, 2026'
 
 const Terms = () => (
   <main className="mx-auto max-w-2xl px-4 py-10">
-    <Link to="/" className="text-sm text-brand underline">
-      ← Back to Fico
-    </Link>
+    <BackLink to="/">Back to Fico</BackLink>
 
     <h1 className="page-title mt-4 text-2xl">Terms & Conditions</h1>
     <p className="mt-1 text-sm text-muted">Last updated {LAST_UPDATED}</p>

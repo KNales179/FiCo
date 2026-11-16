@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
+import BackLink from '../components/BackLink'
 import { Link, useParams } from 'react-router-dom'
 import { decideAppeal, getAppeal, type AdminAppealDetail } from '../services/appealService'
 import { Alert, Button, Card, SkeletonCard } from '../components/ui'
 import ReasonTemplates from '../components/admin/ReasonTemplates'
 import type { TemplateKind } from '../features/admin/reasonTemplates'
 import { describeUntil } from '../features/auth/authNotice'
-import { IconCheck, IconChevronLeft, IconChevronRight, IconClock, IconRotateCcw, IconShield } from '../components/icons'
+import { IconCheck, IconChevronRight, IconClock, IconRotateCcw, IconShield } from '../components/icons'
 
 type Decision = 'LIFT' | 'SHORTEN' | 'KEEP'
 
@@ -81,9 +82,7 @@ const AdminAppeal = () => {
   }
 
   const back = (
-    <Link to="/admin/appeals" className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink">
-      <IconChevronLeft size={16} /> Appeals
-    </Link>
+    <BackLink to="/admin/appeals">Appeals</BackLink>
   )
 
   if (loadError) {

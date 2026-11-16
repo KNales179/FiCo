@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import BackLink from '../components/BackLink'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
   deleteUser,
   getUserProfile,
@@ -192,9 +193,7 @@ const AdminUser = () => {
   if (loadError) {
     return (
       <div className="mx-auto max-w-4xl space-y-4">
-        <Link to="/admin" className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink">
-          <IconChevronLeft size={16} /> All users
-        </Link>
+        <BackLink to="/admin">All users</BackLink>
         <Alert>{loadError}</Alert>
       </div>
     )
@@ -268,9 +267,7 @@ const AdminUser = () => {
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
-      <Link to="/admin" className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink">
-        <IconChevronLeft size={16} /> All users
-      </Link>
+      <BackLink to="/admin">All users</BackLink>
 
       {/* Who they are */}
       <section className="hero-card">

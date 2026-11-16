@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import SmartDateInput from '../SmartDateInput'
 import { celebrate } from '../../features/ui/celebrate'
 import { useMoney } from '../../hooks/useMoney'
 import { useAuth } from '../../hooks/useAuth'
@@ -212,13 +213,7 @@ const useEditTransactionFields = (
             placeholder="Amount"
             className="input w-24"
           />
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            max={new Date().toISOString().slice(0, 10)}
-            className="input w-auto"
-          />
+          <SmartDateInput value={date} onChange={setDate} max={new Date().toISOString().slice(0, 10)} />
           <input
             type="time"
             value={time}
@@ -832,14 +827,13 @@ const TransactionList = () => {
           <option value="year">A year</option>
         </select>
         {dateMode === 'day' && (
-          <input
-            type="date"
+          <SmartDateInput
             value={dateValue}
-            onChange={(e) => {
-              setDateValue(e.target.value)
+            aria-label="Show records from this day"
+            onChange={(v) => {
+              setDateValue(v)
               setPage(1)
             }}
-            className="input w-auto"
           />
         )}
         {dateMode === 'month' && (

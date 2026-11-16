@@ -15,6 +15,7 @@ import ConnectionStatus from './components/ConnectionStatus'
 import UpdateBanner from './components/UpdateBanner'
 import IntroSplash from './components/IntroSplash'
 import GridGlow from './components/GridGlow'
+import CursorTag from './components/CursorTag'
 import AuthLayout from './components/auth/AuthLayout'
 import { PageSkeleton } from './components/ui'
 
@@ -65,6 +66,8 @@ const App = () => {
       <IntroSplash />
       {/* Grid lines near the mouse light up (front page, sign-in and the app). */}
       <GridGlow />
+      {/* What a button does: follows the mouse; press and hold on touch. */}
+      <CursorTag />
       <AuthProvider>
         <SpaceProvider>
           <SyncProvider>

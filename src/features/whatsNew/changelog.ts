@@ -33,6 +33,33 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.17.0',
+    date: '2026-11-17',
+    title: '30 fonts, friendlier inputs',
+    highlights: [
+      {
+        icon: 'text',
+        title: '15 more fonts',
+        body: 'Settings → Text now has 30 fonts. New easy-to-read ones (Poppins, Montserrat, Figtree, Work Sans, Space Grotesk, Rubik, Atkinson Hyperlegible for low vision), a classic serif (Lora), a typewriter one (JetBrains Mono), and some silly ones: Caveat, Pacifico, Bangers, Permanent Marker, plus Press Start 2P and Creepster if you don’t mind squinting. Each new font downloads the first time you pick it, then works offline.',
+      },
+      {
+        icon: 'compass',
+        title: 'Tags that explain buttons',
+        body: 'A small tag says what a button does: it follows your mouse on the website, explains the icon buttons in the app after a short pause, and on a phone or tablet you can press and hold a button to see it.',
+      },
+      {
+        icon: 'receipt',
+        title: 'Type it however you like',
+        body: 'Amounts accept ₱1,250, 1 250, +150 or 1.5k, and dates accept “today”, “yesterday”, “Nov 16”, “16/11” or “3 days ago”; the calendar button is still there too.',
+      },
+      {
+        icon: 'key',
+        title: 'Clearer feedback',
+        body: 'A wrong password shakes and turns red, the back buttons are bigger and easier to hit, numbers line up neatly, and your balance shows how much it just changed as it rolls.',
+      },
+    ],
+  },
+  {
     version: '2.16.3',
     date: '2026-11-17',
     title: 'Clearer words',

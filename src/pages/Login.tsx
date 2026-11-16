@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { shakeById } from '../lib/feedback'
 import type { FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -57,6 +58,10 @@ const Login = () => {
       setPendingToken(token)
     })
 
+  // A wrong password: the field shakes and stays red until it's edited.
+  const [wrongPassword, setWrongPassword] = useState(false)
+  const [wrongCode, setWrongCode] = useState(false)
+
   const handlePasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
@@ -68,7 +73,13 @@ const Login = () => {
     } catch (err) {
       // Restricted / deleted by an admin: the pop-up explains it (api.ts saved the notice).
       if (err instanceof ApiError && err.notice) setError('')
-      else setError(friendlyAuthError(err, 'Unable to sign in'))
+      else {
+        setError(friendlyAuthError(err, 'Unable to sign in'))
+        if (err instanceof ApiError && (err.status === 401 || err.status === 400)) {
+          setWrongPassword(true)
+          shakeById('password')
+        }
+      }
     } finally {
       setLoading(false)
     }
@@ -84,6 +95,8 @@ const Login = () => {
       navigate('/', { replace: true })
     } catch (err) {
       setError(friendlyAuthError(err, 'Invalid code'))
+      setWrongCode(true)
+      shakeById('code')
     } finally {
       setLoading(false)
     }
@@ -107,13 +120,17 @@ const Login = () => {
             id="code"
             type="text"
             value={code}
-            onChange={(event) => setCode(event.target.value)}
+            onChange={(event) => {
+              setCode(event.target.value)
+              setWrongCode(false)
+            }}
             inputMode="text"
             autoComplete="one-time-code"
             placeholder="123456"
             autoFocus
             required
-            className="input text-center font-mono text-lg tracking-[0.3em]"
+            aria-invalid={wrongCode}
+            className={`input text-center font-mono text-lg tracking-[0.3em] ${wrongCode ? 'field-wrong' : ''}`}
           />
           <span className="mt-1.5 block text-xs text-muted">
             The 6-digit code from your authenticator app, or one of your backup codes.
@@ -198,7 +215,12 @@ const Login = () => {
           <PasswordInput
             id="password"
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            className={wrongPassword ? 'field-wrong' : undefined}
+            aria-invalid={wrongPassword}
+            onChange={(event) => {
+              setPassword(event.target.value)
+              setWrongPassword(false)
+            }}
             autoComplete="current-password"
             required
           />

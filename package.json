@@ -1,7 +1,7 @@
 {
   "name": "fico",
   "private": true,
-  "version": "2.16.3",
+  "version": "2.17.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,20 +14,35 @@
     "test:e2e": "node e2e/run-offline.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
     "@fontsource-variable/baloo-2": "^5.3.0",
+    "@fontsource-variable/caveat": "^5.3.0",
     "@fontsource-variable/dm-sans": "^5.3.0",
+    "@fontsource-variable/figtree": "^5.3.0",
     "@fontsource-variable/fredoka": "^5.3.0",
     "@fontsource-variable/ibm-plex-sans": "^5.3.0",
     "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@fontsource-variable/lexend": "^5.3.0",
+    "@fontsource-variable/lora": "^5.3.0",
     "@fontsource-variable/manrope": "^5.3.0",
+    "@fontsource-variable/montserrat": "^5.3.0",
     "@fontsource-variable/nunito": "^5.3.0",
     "@fontsource-variable/outfit": "^5.3.0",
     "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
     "@fontsource-variable/quicksand": "^5.3.0",
+    "@fontsource-variable/rubik": "^5.3.0",
     "@fontsource-variable/source-sans-3": "^5.3.1",
+    "@fontsource-variable/space-grotesk": "^5.3.0",
+    "@fontsource-variable/work-sans": "^5.3.0",
+    "@fontsource/bangers": "^5.3.0",
     "@fontsource/comic-neue": "^5.3.0",
+    "@fontsource/creepster": "^5.3.0",
+    "@fontsource/pacifico": "^5.3.0",
     "@fontsource/patrick-hand": "^5.3.0",
+    "@fontsource/permanent-marker": "^5.3.0",
+    "@fontsource/poppins": "^5.3.0",
+    "@fontsource/press-start-2p": "^5.3.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/qrcode": "^1.5.6",
     "gsap": "^3.15.1",
@@ -57,7 +72,9 @@
     "vite": "^8.2.2",
     "vite-plugin-pwa": "^1.3.0",
     "vitest": "^3.2.7",
+    "workbox-cacheable-response": "^7.4.1",
     "workbox-precaching": "^7.4.1",
-    "workbox-routing": "^7.4.1"
+    "workbox-routing": "^7.4.1",
+    "workbox-strategies": "^7.4.1"
   }
 }

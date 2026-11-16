@@ -71,6 +71,7 @@ const CollapsibleCard = ({
     return saved === undefined ? defaultOpen : !saved
   })
   const bodyRef = useRef<HTMLDivElement>(null)
+  const sectionRef = useRef<HTMLElement>(null)
   const first = useRef(true)
 
   useLayoutEffect(() => {
@@ -102,6 +103,13 @@ const CollapsibleCard = ({
       if ((e as CustomEvent<string>).detail !== id) return
       setCheers((n) => n + 1)
       setCheering(true)
+      // Secondary flourish: the whole card gives one soft pulse in the accent.
+      const card = sectionRef.current
+      if (card) {
+        card.classList.remove('celebrate-pulse')
+        void card.offsetWidth
+        card.classList.add('celebrate-pulse')
+      }
       window.clearTimeout(timer)
       timer = window.setTimeout(() => setCheering(false), 1600)
     }
@@ -145,7 +153,7 @@ const CollapsibleCard = ({
   }, [id, open])
 
   return (
-    <section className={`card ${className}`} data-tour={dataTour}>
+    <section ref={sectionRef} className={`card ${className}`} data-tour={dataTour}>
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"

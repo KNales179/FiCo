@@ -228,7 +228,7 @@ const CustomColour = ({ value, onChange }: { value: string; onChange: (hex: stri
   )
 }
 
-const FONT_GROUPS: FontGroup[] = ['Modern', 'Professional', 'Cute', 'Silly', 'System']
+const FONT_GROUPS: FontGroup[] = ['Modern', 'Professional', 'Cute', 'Classic', 'Code', 'Silly', 'System']
 
 const TextTab = () => {
   const [appearance, change] = useAppearance()

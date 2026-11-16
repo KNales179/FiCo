@@ -129,7 +129,7 @@ const FAQ: Array<{ q: string; a: ReactNode }> = [
   },
   {
     q: 'Can I change how Fico looks?',
-    a: 'Yes: light or dark, 15 colours or any colour you pick on a colour wheel, 15 fonts, three text sizes, and roomy or compact rows. See “Make it yours” above.',
+    a: 'Yes: light or dark, 15 colours or any colour you pick on a colour wheel, 30 fonts (a few of them silly), three text sizes, and roomy or compact rows. See “Make it yours” above.',
   },
   {
     q: 'Will there be paid plans?',

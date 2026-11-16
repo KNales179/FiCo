@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import DeltaFloat from '../components/DeltaFloat'
 import RollingNumber from '../components/RollingNumber'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -131,7 +132,9 @@ const SummaryCard = ({ onCashCheck }: { onCashCheck?: () => void }) => {
                 pinned ? 'text-3xl sm:text-4xl' : 'text-4xl sm:text-5xl'
               }`}
             >
-              <RollingNumber value={formatMoney(totalsByCurrency[currency] ?? 0, currency)} />
+              <DeltaFloat key={spaceId ?? "none"} amount={totalsByCurrency[currency] ?? 0} currency={currency}>
+                <RollingNumber value={formatMoney(totalsByCurrency[currency] ?? 0, currency)} />
+              </DeltaFloat>
             </p>
             <Approx minor={totalsByCurrency[currency] ?? 0} currency={currency} className="mt-0.5 text-sm" />
             {otherTotals.length > 0 && (

@@ -114,6 +114,7 @@ const FontRoll = () => {
         onFocus={roll}
         onClick={roll}
         aria-label={`Font: ${font.label}. Hover or tap to roll through Fico's fonts.`}
+        data-tag="Roll the fonts"
         className="select-none text-[6.5rem] font-extrabold leading-none tracking-tight text-ink transition-colors hover:text-brand sm:text-[9rem]"
         style={{ fontFamily: font.stack }}
       >

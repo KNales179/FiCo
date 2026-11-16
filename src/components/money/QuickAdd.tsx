@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import SmartDateInput from '../SmartDateInput'
 import { celebrate } from '../../features/ui/celebrate'
 import { useMoney } from '../../hooks/useMoney'
 import { useMutationContext } from '../../hooks/useMutationContext'
@@ -388,28 +389,24 @@ const QuickAdd = () => {
                 </option>
               ))}
             </select>
-            <input
-              type="date"
+            <SmartDateInput
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={setDate}
               max={today()}
               aria-label="Date"
-              title="When this actually happened — defaults to today, change it if you're recording late"
-              className="input"
+              title="When this happened — type “yesterday”, “Nov 16”, “16/11”… or use the calendar"
             />
           </div>
         )}
 
         <div className={`grid gap-2 ${!batchMode && !crossCurrency ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-1'}`}>
           {direction === 'TRANSFER' ? (
-            <input
-              type="date"
+            <SmartDateInput
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={setDate}
               max={today()}
               aria-label="Date"
-              title="When this actually happened — defaults to today, change it if you're recording late"
-              className="input"
+              title="When this happened — type “yesterday”, “Nov 16”, “16/11”… or use the calendar"
             />
           ) : (
             <CategoryPicker

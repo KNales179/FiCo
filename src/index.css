@@ -1211,3 +1211,80 @@ h3 {
   -webkit-backdrop-filter: blur(10px) saturate(140%);
   backdrop-filter: blur(10px) saturate(140%);
 }
+
+
+/* ── Tabular numbers everywhere: every digit the same width, so amounts
+   line up in columns and never wobble as they change. ───────────────── */
+body { font-variant-numeric: tabular-nums; }
+
+/* ── Exaggerated feedback: a wrong answer shakes and turns red ──────── */
+.shake { animation: shake 480ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+@keyframes shake {
+  10%, 90% { translate: -2px 0; }
+  20%, 80% { translate: 4px 0; }
+  30%, 50%, 70% { translate: -8px 0; }
+  40%, 60% { translate: 8px 0; }
+}
+.field-wrong,
+.field-wrong:focus {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent) !important;
+}
+
+/* ── Secondary actions: small flourishes backing up the main one ────── */
+/* The card a success check appears on gives a soft pulse in the accent. */
+.celebrate-pulse { animation: celebrate-pulse 900ms ease-out; }
+@keyframes celebrate-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 45%, transparent); }
+  100% { box-shadow: 0 0 0 14px color-mix(in srgb, var(--brand) 0%, transparent); }
+}
+/* "+₱1,234" floats up beside a balance as it rolls, then fades. */
+.delta-float {
+  position: absolute;
+  left: 100%;
+  top: 35%;
+  margin-left: 0.5rem;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 700;
+  pointer-events: none;
+  animation: delta-float 1400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes delta-float {
+  0% { opacity: 0; translate: 0 6px; }
+  15% { opacity: 1; translate: 0 0; }
+  70% { opacity: 1; }
+  100% { opacity: 0; translate: 0 -18px; }
+}
+
+/* ── The hover tag (website + app) ──────────────────────────────────── */
+.cursor-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  border-radius: 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--brand) 45%, var(--line));
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--ink);
+  padding: 0.35rem 0.65rem 0.35rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--brand) 55%, rgb(0 0 0 / 0.4));
+}
+.cursor-tag-mark {
+  display: inline-flex;
+  height: 1.05rem;
+  width: 1.05rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.35rem;
+  background: var(--brand);
+  color: var(--brand-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shake, .celebrate-pulse, .delta-float { animation: none; }
+}

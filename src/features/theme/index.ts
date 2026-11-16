@@ -44,8 +44,23 @@ export type FontFamily =
   | 'baloo'
   | 'comic'
   | 'patrick'
+  | 'poppins'
+  | 'montserrat'
+  | 'figtree'
+  | 'worksans'
+  | 'atkinson'
+  | 'spacegrotesk'
+  | 'rubik'
+  | 'caveat'
+  | 'lora'
+  | 'jetbrains'
+  | 'pacifico'
+  | 'bangers'
+  | 'marker'
+  | 'pixel'
+  | 'creepster'
   | 'system'
-export type FontGroup = 'Modern' | 'Professional' | 'Cute' | 'Silly' | 'System'
+export type FontGroup = 'Modern' | 'Professional' | 'Cute' | 'Classic' | 'Code' | 'Silly' | 'System'
 export type Density = 'comfortable' | 'compact'
 
 export interface Appearance {
@@ -118,6 +133,21 @@ export const FONTS: {
   { value: 'baloo', label: 'Baloo', group: 'Cute', hint: 'Bouncy and warm', stack: "'Baloo 2 Variable', system-ui, sans-serif" },
   { value: 'comic', label: 'Comic Neue', group: 'Silly', hint: 'Comic Sans, but tidier', stack: "'Comic Neue', 'Comic Sans MS', system-ui, sans-serif" },
   { value: 'patrick', label: 'Patrick Hand', group: 'Silly', hint: 'Looks handwritten', stack: "'Patrick Hand', system-ui, sans-serif" },
+  { value: 'poppins', label: 'Poppins', group: 'Modern', hint: 'Bold and geometric', stack: "'Poppins', system-ui, sans-serif" },
+  { value: 'montserrat', label: 'Montserrat', group: 'Modern', hint: 'Wide and confident', stack: "'Montserrat Variable', system-ui, sans-serif" },
+  { value: 'figtree', label: 'Figtree', group: 'Modern', hint: 'Friendly and clear', stack: "'Figtree Variable', system-ui, sans-serif" },
+  { value: 'worksans', label: 'Work Sans', group: 'Professional', hint: 'Plain and practical', stack: "'Work Sans Variable', system-ui, sans-serif" },
+  { value: 'atkinson', label: 'Atkinson Hyperlegible', group: 'Professional', hint: 'Made for low vision — the easiest to read', stack: "'Atkinson Hyperlegible Next Variable', system-ui, sans-serif" },
+  { value: 'spacegrotesk', label: 'Space Grotesk', group: 'Professional', hint: 'Techy and distinctive', stack: "'Space Grotesk Variable', system-ui, sans-serif" },
+  { value: 'rubik', label: 'Rubik', group: 'Cute', hint: 'Slightly rounded corners', stack: "'Rubik Variable', system-ui, sans-serif" },
+  { value: 'caveat', label: 'Caveat', group: 'Cute', hint: 'Quick handwriting', stack: "'Caveat Variable', cursive" },
+  { value: 'lora', label: 'Lora', group: 'Classic', hint: 'A warm book serif', stack: "'Lora Variable', Georgia, serif" },
+  { value: 'jetbrains', label: 'JetBrains Mono', group: 'Code', hint: 'Typewriter-style, every letter the same width', stack: "'JetBrains Mono Variable', ui-monospace, monospace" },
+  { value: 'pacifico', label: 'Pacifico', group: 'Silly', hint: 'Bubbly surf-shop script', stack: "'Pacifico', cursive" },
+  { value: 'bangers', label: 'Bangers', group: 'Silly', hint: 'Comic-book shouting', stack: "'Bangers', system-ui, sans-serif" },
+  { value: 'marker', label: 'Permanent Marker', group: 'Silly', hint: 'Scribbled with a marker', stack: "'Permanent Marker', cursive" },
+  { value: 'pixel', label: 'Press Start 2P', group: 'Silly', hint: 'Retro pixel game — hard to read!', stack: "'Press Start 2P', ui-monospace, monospace" },
+  { value: 'creepster', label: 'Creepster', group: 'Silly', hint: 'Spooky drips — hard to read!', stack: "'Creepster', system-ui, sans-serif" },
   { value: 'system', label: 'Device font', group: 'System', hint: "Your phone or computer's own font", stack: "system-ui, 'Segoe UI', Roboto, sans-serif" },
 ]
 

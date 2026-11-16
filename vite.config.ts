@@ -25,6 +25,12 @@ export default defineConfig({
       filename: 'sw.ts',
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // The 15 fonts added in 2.17.0 aren't pre-downloaded with the app
+        // (~0.9 MB few people need). Each one is fetched the first time it's
+        // used and kept for offline from then on (see the font route in sw.ts).
+        globIgnores: [
+          '**/{poppins,montserrat,figtree,rubik,work-sans,atkinson-hyperlegible-next,space-grotesk,lora,jetbrains-mono,caveat,pacifico,bangers,permanent-marker,press-start-2p,creepster}-*.woff2',
+        ],
       },
 
       includeAssets: [

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { shakeById } from '../lib/feedback'
 import type { FormEvent, ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -127,7 +128,10 @@ const Register = () => {
     if (Object.keys(errors).length > 0) {
       // Jump to the first field that needs fixing.
       const first = (['inviteCode', 'username', 'email', 'password', 'confirmPassword', 'termsAccepted'] as const).find((f) => errors[f])
-      document.getElementById(first === 'termsAccepted' ? 'terms' : first ?? '')?.focus()
+      const firstId = first === 'termsAccepted' ? 'terms' : first ?? ''
+      document.getElementById(firstId)?.focus()
+      // Every field that needs fixing shakes once.
+      for (const f of Object.keys(errors)) shakeById(f === 'termsAccepted' ? 'terms' : f)
       return
     }
 
@@ -142,6 +146,7 @@ const Register = () => {
           if (messages?.[0]) next[field as FieldName] = messages[0]
         }
         setServerErrors(next)
+        for (const f of Object.keys(next)) shakeById(f === 'termsAccepted' ? 'terms' : f)
         setEmailTaken(err.status === 409 && Boolean(next.email))
         // The field itself shows the reason; the banner only for anything else.
         if (Object.keys(next).length === 0) setError(err.message)

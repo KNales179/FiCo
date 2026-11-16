@@ -84,14 +84,34 @@ export const isValidMinor = (value: unknown): value is number =>
   typeof value === 'number' && Number.isInteger(value) && Number.isFinite(value)
 
 /**
- * Parse a user-typed amount ("1,250.50", "1250") into minor units.
- * Returns null if it isn't a sane positive-or-zero amount.
+ * Parse a user-typed amount into minor units, accepting it however it was
+ * typed (Postel's law): "1,250.50", "1250", "₱1,250", "PHP 1 250", "+1250",
+ * "1.5k", "2K", "1 234,50" (a decimal comma). Returns null if it isn't a
+ * sane positive-or-zero amount.
  */
 export const parseAmountToMinor = (
   input: string,
   currency = 'PHP',
 ): number | null => {
-  const cleaned = input.replace(/[,\s]/g, '').trim()
+  let cleaned = input
+    .trim()
+    .replace(/^\+/, '')
+    // currency signs and codes, before or after the number
+    .replace(/[₱$€£¥₩₹฿₫]|\b(php|usd|eur|gbp|jpy|aed|sar|sgd|hkd|aud|cad)\b|\bp(?=\s*\d)/gi, '')
+    .replace(/\s+/g, '')
+  // "1.5k" / "2K": thousands
+  const thousands = /^(\d+(?:[.,]\d+)?)k$/i.exec(cleaned)
+  if (thousands) {
+    const n = Number(thousands[1].replace(',', '.')) * 1000
+    cleaned = Number.isFinite(n) ? String(Math.round(n * 100) / 100) : ''
+  }
+  // A comma followed by just one or two digits at the end, with no dot, is a
+  // decimal comma ("12,50", "1.234,50"); otherwise commas group thousands.
+  if (/,\d{1,2}$/.test(cleaned) && (!cleaned.includes('.') || cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.'))) {
+    cleaned = cleaned.replace(/\./g, '').replace(',', '.')
+  } else {
+    cleaned = cleaned.replace(/,/g, '')
+  }
   if (cleaned === '' || !/^\d*\.?\d*$/.test(cleaned)) return null
 
   const factor = minorPerMajor(currency)
