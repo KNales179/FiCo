@@ -78,14 +78,20 @@ export const MissionArt = () => (
       <div className="min-w-0 flex-1">
         <p className="font-bold text-ink">Together</p>
         <div className="mt-1.5 flex items-center">
-          {['A', 'B', 'L', 'M'].map((initial, i) => (
-            <span
+          {[
+            ['A', 'cool-cat'],
+            ['B', 'cap-puppy'],
+            ['L', 'glasses-doll'],
+            ['M', 'gamer-cat'],
+          ].map(([initial, photo]) => (
+            <img
               key={initial}
-              className="-ml-1.5 flex h-7 w-7 items-center justify-center rounded-full border-2 border-panel bg-brand text-xs font-bold text-brand-ink first:ml-0"
-              style={{ opacity: 1 - i * 0.15 }}
-            >
-              {initial}
-            </span>
+              src={`/avatars/${photo}.webp`}
+              alt={initial}
+              title={initial}
+              loading="lazy"
+              className="-ml-2 h-8 w-8 rounded-full border-2 border-panel object-cover first:ml-0"
+            />
           ))}
           <span className="ml-2 text-xs text-muted">4 people, one Finance</span>
         </div>

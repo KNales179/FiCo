@@ -38,7 +38,7 @@ const defaultDemoUser = (): User => {
     role: 'USER',
     totpEnabled: false,
     emailVerified: true,
-    avatarUrl: null,
+    avatarUrl: '/avatars/cool-cat.webp',
   }
 }
 

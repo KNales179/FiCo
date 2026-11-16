@@ -12,9 +12,9 @@ const Shot = ({ name, alt }: { name: 'laptop' | 'tablet' | 'phone'; alt: string 
 )
 
 const Devices = () => (
-  <div className="relative mx-auto aspect-[16/11] w-full max-w-5xl" aria-label="Fico on a laptop, a tablet and a phone" role="img">
+  <div className="relative mx-auto aspect-[16/15] w-full max-w-6xl sm:aspect-[16/12]" aria-label="Fico on a laptop, a tablet and a phone" role="img">
     {/* Laptop */}
-    <div className="absolute left-1/2 top-0 w-[74%] -translate-x-1/2">
+    <div className="absolute left-1/2 top-0 w-[86%] -translate-x-1/2 sm:w-[66%]">
       <div className="device-bezel overflow-hidden rounded-t-[1.1rem] border-[0.6rem] border-b-[0.9rem]">
         <div className="aspect-[16/10] overflow-hidden rounded-[0.25rem]">
           <Shot name="laptop" alt="The Fico dashboard on a laptop" />
@@ -26,17 +26,22 @@ const Devices = () => (
     </div>
 
     {/* Tablet */}
-    <div className="device-bezel absolute bottom-0 left-[1%] w-[25%] overflow-hidden rounded-[1.4rem] border-[0.55rem] shadow-2xl">
+    <div className="device-bezel absolute bottom-0 left-0 w-[44%] overflow-hidden rounded-[1.4rem] border-[0.55rem] shadow-2xl sm:w-[34%]">
       <div className="aspect-[820/1180] overflow-hidden rounded-[0.8rem]">
         <Shot name="tablet" alt="Fico analytics on a tablet" />
       </div>
     </div>
 
     {/* Phone */}
-    <div className="device-bezel absolute bottom-0 right-[3%] w-[15.5%] overflow-hidden rounded-[1.6rem] border-[0.45rem] shadow-2xl">
-      <div className="relative aspect-[600/1298] overflow-hidden rounded-[1.15rem]">
-        <span className="absolute left-1/2 top-[1.2%] z-10 h-[2.2%] w-[30%] -translate-x-1/2 rounded-full bg-black" aria-hidden="true" />
-        <Shot name="phone" alt="The Fico dashboard on a phone" />
+    <div className="device-bezel absolute bottom-0 right-0 w-[30%] overflow-hidden rounded-[1.6rem] border-[0.45rem] shadow-2xl sm:right-[2%] sm:w-[22%]">
+      <div className="relative flex aspect-[600/1360] flex-col overflow-hidden rounded-[1.15rem] bg-panel">
+        {/* Status bar, where the camera sits — so it never covers the app. */}
+        <div className="relative h-[4.6%] shrink-0" aria-hidden="true">
+          <span className="absolute left-1/2 top-1/2 h-[55%] w-[30%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-black" />
+        </div>
+        <div className="min-h-0 flex-1">
+          <Shot name="phone" alt="The Fico dashboard on a phone" />
+        </div>
       </div>
     </div>
   </div>

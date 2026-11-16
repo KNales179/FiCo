@@ -14,6 +14,7 @@ const isSessionRejected = (error: unknown) =>
 /** While the app is open and the server answers, check in this often — every
  *  authenticated request slides the session's expiry forward. */
 const KEEPALIVE_MS = 20 * 60 * 1000
+import type { LocalUser } from '../types/models'
 import type { SessionInfo, User } from '../types/auth'
 import {
   getMe,
@@ -38,6 +39,18 @@ import { clearNotificationCache, seedDemoNotifications } from '../features/notif
 import { DEMO_USER_ID, enterDemoMode, isDemoMode, leaveDemoMode, loadDemoUser } from '../features/demo/demoMode'
 import { markJustSignedOut } from '../features/auth/returning'
 import { purgeDemoData, seedDemoData } from '../features/demo/seed'
+
+/** The account as saved on this device (shown at once, before the server answers). */
+const userFromLocal = (u: LocalUser): User => ({
+  id: u.id,
+  username: u.username,
+  email: u.email ?? '',
+  displayName: u.displayName ?? null,
+  birthday: u.birthday ?? null,
+  paydays: u.paydays ?? [],
+  badges: u.badges ?? [],
+  role: u.role,
+})
 
 const toUser = (user: User): User => ({
   id: user.id,
@@ -123,16 +136,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const local = await loadLocalAuth()
       if (cancelled) return
       if (local) {
-        setUser({
-          id: local.user.id,
-          username: local.user.username,
-          email: local.user.email ?? '',
-          displayName: local.user.displayName ?? null,
-          birthday: local.user.birthday ?? null,
-          paydays: local.user.paydays ?? [],
-          badges: local.user.badges ?? [],
-          role: local.user.role,
-        })
+        setUser(userFromLocal(local.user))
         setOffline(true) // optimistic — applyServerAuth below clears it once confirmed
         setLoading(false)
       }
@@ -288,6 +292,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await purgeDemoData().catch(() => undefined)
       leaveDemoMode()
       clearNotificationCache()
+      // Tried the demo while signed in? Go back to your own account, not
+      // the sign-in screen — that sign-in never ended.
+      const local = await loadLocalAuth().catch(() => null)
+      if (local) {
+        setUser(userFromLocal(local.user))
+        setOffline(true) // re-confirmed with the server as usual
+        return
+      }
       markJustSignedOut()
       setUser(null)
       return

@@ -9,10 +9,10 @@ import { DEMO_USER_ID } from './demoMode'
 const KEY = 'fico.demoMembers'
 
 const defaults = (): SpaceMember[] => [
-  { userId: DEMO_USER_ID, username: 'demo_juan', displayName: 'Juan (demo)', role: 'OWNER' },
-  { userId: 'demo-maria', username: 'demo_maria', displayName: 'Maria', role: 'ADMIN' },
-  { userId: 'demo-paolo', username: 'demo_paolo', displayName: 'Paolo', role: 'MEMBER' },
-  { userId: 'demo-lola', username: 'demo_lola', displayName: 'Lola Nena', role: 'VIEWER' },
+  { userId: DEMO_USER_ID, username: 'demo_juan', displayName: 'Juan (demo)', role: 'OWNER', avatarUrl: '/avatars/cool-cat.webp' },
+  { userId: 'demo-maria', username: 'demo_maria', displayName: 'Maria', role: 'ADMIN', avatarUrl: '/avatars/glasses-doll.webp' },
+  { userId: 'demo-paolo', username: 'demo_paolo', displayName: 'Paolo', role: 'MEMBER', avatarUrl: '/avatars/cap-puppy.webp' },
+  { userId: 'demo-lola', username: 'demo_lola', displayName: 'Lola Nena', role: 'VIEWER', avatarUrl: '/avatars/gamer-cat.webp' },
 ]
 
 export const loadDemoMembers = (): SpaceMember[] => {

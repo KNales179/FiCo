@@ -31,6 +31,7 @@ const Shopping = lazyPage(() => import('./pages/Shopping'))
 const Bills = lazyPage(() => import('./pages/Bills'))
 const Budget = lazyPage(() => import('./pages/Budget'))
 const Analytics = lazyPage(() => import('./pages/Analytics'))
+const Calendar = lazyPage(() => import('./pages/Calendar'))
 const Categories = lazyPage(() => import('./pages/Categories'))
 const Members = lazyPage(() => import('./pages/Members'))
 const Activity = lazyPage(() => import('./pages/Activity'))
@@ -94,6 +95,7 @@ const App = () => {
                           <Route path="/bills" element={<Bills />} />
                           <Route path="/budget" element={<Budget />} />
                           <Route path="/analytics" element={<Analytics />} />
+                          <Route path="/calendar" element={<Calendar />} />
                           <Route path="/categories" element={<Categories />} />
                           <Route path="/members" element={<Members />} />
                           <Route path="/activity" element={<Activity />} />

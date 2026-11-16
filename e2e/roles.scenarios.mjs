@@ -225,6 +225,10 @@ export const runRoleScenarios = async (base, mongoUri) => {
     await B.page.getByRole('menuitem', { name: 'About Fico' }).click()
     await B.page.waitForTimeout(2000)
     check('About Fico opens the front page without signing out', new URL(B.page.url()).pathname === '/welcome' && (await B.page.getByRole('link', { name: 'Open Fico' }).count()) > 0)
+    // Signed in: the front page's tour button stays in your own account (no demo swap).
+    await B.page.getByRole('button', { name: 'Take a guided tour' }).click()
+    await B.page.waitForURL(/\/tutorial/, { timeout: 15_000 }).catch(() => undefined)
+    check('signed in, the tour button opens How Fico works in your own account', B.page.url().includes('/tutorial') && (await B.page.getByText('Demo mode').count()) === 0)
 
     console.log('\n8. Fico badges')
     // Make A a Fico admin (the way the first admin is made: in the database).

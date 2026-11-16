@@ -13,6 +13,8 @@ const DemoBanner = () => {
   const [leaving, setLeaving] = useState(false)
   if (!demo) return null
 
+  // (Signed in to a real account underneath? Sign-in and sign-up send you
+  // on to your dashboard.)
   const leave = async (to: string) => {
     setLeaving(true)
     await logout()

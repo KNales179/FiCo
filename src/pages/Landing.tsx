@@ -368,12 +368,12 @@ const Landing = () => {
           <div className="mt-8 flex flex-col items-center gap-2 text-center">
             <button
               type="button"
-              onClick={() => void tryDemo('/tutorial')}
+              onClick={() => (isAuthenticated ? navigate('/tutorial') : void tryDemo('/tutorial'))}
               disabled={demoBusy}
               className="btn btn-primary px-5 py-2.5 text-base"
             >
               <IconCompass size={18} />
-              {demoBusy ? 'Setting up the demo…' : 'Take the guided demo'}
+              {demoBusy ? 'Setting up the demo…' : isAuthenticated ? 'Take a guided tour' : 'Take the guided demo'}
             </button>
             <p className="text-sm text-muted">Short guided tours with sample data. No sign-up, and nothing leaves this device.</p>
           </div>

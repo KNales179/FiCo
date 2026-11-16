@@ -8,6 +8,7 @@ import { listBills } from '../features/bills'
 import { listFeedback } from '../services/feedbackService'
 import {
   IconHome,
+  IconCalendarDays,
   IconCart,
   IconReceipt,
   IconCalendar,
@@ -75,6 +76,7 @@ const MENU_YOU: MenuItem[] = [
   { to: '/settings', label: 'Settings', icon: IconSettings },
 ]
 const MENU_FINANCE: MenuItem[] = [
+  { to: '/calendar', label: 'Calendar', icon: IconCalendarDays },
   { to: '/members', label: 'Members', icon: IconUsers },
   { to: '/categories', label: 'Categories', icon: IconTag },
   { to: '/activity', label: 'Activity', icon: IconClock },

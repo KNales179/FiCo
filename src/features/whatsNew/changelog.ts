@@ -33,6 +33,28 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.13.0',
+    date: '2026-11-17',
+    title: 'Your month on a calendar',
+    highlights: [
+      {
+        icon: 'chart',
+        title: 'A money calendar',
+        body: 'New in the menu: Calendar. See paydays, bills paid and due, and what you spent or received each day of the month. Tap a day for everything on it.',
+      },
+      {
+        icon: 'layout',
+        title: 'Bigger phone and tablet on the front page',
+        body: 'The device pictures on the website are larger and easier to see, and the demo household now has profile pictures.',
+      },
+      {
+        icon: 'compass',
+        title: 'The demo never signs you out',
+        body: 'Trying the tours from the front page while signed in now stays in your own account, and leaving the demo always takes you back to it.',
+      },
+    ],
+  },
+  {
     version: '2.12.0',
     date: '2026-11-17',
     title: 'Fico, Your Financial Companion',
