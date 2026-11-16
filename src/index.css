@@ -800,15 +800,11 @@ h3 {
 }
 
 /* The big logo panel on wide screens. */
-/* Barely there: the page shows through, with just the glow behind the
-   logo and a whisper of an edge so the panel still reads as one piece. */
+/* No box at all: just the glow behind the logo, and the orbits drawn in
+   full instead of being cut off by a container's edge. */
 .auth-panel {
   container-type: size;
-  background:
-    radial-gradient(70% 55% at 50% 42%, color-mix(in srgb, var(--brand) 14%, transparent), transparent 75%),
-    color-mix(in srgb, var(--panel) 6%, transparent);
-  border-color: color-mix(in srgb, var(--line) 35%, transparent);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
+  background: radial-gradient(60% 50% at 50% 42%, color-mix(in srgb, var(--brand) 14%, transparent), transparent 75%);
 }
 .auth-panel-grid {
   position: absolute;
@@ -967,4 +963,27 @@ h3 {
     -webkit-backdrop-filter: blur(4px) saturate(1.15);
     backdrop-filter: blur(4px) saturate(1.15);
   }
+}
+
+/* ── Front page: device mockups ─────────────────────────────────────
+   Each device has a dark and a light screenshot; show the one matching
+   the page (the OS setting, unless Fico's own toggle overrides it). */
+.theme-dark-only { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-dark-only { display: block; }
+  :root:not([data-theme="light"]) .theme-light-only { display: none; }
+}
+:root[data-theme="dark"] .theme-dark-only { display: block; }
+:root[data-theme="dark"] .theme-light-only { display: none; }
+
+.device-bezel {
+  border-color: #17151c;
+  background: #0b0a0e;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, white 8%, transparent),
+    0 30px 60px -25px color-mix(in srgb, var(--brand) 40%, rgb(0 0 0 / 0.5));
+}
+.device-base {
+  background: linear-gradient(#3a3842, #1d1b22);
+  box-shadow: 0 18px 30px -18px rgb(0 0 0 / 0.6);
 }

@@ -197,7 +197,7 @@ const AuthShowcase = ({ variant }: { variant: 'panel' | 'backdrop' }) => {
   }
 
   return (
-    <div ref={rootRef} className="auth-panel relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-line">
+    <div ref={rootRef} className="auth-panel relative flex h-full flex-col">
       <div className="auth-panel-grid" aria-hidden="true" />
       <div className="auth-orbit auth-orbit-1" aria-hidden="true" />
       <div className="auth-orbit auth-orbit-2" aria-hidden="true" />

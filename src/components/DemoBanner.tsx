@@ -20,7 +20,7 @@ const DemoBanner = () => {
   }
 
   return (
-    <div className="relative z-30 bg-brand text-brand-ink">
+    <div data-demo-banner="" className="relative z-30 bg-brand text-brand-ink">
       <div className="mx-auto flex max-w-6xl flex-nowrap items-center gap-x-3 gap-y-1.5 px-3 py-2 text-sm sm:px-4 lg:px-6">
         <span className="flex min-w-0 flex-1 items-center gap-2">
           <IconCompass size={16} className="shrink-0" />

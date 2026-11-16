@@ -36,7 +36,7 @@ import { AuthContext } from './auth-context'
 import { onSessionRejected } from '../features/sync/events'
 import { clearNotificationCache, seedDemoNotifications } from '../features/notifications'
 import { DEMO_USER_ID, enterDemoMode, isDemoMode, leaveDemoMode, loadDemoUser } from '../features/demo/demoMode'
-import { markSignedIn } from '../features/auth/returning'
+import { markJustSignedOut } from '../features/auth/returning'
 import { purgeDemoData, seedDemoData } from '../features/demo/seed'
 
 const toUser = (user: User): User => ({
@@ -66,7 +66,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Another account's leftovers on this device are cleared first; this
       // account's own kept (unsynced) changes stay and get sent up.
       await prepareLocalDataFor(nextUser.id)
-      markSignedIn()
       setUser(toUser(nextUser))
       setOffline(false)
       await persistLocalAuth(nextUser, session)
@@ -84,6 +83,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     async (options?: { markSignedOut?: boolean; keepUnsynced?: boolean }) => {
       await clearLocalAuth({ keepUnsynced: true, ...options })
       clearNotificationCache()
+      markJustSignedOut()
       setUser(null)
       setOffline(false)
     },
@@ -146,7 +146,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (isSessionRejected(error)) {
           // The server rejected the session — this device is no longer trusted.
-          await dropAuth()
+          // (Nobody was signed in here at all? Then there's nothing to drop,
+          // and they're a visitor, not someone who was just signed out.)
+          if (local) await dropAuth()
+          else setUser(null)
         } else if (!local) {
           // Unreachable or sleepy server and nothing cached to run on.
           setUser(null)
@@ -285,6 +288,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await purgeDemoData().catch(() => undefined)
       leaveDemoMode()
       clearNotificationCache()
+      markJustSignedOut()
       setUser(null)
       return
     }

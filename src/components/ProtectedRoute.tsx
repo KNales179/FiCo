@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { isRunningInstalled } from '../features/pwa/installPrompt'
-import { hasSignedInBefore } from '../features/auth/returning'
+import { justSignedOut } from '../features/auth/returning'
 import { lazyPage } from '../lib/lazyPage'
 import { AppShellSkeleton } from './ui'
 
@@ -14,11 +14,11 @@ const ProtectedRoute = () => {
   if (loading) return <AppShellSkeleton />
 
   if (!isAuthenticated) {
-    // The website's front page is for first-time visitors in a browser. The
-    // installed app is the app itself, and anyone who has signed in here
-    // before goes straight to signing in (where any "your changes were kept"
-    // or "you were signed out" message is waiting).
-    if (pathname === '/' && !isRunningInstalled() && !hasSignedInBefore()) return <Landing />
+    // In a browser, the main address is the website's front page. The
+    // installed app is the app itself, and someone who was just signed out
+    // goes to the sign-in screen, where "your changes were kept" or "you
+    // were signed out because…" is waiting.
+    if (pathname === '/' && !isRunningInstalled() && !justSignedOut()) return <Landing />
     return <Navigate to="/login" replace />
   }
 

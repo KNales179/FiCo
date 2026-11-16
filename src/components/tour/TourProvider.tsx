@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { markTutorialSeen } from '../../features/onboarding'
 import { purgeDemoData, seedDemoData } from '../../features/demo/seed'
 import { isDemoMode } from '../../features/demo/demoMode'
@@ -19,6 +20,10 @@ const TourProvider = ({ children }: { children: ReactNode }) => {
   const { enterDemo, exitDemo } = useSpace()
   const [tour, setTour] = useState<Tour | null>(null)
   const [preparing, setPreparing] = useState(false)
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
+  // Where the tour was started — "How Fico works" gets you back there after.
+  const startedFrom = useRef<string | null>(null)
 
   const startTour = useCallback(
     (tourId: string) => {
@@ -31,13 +36,14 @@ const TourProvider = ({ children }: { children: ReactNode }) => {
             await seedDemoData(user.id)
             enterDemo()
           }
+          startedFrom.current = pathname
           setTour(next)
         } finally {
           setPreparing(false)
         }
       })()
     },
-    [enterDemo, preparing, user?.id],
+    [enterDemo, pathname, preparing, user?.id],
   )
 
   const finish = useCallback(() => {
@@ -48,7 +54,9 @@ const TourProvider = ({ children }: { children: ReactNode }) => {
       exitDemo()
       void purgeDemoData()
     }
-  }, [exitDemo, tour?.demo])
+    if (startedFrom.current === '/tutorial') navigate('/tutorial')
+    startedFrom.current = null
+  }, [exitDemo, navigate, tour?.demo])
 
   const value = useMemo(() => ({ startTour, running: tour !== null }), [startTour, tour])
 

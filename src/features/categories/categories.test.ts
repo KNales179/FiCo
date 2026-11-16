@@ -54,6 +54,18 @@ describe('ensureDefaultCategories', () => {
     expect(bills).toHaveLength(1)
   })
 
+  it('keeps a renamed default renamed (never resets "Meals" back to "Food")', async () => {
+    await ensureDefaultCategories(c)
+    const food = (await listCategories(c.spaceId)).find((cat) => cat.name === 'Food')!
+    await categoryRepository.update(food.id, { name: 'Meals', normalizedName: 'meals' })
+
+    await ensureDefaultCategories(c)
+
+    const renamed = await categoryRepository.get(food.id)
+    expect(renamed?.name).toBe('Meals')
+    expect((await listCategories(c.spaceId)).filter((cat) => cat.name === 'Food')).toHaveLength(0)
+  })
+
   it('never resurrects a default the person deliberately deleted', async () => {
     await ensureDefaultCategories(c)
     const other = (await listCategories(c.spaceId)).find(

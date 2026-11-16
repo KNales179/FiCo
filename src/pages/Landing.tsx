@@ -4,6 +4,8 @@ import { useAuth } from '../hooks/useAuth'
 import FicoLogo from '../components/FicoLogo'
 import ThemeToggle from '../components/ThemeToggle'
 import AuthShowcase from '../components/auth/AuthShowcase'
+import Devices from '../components/landing/Devices'
+import { MissionArt, PurposeArt, VisionArt } from '../components/landing/Story'
 import {
   installPlatform,
   onInstallAvailabilityChange,
@@ -65,7 +67,7 @@ const FEATURES: Array<{ icon: ComponentType<IconProps>; title: string; body: str
   {
     icon: IconLock,
     title: 'Private by design',
-    body: 'No bank connections, no ads, no tracking. You type in what you want to keep, and private records stay yours alone.',
+    body: 'No bank logins to hand over, no ads, no tracking. You type in what you want to keep, and private records stay yours alone.',
   },
 ]
 
@@ -78,7 +80,7 @@ const STEPS = [
 const FAQ: Array<{ q: string; a: ReactNode }> = [
   {
     q: 'Is Fico connected to my bank?',
-    a: 'No, and on purpose. Fico never connects to banks, e-wallets or cards. You type in what you want to track, so nothing about your accounts ever leaves your hands.',
+    a: 'Not yet. Linking straight to every bank and e-wallet isn’t something an independent app can do today, so in Fico you type in what you want to track. The upside: your bank logins and card details never leave your hands.',
   },
   {
     q: 'Does it work without internet?',
@@ -128,6 +130,30 @@ const InstallHelp = ({ platform }: { platform: InstallPlatform }) =>
       install it, or on iPhone use Safari → Share → Add to Home Screen. You can also just use it right here in your browser.
     </p>
   )
+
+/** One of purpose / mission / vision: words on one side, a picture on the other. */
+const StorySection = ({
+  label,
+  title,
+  art,
+  flip = false,
+  children,
+}: {
+  label: string
+  title: string
+  art: ReactNode
+  flip?: boolean
+  children: ReactNode
+}) => (
+  <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8 lg:py-20">
+    <div className={flip ? 'lg:order-2' : undefined}>
+      <p className="text-sm font-semibold uppercase tracking-wider text-brand">{label}</p>
+      <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">{title}</h2>
+      <div className="mt-5 space-y-4 text-base leading-relaxed text-muted">{children}</div>
+    </div>
+    <div className={flip ? 'lg:order-1' : undefined}>{art}</div>
+  </section>
+)
 
 /** Download + Sign up, with the install help and the demo link under them. */
 const Actions = ({
@@ -197,11 +223,11 @@ const Landing = () => {
     setHelpOpen((open) => !open)
   }
 
-  const tryDemo = async () => {
+  const tryDemo = async (to = '/') => {
     setDemoBusy(true)
     try {
       await startDemo()
-      navigate('/', { replace: true })
+      navigate(to, { replace: true })
     } finally {
       setDemoBusy(false)
     }
@@ -259,7 +285,8 @@ const Landing = () => {
               <span className="h-1.5 w-1.5 rounded-full bg-brand" />
               Now in beta · invite-only
             </p>
-            <h1 className="mt-5 text-4xl font-extrabold leading-[1.08] tracking-tight text-ink sm:text-5xl lg:text-6xl">
+            <p className="mt-5 text-sm font-semibold uppercase tracking-[0.18em] text-muted">Fico · Your Financial Companion</p>
+            <h1 className="mt-3 text-4xl font-extrabold leading-[1.08] tracking-tight text-ink sm:text-5xl lg:text-6xl">
               Your money,
               <br />
               <span className="text-brand">in its place.</span>
@@ -306,6 +333,21 @@ const Landing = () => {
           </ul>
         </section>
 
+        {/* ── On every screen ───────────────────────────────────── */}
+        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-wider text-brand">Any device</p>
+            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">Fico on every screen</h2>
+            <p className="mt-3 text-muted">
+              Your laptop at work, a tablet on the couch, your phone at the store: the same numbers everywhere, and it
+              keeps working offline.
+            </p>
+          </div>
+          <div className="mt-12">
+            <Devices />
+          </div>
+        </section>
+
         {/* ── How it works ───────────────────────────────────────── */}
         <section id="how" className="scroll-mt-20 mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
@@ -323,38 +365,71 @@ const Landing = () => {
               </li>
             ))}
           </ol>
-        </section>
-
-        {/* ── Why Fico ───────────────────────────────────────────── */}
-        <section id="why" className="scroll-mt-20 mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="card overflow-hidden p-0 sm:p-0">
-            <div className="grid gap-0 lg:grid-cols-3">
-              {[
-                {
-                  label: 'Our purpose',
-                  title: 'Money talk shouldn’t be messy',
-                  body: 'Who paid the bill? Is there enough left for the week? Fico gives every household and team one honest place to look.',
-                },
-                {
-                  label: 'Our mission',
-                  title: 'Simple, private, together',
-                  body: 'Help people see where their money goes, without bank logins, ads or tracking, and share it with the people who matter.',
-                },
-                {
-                  label: 'Our vision',
-                  title: 'No more end-of-month surprises',
-                  body: 'A world where every household and small team knows its numbers, and plans with confidence instead of guesswork.',
-                },
-              ].map((b) => (
-                <div key={b.label} className="border-line p-6 sm:p-8 lg:border-r lg:last:border-r-0 [&:not(:last-child)]:border-b lg:[&:not(:last-child)]:border-b-0">
-                  <p className="text-sm font-semibold uppercase tracking-wider text-brand">{b.label}</p>
-                  <h3 className="mt-2 text-xl font-bold text-ink">{b.title}</h3>
-                  <p className="mt-2 text-sm text-muted">{b.body}</p>
-                </div>
-              ))}
-            </div>
+          <div className="mt-8 flex flex-col items-center gap-2 text-center">
+            <button
+              type="button"
+              onClick={() => void tryDemo('/tutorial')}
+              disabled={demoBusy}
+              className="btn btn-primary px-5 py-2.5 text-base"
+            >
+              <IconCompass size={18} />
+              {demoBusy ? 'Setting up the demo…' : 'Take the guided demo'}
+            </button>
+            <p className="text-sm text-muted">Short guided tours with sample data. No sign-up, and nothing leaves this device.</p>
           </div>
         </section>
+
+        {/* ── Why Fico: purpose, mission, vision ─────────────────── */}
+        <div id="why" className="scroll-mt-20">
+          <StorySection
+            label="Our purpose"
+            title="Money talk shouldn’t be messy"
+            art={<PurposeArt />}
+          >
+            <p>
+              Every household has the same questions. Who paid the electric bill? Is there still enough for groceries
+              this week? Did anyone pay the water? The answers end up scattered across chats, receipts and memory, and
+              money talk turns into guesswork, or arguments.
+            </p>
+            <p>
+              Fico exists to give every household, group of housemates and small team <strong className="text-ink">one honest place
+              to look</strong>. When everyone sees the same balances, bills and lists, the questions answer themselves.
+            </p>
+          </StorySection>
+          <StorySection
+            label="Our mission"
+            title="Simple, private, together"
+            art={<MissionArt />}
+            flip
+          >
+            <p>
+              <strong className="text-ink">Simple</strong>: adding a record should take seconds (amount, what for, done), and the app should
+              explain itself instead of needing a manual.
+            </p>
+            <p>
+              <strong className="text-ink">Private</strong>: no bank logins to hand over, no ads, no tracking. Your records are yours, and
+              anything you mark private stays yours alone, even in a shared Finance.
+            </p>
+            <p>
+              <strong className="text-ink">Together</strong>: money is shared, so Fico is too, with roles for who can see and change what,
+              from a couple’s budget to a small business team.
+            </p>
+          </StorySection>
+          <StorySection
+            label="Our vision"
+            title="No more end-of-month surprises"
+            art={<VisionArt />}
+          >
+            <p>
+              We picture a world where every household and small team knows its numbers: paydays planned for, bills paid
+              on time, and a little left at the end of the month instead of a surprise.
+            </p>
+            <p>
+              Not through complicated spreadsheets or apps that want your bank password, but through a calm habit that
+              takes a minute a day, and the confidence that comes with it.
+            </p>
+          </StorySection>
+        </div>
 
         {/* ── FAQ ────────────────────────────────────────────────── */}
         <section id="faq" className="scroll-mt-20 mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
@@ -399,7 +474,8 @@ const Landing = () => {
               <FicoLogo className="h-7 w-7" />
               <span className="text-lg font-extrabold tracking-tight text-ink">Fico</span>
             </div>
-            <p className="mt-2 text-sm text-muted">Personal & shared finance: typed in by you, kept on your device, synced when you’re online.</p>
+            <p className="mt-2 text-sm font-semibold text-ink">Your Financial Companion</p>
+            <p className="mt-1 text-sm text-muted">Personal & shared finance: typed in by you, kept on your device, synced when you’re online.</p>
           </div>
           <div className="flex flex-wrap gap-x-10 gap-y-6 text-sm">
             <div>

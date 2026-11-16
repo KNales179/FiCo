@@ -33,6 +33,45 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.12.0',
+    date: '2026-11-17',
+    title: 'Fico, Your Financial Companion',
+    highlights: [
+      {
+        icon: 'layout',
+        title: 'A fuller front page',
+        body: 'The website now shows Fico on a laptop, a tablet and a phone, and tells the story behind it: our purpose, mission and vision, each with its own picture.',
+      },
+      {
+        icon: 'compass',
+        title: 'Straight into the guided demo',
+        body: '“Take the guided demo” on the front page opens How Fico works with sample data, and finishing a tour now brings you back to the list of tours.',
+      },
+      {
+        icon: 'palette',
+        title: 'Nothing cut off',
+        body: 'The animated Fico logo on the front page and sign-in screens no longer sits in a box, so its circles show in full.',
+      },
+    ],
+  },
+  {
+    version: '2.11.1',
+    date: '2026-11-16',
+    title: 'A quieter Activity page',
+    highlights: [
+      {
+        icon: 'wrench',
+        title: 'No more floods of category entries',
+        body: 'A new phone or a new member no longer fills Activity with “resolved a conflicting edit to category” for the starter categories. Repeats already there now show once, with how many times (×12).',
+      },
+      {
+        icon: 'receipt',
+        title: 'Renamed categories stay renamed',
+        body: 'Fixed a bug where renaming a starter category (say Food → Meals) could be reset back by another device. Removed items in Activity now show their real name too.',
+      },
+    ],
+  },
+  {
     version: '2.11.0',
     date: '2026-11-16',
     title: 'A front door for Fico',

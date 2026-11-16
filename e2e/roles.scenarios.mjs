@@ -180,6 +180,28 @@ export const runRoleScenarios = async (base, mongoUri) => {
     check('a Finance admin can’t remove the owner', adminApi.removeOwner === 403, JSON.stringify(adminApi))
     check('a Finance admin can send an invitation', adminApi.invite >= 200 && adminApi.invite < 300, JSON.stringify(adminApi))
 
+    // Another member's device re-sending a default category that already
+    // exists (it seeded before downloading the Finance) is a quiet duplicate:
+    // nothing overwritten, nothing in Activity.
+    const db = mongo.db()
+    const aCategory = await db.collection('syncrecords').findOne({ spaceId, entityType: 'category', deletedAt: null })
+    const conflictsBefore = await db.collection('actionlogs').countDocuments({ spaceId, action: { $in: ['CONFLICT', 'CREATE'] }, entityType: 'category' })
+    const reseed = await B.page.evaluate(async ({ spaceId, record }) => {
+      const res = await fetch(`http://localhost:5099/api/spaces/${spaceId}/sync/push`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          events: [{ id: 'e2e-reseed-' + Date.now(), entityType: 'category', entityId: record.id, operation: 'CREATE', payload: { ...record, name: 'Reset name' }, clientVersion: 1 }],
+        }),
+      })
+      return (await res.json()).results?.[0]?.status
+    }, { spaceId: String(spaceId), record: aCategory?.payload })
+    const conflictsAfter = await db.collection('actionlogs').countDocuments({ spaceId, action: { $in: ['CONFLICT', 'CREATE'] }, entityType: 'category' })
+    const kept = await db.collection('syncrecords').findOne({ _id: aCategory?._id })
+    check('re-sending an existing default category is a quiet duplicate', reseed === 'duplicate' && conflictsAfter === conflictsBefore, JSON.stringify({ reseed, conflictsBefore, conflictsAfter }))
+    check('…and never overwrites it', kept?.payload?.name === aCategory?.payload?.name)
+
     // Profile tags.
     await A.page.goto(base + 'account')
     await A.page.waitForTimeout(2000)
@@ -290,6 +312,14 @@ export const runRoleScenarios = async (base, mongoUri) => {
     await C.page.waitForTimeout(2000)
     check('a first-time visitor sees the front page', (await C.page.getByRole('heading', { name: /Your money/ }).count()) === 1)
     check('the front page offers Download and Sign up', (await C.page.getByRole('button', { name: 'Download the app' }).count()) > 0 && (await C.page.getByRole('link', { name: 'Sign up' }).count()) > 0)
+    // "Take the guided demo" goes straight to How Fico works, in demo mode.
+    const D = await device(browser)
+    await D.page.goto(base)
+    await D.page.waitForTimeout(2000)
+    await D.page.getByRole('button', { name: 'Take the guided demo' }).click()
+    await D.page.waitForURL(/\/tutorial/, { timeout: 30_000 }).catch(() => undefined)
+    check('the guided demo opens How Fico works', D.page.url().includes('/tutorial') && (await D.page.getByText('Demo mode').count()) > 0)
+    await D.ctx.close()
     await C.page.getByRole('link', { name: 'Sign up' }).first().click()
     await C.page.waitForURL(/\/register/, { timeout: 10_000 }).catch(() => undefined)
     check('Sign up on the front page opens sign-up', C.page.url().includes('/register'))

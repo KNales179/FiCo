@@ -59,7 +59,11 @@ export const ensureDefaultCategories = async (
       [ctx.spaceId, def.kind],
       { includeDeleted: true },
     )
-    if (rows.some((c) => c.normalizedName === normalizedName)) continue
+    // Already here by name, or by its fixed id under a new name (a renamed
+    // default must stay renamed, never be reset back).
+    const id = defaultCategoryId(ctx.spaceId, def.name)
+    if (rows.some((c) => c.normalizedName === normalizedName || c.id === id)) continue
+    if (await categoryRepository.get(id)) continue
 
     const category = await categoryRepository.create({
       id: defaultCategoryId(ctx.spaceId, def.name),

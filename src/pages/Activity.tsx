@@ -120,14 +120,25 @@ const Activity = () => {
     [activeSpace?.currency, accounts, categories],
   )
 
-  // Newest first, under one heading per day.
+  // Newest first, under one heading per day. The same thing done many
+  // times in the same minute by the same person (e.g. a batch of category
+  // fixes) shows once, with how many times — not as a wall of copies.
   const days = useMemo(() => {
-    const out: Array<{ day: string; entries: ActionLogEntry[] }> = []
+    const out: Array<{ day: string; entries: Array<{ log: ActionLogEntry; count: number }> }> = []
+    const sameAs = (a: ActionLogEntry, b: ActionLogEntry) =>
+      a.actorId === b.actorId &&
+      a.action === b.action &&
+      a.summary === b.summary &&
+      !(a.changes?.length || b.changes?.length) &&
+      a.createdAt.slice(0, 16) === b.createdAt.slice(0, 16)
     for (const log of logs) {
       const day = dayLabel(log.createdAt)
       const last = out[out.length - 1]
-      if (last?.day === day) last.entries.push(log)
-      else out.push({ day, entries: [log] })
+      if (last?.day === day) {
+        const prev = last.entries[last.entries.length - 1]
+        if (prev && sameAs(prev.log, log)) prev.count += 1
+        else last.entries.push({ log, count: 1 })
+      } else out.push({ day, entries: [{ log, count: 1 }] })
     }
     return out
   }, [logs])
@@ -203,7 +214,7 @@ const Activity = () => {
             <section key={day} aria-label={day}>
               <h2 className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wider text-muted">{day}</h2>
               <ul className="card divide-y divide-line p-0 sm:p-0">
-                {entries.map((log) => {
+                {entries.map(({ log, count }) => {
                   // "checked off "Fish"" already says it — no "Checked off: No → Yes" under it.
                   const lines = (log.action === 'CHECK' || log.action === 'UNCHECK' ? [] : (log.changes ?? []))
                     .map((c) => describeChange(c, ctx))
@@ -220,6 +231,11 @@ const Activity = () => {
                             {log.actorId === user?.id ? 'You' : (log.actorName ?? 'Someone')}
                           </span>{' '}
                           <span className="text-ink/90">{friendlySummary(log.summary)}</span>
+                          {count > 1 && (
+                            <span className="ml-1.5 rounded-full bg-panel-2 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-muted">
+                              ×{count}
+                            </span>
+                          )}
                         </span>
                         {lines.length > 0 && (
                           <ul className="mt-1 space-y-0.5 text-xs text-muted">

@@ -10,6 +10,7 @@ import { friendlyAuthError } from '../components/auth/authErrors'
 import { useAuthNav } from '../components/auth/authNav'
 import { IconCloudOff, IconCompass, IconShield } from '../components/icons'
 import { loadUnsyncedOwner, type UnsyncedOwner } from '../features/auth/localAuth'
+import { clearJustSignedOut } from '../features/auth/returning'
 
 const Login = () => {
   const navigate = useNavigate()
@@ -27,6 +28,8 @@ const Login = () => {
   const [kept, setKept] = useState<UnsyncedOwner | null>(null)
   useEffect(() => {
     void loadUnsyncedOwner().then(setKept).catch(() => undefined)
+    // Shown the sign-in screen after signing out: next time "/" is the front page again.
+    clearJustSignedOut()
   }, [])
 
   const tryDemo = async () => {
