@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listAppeals, type AdminAppeal } from '../services/appealService'
 import { Alert, Card, PageHeader, SkeletonRow } from '../components/ui'
-import { IconChevronLeft, IconChevronRight, IconMessage } from '../components/icons'
+import { IconChevronRight, IconMessage } from '../components/icons'
 
 const APPEAL_LOOK: Record<AdminAppeal['status'], { label: string; tone: string }> = {
   OPEN: { label: 'Needs review', tone: 'bg-brand/15 text-brand' },
@@ -44,9 +44,6 @@ const AdminAppeals = () => {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <Link to="/admin" className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink">
-        <IconChevronLeft size={16} /> Admin
-      </Link>
       <PageHeader title="Appeals" icon={IconMessage} description="Restricted people asking the team to take another look." />
 
       <div className="inline-flex rounded-xl border border-line bg-panel p-1 text-sm">

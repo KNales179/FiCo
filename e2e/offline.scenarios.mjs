@@ -2,6 +2,7 @@
 // Each check prints ✓ / ✗; the run fails if any check fails.
 import { chromium } from 'playwright-core'
 import { readFileSync } from 'node:fs'
+import { makeInviteCode } from './inviteCodes.mjs'
 
 // The app's current version — marked as already seen, so "What's new" stays out of the way.
 const APP_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version
@@ -83,9 +84,11 @@ const rowTitles = (page) =>
     .allInnerTexts()
     .then((rows) => rows.map((r) => r.replace(/\s+/g, ' ').trim()))
 
+let MONGO_URI = ''
 const register = async (page, base) => {
   const u = 'e2e' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 90 + 10)
-  await page.goto(base + 'register')
+  // The invite link fills the code in.
+  await page.goto(base + 'register?code=' + (await makeInviteCode(MONGO_URI)))
   await page.fill('#username', u)
   await page.fill('#email', `${u}@example.com`)
   await page.fill('#password', PASSWORD)
@@ -163,7 +166,8 @@ const waitForSync = async (page, ms = 20_000) => {
   return false
 }
 
-export const runScenarios = async (base) => {
+export const runScenarios = async (base, mongoUri) => {
+  MONGO_URI = mongoUri
   const browser = await chromium.launch({ channel: 'chrome', headless: true })
   try {
     // ── 1. Records offline ────────────────────────────────────────

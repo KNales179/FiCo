@@ -1,21 +1,25 @@
 import { useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { ApiError } from '../lib/api'
 import AuthLink from '../components/auth/AuthLink'
 import GoogleButton from '../components/auth/GoogleButton'
 import PasswordInput from '../components/auth/PasswordInput'
 import { friendlyAuthError } from '../components/auth/authErrors'
-import { IconCheck } from '../components/icons'
+import { IconCheck, IconLock, IconMail } from '../components/icons'
 
-type FieldName = 'username' | 'email' | 'password' | 'confirmPassword' | 'termsAccepted'
+/** Where people ask for a beta tester code (the same address as on the Credits page). */
+const BETA_EMAIL = 'ibelldev179@gmail.com'
+
+type FieldName = 'inviteCode' | 'username' | 'email' | 'password' | 'confirmPassword' | 'termsAccepted'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // The same rules the server checks — caught here first, field by field,
 // so nobody's left guessing why "Create account" didn't work.
 const validate = (values: {
+  inviteCode: string
   username: string
   email: string
   password: string
@@ -23,6 +27,10 @@ const validate = (values: {
   termsAccepted: boolean
 }): Partial<Record<FieldName, string>> => {
   const errors: Partial<Record<FieldName, string>> = {}
+  const code = values.inviteCode.trim()
+  if (!code) errors.inviteCode = 'Enter your invite code'
+  else if (code.length > 40) errors.inviteCode = 'That doesn’t look like an invite code'
+
   const username = values.username.trim()
   if (!username) errors.username = 'Pick a username'
   else if (/\s/.test(username)) errors.username = 'No spaces — try an underscore instead, like juan_dela_cruz'
@@ -75,7 +83,10 @@ const FieldMessage = ({ id, children }: { id: string; children?: ReactNode }) =>
 const Register = () => {
   const navigate = useNavigate()
   const { register } = useAuth()
+  // An invite link (…/register?code=FICO-XXXX-XXXX) fills the code in.
+  const [searchParams] = useSearchParams()
 
+  const [inviteCode, setInviteCode] = useState(() => (searchParams.get('code') ?? '').toUpperCase().slice(0, 40))
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -91,7 +102,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false)
   const [googleBusy, setGoogleBusy] = useState(false)
 
-  const errors = validate({ username, email, password, confirmPassword, termsAccepted })
+  const errors = validate({ inviteCode, username, email, password, confirmPassword, termsAccepted })
   const shown = (field: FieldName) =>
     serverErrors[field] ?? (submitted || touched[field] ? errors[field] : undefined)
   const touch = (field: FieldName) => () => setTouched((t) => ({ ...t, [field]: true }))
@@ -115,14 +126,14 @@ const Register = () => {
     setError('')
     if (Object.keys(errors).length > 0) {
       // Jump to the first field that needs fixing.
-      const first = (['username', 'email', 'password', 'confirmPassword', 'termsAccepted'] as const).find((f) => errors[f])
+      const first = (['inviteCode', 'username', 'email', 'password', 'confirmPassword', 'termsAccepted'] as const).find((f) => errors[f])
       document.getElementById(first === 'termsAccepted' ? 'terms' : first ?? '')?.focus()
       return
     }
 
     setLoading(true)
     try {
-      await register(username.trim(), email.trim(), password, termsAccepted)
+      await register(username.trim(), email.trim(), password, termsAccepted, inviteCode.trim())
       navigate('/', { replace: true })
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors) {
@@ -146,10 +157,69 @@ const Register = () => {
     <div className="card space-y-5 p-5 sm:p-7">
       <div data-auth-item="">
         <h1 className="text-2xl font-bold tracking-tight text-ink">Create your account</h1>
-        <p className="mt-1 text-sm text-muted">Free, private, and ready in under a minute.</p>
+        <p className="mt-1 text-sm text-muted">Private, and ready in under a minute — with your invite code.</p>
+      </div>
+
+      <div data-auth-item="" className="space-y-2 rounded-xl border border-brand/30 bg-brand/5 px-3.5 py-3 text-sm">
+        <p className="flex items-center gap-2 font-semibold text-ink">
+          <IconLock size={16} className="shrink-0 text-brand" />
+          Sign-up is invite-only for now
+        </p>
+        <p className="text-muted">
+          Fico is still in beta. While it’s being tested and readied for everyone, new accounts need a one-time
+          invite code, which keeps the beta small enough to look after properly. Everyone who joins with a code
+          gets the <span className="font-medium text-ink">Beta tester</span> badge.
+        </p>
+        <ul className="space-y-1.5 text-muted">
+          <li className="flex items-start gap-2">
+            <IconMail size={15} className="mt-0.5 shrink-0 text-brand" />
+            <span>
+              Want to help test Fico? Email{' '}
+              <a
+                href={`mailto:${BETA_EMAIL}?subject=${encodeURIComponent('Fico beta tester code')}`}
+                className="font-medium text-brand underline"
+              >
+                {BETA_EMAIL}
+              </a>{' '}
+              and ask for a beta tester code.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <IconCheck size={15} className="mt-0.5 shrink-0 text-brand" />
+            <span>Invited by a Fico admin? Ask them for your code.</span>
+          </li>
+        </ul>
       </div>
 
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        <label data-auth-item="" className="block">
+          <span className="field-label">Invite code</span>
+          <input
+            id="inviteCode"
+            value={inviteCode}
+            onChange={(e) => {
+              setInviteCode(e.target.value.toUpperCase())
+              clearServer('inviteCode')
+            }}
+            onBlur={touch('inviteCode')}
+            placeholder="FICO-XXXX-XXXX"
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            maxLength={40}
+            aria-invalid={Boolean(shown('inviteCode'))}
+            aria-describedby="invite-msg"
+            className={['input font-mono tracking-wider', shown('inviteCode') ? 'border-danger' : ''].join(' ')}
+          />
+          {shown('inviteCode') ? (
+            <FieldMessage id="invite-msg">{shown('inviteCode')}</FieldMessage>
+          ) : (
+            <span id="invite-msg" className="mt-1.5 block text-xs text-muted">
+              Each code works once, for 1 hour after it’s made.
+            </span>
+          )}
+        </label>
+
         <label data-auth-item="" className="block">
           <span className="field-label">Username</span>
           <input
@@ -321,6 +391,8 @@ const Register = () => {
       <div data-auth-item="">
         <GoogleButton
           mode="signup"
+          // A new Google account needs the invite code typed above too.
+          inviteCode={inviteCode.trim() || undefined}
           // An existing Google-linked account with 2FA on: finish on the sign-in screen's code step.
           onTwoFactor={(pendingToken) => navigate('/login', { state: { pendingToken } })}
           onError={setError}

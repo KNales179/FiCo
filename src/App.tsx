@@ -43,6 +43,8 @@ const AdminUser = lazyPage(() => import('./pages/AdminUser'))
 const AdminAppeals = lazyPage(() => import('./pages/AdminAppeals'))
 const AdminAppeal = lazyPage(() => import('./pages/AdminAppeal'))
 const Admin = lazyPage(() => import('./pages/Admin'))
+const AdminInvites = lazyPage(() => import('./pages/AdminInvites'))
+const AdminLayout = lazyPage(() => import('./components/admin/AdminLayout'))
 const Feedback = lazyPage(() => import('./pages/Feedback'))
 const AdminFeedback = lazyPage(() => import('./pages/AdminFeedback'))
 
@@ -95,11 +97,15 @@ const App = () => {
                           <Route path="/updates" element={<Updates />} />
                           <Route path="/notifications" element={<Notifications />} />
                           <Route path="/feedback" element={<Feedback />} />
-                          <Route path="/admin" element={<Admin />} />
-                          <Route path="/admin/feedback" element={<AdminFeedback />} />
-                          <Route path="/admin/users/:userId" element={<AdminUser />} />
-                          <Route path="/admin/appeals" element={<AdminAppeals />} />
-                          <Route path="/admin/appeals/:appealId" element={<AdminAppeal />} />
+                          {/* Admin: one bar of sections over every admin page. */}
+                          <Route element={<AdminLayout />}>
+                            <Route path="/admin" element={<Admin />} />
+                            <Route path="/admin/invites" element={<AdminInvites />} />
+                            <Route path="/admin/feedback" element={<AdminFeedback />} />
+                            <Route path="/admin/users/:userId" element={<AdminUser />} />
+                            <Route path="/admin/appeals" element={<AdminAppeals />} />
+                            <Route path="/admin/appeals/:appealId" element={<AdminAppeal />} />
+                          </Route>
                         </Route>
                       </Route>
 

@@ -116,7 +116,7 @@ try {
 
   const base = `http://localhost:${WEB_PORT}/`
   let failures = 0
-  if (only !== '--roles') failures += await runScenarios(base)
+  if (only !== '--roles') failures += await runScenarios(base, MONGODB_URI)
   if (only !== '--offline') failures += await runRoleScenarios(base, MONGODB_URI)
   exitCode = failures === 0 ? 0 : 1
 } catch (error) {

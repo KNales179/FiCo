@@ -1,22 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { listUsers, type AdminUser } from '../services/adminService'
-import { listAppeals } from '../services/appealService'
 import Badges from '../components/Badges'
 import { Link } from 'react-router-dom'
 import { PageHeader, Card, Alert, SkeletonRow } from '../components/ui'
-import { IconChevronRight, IconMessage, IconSearch, IconShield } from '../components/icons'
+import { IconChevronRight, IconSearch, IconShield } from '../components/icons'
 
 const Admin = () => {
   const [users, setUsers] = useState<AdminUser[] | null>(null)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
-  const [openAppeals, setOpenAppeals] = useState(0)
-
-  useEffect(() => {
-    listAppeals()
-      .then((res) => setOpenAppeals(res.open))
-      .catch(() => undefined)
-  }, [])
 
   const load = useCallback(async () => {
     setError('')
@@ -45,26 +37,11 @@ const Admin = () => {
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <PageHeader
-        title="Admin"
+        title="Users"
         icon={IconShield}
         description="Manage every account — not to be confused with a shared Finance's own owner."
       />
 
-      <div className="flex flex-wrap gap-2">
-        <Link to="/admin/feedback" className="btn inline-flex">
-          <IconMessage size={16} />
-          Report & feedback
-        </Link>
-        <Link to="/admin/appeals" className="btn relative inline-flex">
-          <IconShield size={16} />
-          Appeals
-          {openAppeals > 0 && (
-            <span className="ml-1 rounded-full bg-danger px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
-              {openAppeals}
-            </span>
-          )}
-        </Link>
-      </div>
 
       {error && <Alert>{error}</Alert>}
       {users === null && !error && (

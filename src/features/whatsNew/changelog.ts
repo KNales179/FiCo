@@ -33,6 +33,23 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.9.0',
+    date: '2026-11-16',
+    title: 'Invite-only beta',
+    highlights: [
+      {
+        icon: 'key',
+        title: 'Joining Fico now takes an invite code',
+        body: 'While Fico is in beta, new accounts need a one-time invite code, which works for 1 hour. Want to help test it? Email ibelldev179@gmail.com for a beta tester code, or ask the Fico admin who invited you. Everyone who joins with a code gets the Beta tester badge.',
+      },
+      {
+        icon: 'layout',
+        title: 'A tidier Admin area',
+        body: 'For Fico admins: Users, Invite codes, Appeals, and Report & feedback each have their own tab now, and admins can make, copy and cancel invite codes (each lasts 1 hour).',
+      },
+    ],
+  },
+  {
     version: '2.8.1',
     date: '2026-11-14',
     title: 'Admins can invite, and tidier switches',

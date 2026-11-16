@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-const LAST_UPDATED = 'November 13, 2026'
+const LAST_UPDATED = 'November 16, 2026'
 
 const Terms = () => (
   <main className="mx-auto max-w-2xl px-4 py-10">
@@ -55,6 +55,14 @@ const Terms = () => (
           suspect your account has been accessed by someone else. You must
           be old enough, under the law that applies to you, to agree to
           these terms on your own.
+        </p>
+        <p className="mt-2">
+          While Fico is in beta, creating an account needs a one-time invite
+          code from a Fico admin. A code works once and only for one hour
+          after it's made, can't be sold or traded, and an unused one can be
+          cancelled at any time. Accounts
+          created with a code get the Beta tester badge. Signing in to an
+          account you already have never needs a code.
         </p>
         <p className="mt-2">
           Two-step sign-in (2FA) is optional and available to every

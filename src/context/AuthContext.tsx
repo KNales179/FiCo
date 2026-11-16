@@ -224,9 +224,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await applyServerAuth(response.user, response.session)
   }
 
-  const googleSignIn = async (credential: string, termsAccepted: boolean) => {
+  const googleSignIn = async (credential: string, termsAccepted: boolean, inviteCode?: string) => {
     const deviceId = await ensureDeviceId().catch(() => undefined)
-    const response = await googleAuthRequest(credential, termsAccepted, deviceId)
+    const response = await googleAuthRequest(credential, termsAccepted, deviceId, inviteCode)
     if (!('user' in response)) {
       return { requiresTwoFactor: true as const, pendingToken: response.pendingToken }
     }
@@ -253,6 +253,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     email: string,
     password: string,
     termsAccepted: boolean,
+    inviteCode: string,
   ) => {
     const deviceId = await ensureDeviceId().catch(() => undefined)
     const response = await registerRequest(
@@ -261,6 +262,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       password,
       termsAccepted,
       deviceId,
+      inviteCode,
     )
     await applyServerAuth(response.user, response.session)
   }

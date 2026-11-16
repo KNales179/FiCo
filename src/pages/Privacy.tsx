@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-const LAST_UPDATED = 'November 13, 2026'
+const LAST_UPDATED = 'November 16, 2026'
 
 const Privacy = () => (
   <main className="mx-auto max-w-2xl px-4 py-10">
@@ -75,6 +75,11 @@ const Privacy = () => (
             Finances you belong to, with your role in each, but not the
             records inside them. Giving or removing a badge is recorded in
             the admin audit log.
+          </li>
+          <li>
+            <strong>Invite code</strong>: which one-time invite code was
+            used to create your account and when, so Fico admins can see
+            which codes have been used and by which account.
           </li>
           <li>
             <strong>Basic technical logs</strong>: request metadata (route,

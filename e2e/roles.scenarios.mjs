@@ -2,6 +2,7 @@
 import { chromium } from 'playwright-core'
 import { MongoClient } from 'mongodb'
 import { readFileSync } from 'node:fs'
+import { makeInviteCode } from './inviteCodes.mjs'
 
 const APP_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version
 const PASSWORD = 'Testing-pass-123'
@@ -34,9 +35,10 @@ const closePopups = async (page) => {
     await page.waitForTimeout(300)
   }
 }
-const register = async (page, base) => {
+let MONGO_URI = ''
+const register = async (page, base, code) => {
   const u = 'r' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 90 + 10)
-  await page.goto(base + 'register')
+  await page.goto(base + 'register?code=' + (code ?? (await makeInviteCode(MONGO_URI))))
   await page.fill('#username', u)
   await page.fill('#email', `${u}@example.com`)
   await page.fill('#password', PASSWORD)
@@ -68,6 +70,7 @@ const switchTo = async (page, name) => {
 }
 
 export const runRoleScenarios = async (base, mongoUri) => {
+  MONGO_URI = mongoUri
   const browser = await chromium.launch({ channel: 'chrome', headless: true })
   const mongo = await MongoClient.connect(mongoUri)
   try {
@@ -200,9 +203,15 @@ export const runRoleScenarios = async (base, mongoUri) => {
     await A.page.locator('a[href^="/admin/users/"]', { hasText: other }).click()
     await A.page.waitForTimeout(2000)
     await closePopups(A.page)
-    await A.page.getByRole('switch', { name: 'Beta tester' }).click()
+    // They joined with an invite code, so they're a Beta tester already.
+    const beta = A.page.getByRole('switch', { name: 'Beta tester' })
+    check('joining with a code already gave Beta tester', (await beta.getAttribute('aria-checked')) === 'true')
+    await beta.click()
     await A.page.waitForTimeout(1500)
-    check('an admin can give Beta tester', (await A.page.getByRole('switch', { name: 'Beta tester' }).getAttribute('aria-checked')) === 'true')
+    check('an admin can take Beta tester off', (await beta.getAttribute('aria-checked')) === 'false')
+    await beta.click()
+    await A.page.waitForTimeout(1500)
+    check('an admin can give Beta tester', (await beta.getAttribute('aria-checked')) === 'true')
 
     await B.page.goto(base + 'account')
     await B.page.waitForTimeout(2500)
@@ -255,6 +264,82 @@ export const runRoleScenarios = async (base, mongoUri) => {
     }, { u: owner, pw: PASSWORD })
     check('an admin can’t remove the Fico Owner’s admin access', demote === 403, String(demote))
 
+    console.log('\n9. Invite-only sign-up')
+    // No code: the form won't send, and the server refuses anyway.
+    const C = await device(browser)
+    await C.page.goto(base + 'register')
+    await C.page.waitForTimeout(1000)
+    check('the sign-up page says it’s invite-only', (await C.page.getByText('Sign-up is invite-only for now').count()) === 1)
+    check('it says how to get a beta tester code', (await C.page.locator('a[href^="mailto:ibelldev179@gmail.com"]').count()) === 1)
+    await C.page.fill('#username', 'nocode' + Date.now().toString().slice(-6))
+    await C.page.fill('#email', `nocode${Date.now()}@example.com`)
+    await C.page.fill('#password', PASSWORD)
+    await C.page.fill('#confirmPassword', PASSWORD)
+    await C.page.check('#terms')
+    await C.page.click('button[type=submit]')
+    await C.page.waitForTimeout(800)
+    check('no code: asked for one, no account', C.page.url().includes('/register') && (await C.page.getByText('Enter your invite code').count()) > 0)
+    const api = await C.page.evaluate(async (pw) => {
+      const post = (body) =>
+        fetch('http://localhost:5099/api/auth/register', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: 'sneaky' + Date.now().toString().slice(-6), email: `sneaky${Date.now()}@example.com`, password: pw, termsAccepted: true, ...body }),
+        }).then(async (r) => ({ status: r.status, code: (await r.json()).code }))
+      return { none: await post({}), bogus: await post({ inviteCode: 'FICO-AAAA-BBBB' }) }
+    }, PASSWORD)
+    check('the server refuses a sign-up with no code', api.none.status === 400, JSON.stringify(api))
+    check('the server refuses a made-up code', api.bogus.status === 403 && api.bogus.code === 'INVITE_REQUIRED', JSON.stringify(api))
+
+    // A code over an hour old no longer works.
+    const stale = await makeInviteCode(MONGO_URI, 'e2e expired', true)
+    await C.page.goto(base + 'register?code=' + stale)
+    await C.page.fill('#username', 'late' + Date.now().toString().slice(-6))
+    await C.page.fill('#email', `late${Date.now()}@example.com`)
+    await C.page.fill('#password', PASSWORD)
+    await C.page.fill('#confirmPassword', PASSWORD)
+    await C.page.check('#terms')
+    await C.page.click('button[type=submit]')
+    await C.page.waitForTimeout(3000)
+    check('an expired code is refused, and says so', C.page.url().includes('/register') && (await C.page.getByText(/has expired/).count()) > 0)
+
+    // A Fico admin makes a code on Admin → Invite codes …
+    await A.page.goto(base + 'admin')
+    await A.page.waitForTimeout(1500)
+    await closePopups(A.page)
+    await A.page.getByRole('link', { name: 'Invite codes' }).click()
+    await A.page.waitForTimeout(1500)
+    await A.page.fill('input[placeholder^="e.g. Ate Liza"]', 'e2e friend')
+    await A.page.getByRole('button', { name: 'Make code' }).click()
+    await A.page.waitForTimeout(1500)
+    const made = (await A.page.locator('code').first().innerText()).trim()
+    check('an admin can make an invite code', /^FICO-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(made), made)
+
+    // … someone signs up with it (typed, lower-case and without dashes) …
+    const friend = await register(C.page, base, made.toLowerCase().replace(/-/g, ''))
+    await C.page.goto(base + 'account')
+    await C.page.waitForTimeout(2000)
+    await closePopups(C.page)
+    check('signing up with a code gives the Beta tester badge', (await C.page.getByText('Beta tester').count()) > 0)
+
+    // … and the code is spent.
+    const reuse = await C.page.evaluate(async ({ code, pw }) => {
+      const r = await fetch('http://localhost:5099/api/auth/register', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'again' + Date.now().toString().slice(-6), email: `again${Date.now()}@example.com`, password: pw, termsAccepted: true, inviteCode: code }),
+      })
+      return r.status
+    }, { code: made, pw: PASSWORD })
+    check('a used code can’t be used again', reuse === 403, String(reuse))
+    await A.page.reload()
+    await A.page.waitForTimeout(1500)
+    await A.page.getByRole('tab', { name: /^Used/ }).click()
+    check('the admin sees who used the code', (await A.page.getByRole('link', { name: '@' + friend }).count()) === 1)
+
+    await C.ctx.close()
     await A.ctx.close()
     await B.ctx.close()
   } finally {

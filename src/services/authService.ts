@@ -15,6 +15,7 @@ export const register = (
   password: string,
   termsAccepted: boolean,
   deviceId?: string,
+  inviteCode?: string,
 ) => {
   return api<AuthResponse>('/auth/register', {
     method: 'POST',
@@ -24,6 +25,7 @@ export const register = (
       email,
       password,
       termsAccepted,
+      inviteCode,
       deviceId,
     },
   })
@@ -46,11 +48,11 @@ export const login = (
 }
 
 /** Sign in (or create an account) with Google's ID token. */
-export const googleAuth = (credential: string, termsAccepted: boolean, deviceId?: string) =>
+export const googleAuth = (credential: string, termsAccepted: boolean, deviceId?: string, inviteCode?: string) =>
   api<AuthResponse | TwoFactorRequired>('/auth/google', {
     method: 'POST',
     timeoutMs: COLD_START_TIMEOUT_MS,
-    body: { credential, termsAccepted, deviceId },
+    body: { credential, termsAccepted, inviteCode: inviteCode?.trim() || undefined, deviceId },
   })
 
 /** Second step of login for an account with 2FA on — a 6-digit code or a backup code. */

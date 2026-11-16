@@ -397,3 +397,24 @@ export const IconMoreHorizontal = (props: IconProps) => (
     <circle cx="19" cy="12" r="1.3" fill="currentColor" stroke="none" />
   </Icon>
 )
+
+export const IconTicket = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+    <path d="M13 5v2M13 11v2M13 17v2" />
+  </Icon>
+)
+
+export const IconCopy = (props: IconProps) => (
+  <Icon {...props}>
+    <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+  </Icon>
+)
+
+export const IconMail = (props: IconProps) => (
+  <Icon {...props}>
+    <rect width="20" height="16" x="2" y="4" rx="2" />
+    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+  </Icon>
+)

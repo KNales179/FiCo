@@ -18,7 +18,8 @@ export interface AuthContextValue {
     password: string,
   ) => Promise<LoginNeedsTwoFactor | void>
   /** Sign in (or create an account) with Google — may pause for 2FA like `login`. */
-  googleSignIn: (credential: string, termsAccepted: boolean) => Promise<LoginNeedsTwoFactor | void>
+  /** `inviteCode` is needed only when this creates a new account (Fico is invite-only). */
+  googleSignIn: (credential: string, termsAccepted: boolean, inviteCode?: string) => Promise<LoginNeedsTwoFactor | void>
   /** Finishes a login that `login` paused on `requiresTwoFactor`. */
   verifyTwoFactor: (pendingToken: string, code: string) => Promise<void>
   register: (
@@ -26,6 +27,7 @@ export interface AuthContextValue {
     email: string,
     password: string,
     termsAccepted: boolean,
+    inviteCode: string,
   ) => Promise<void>
   logout: () => Promise<void>
   /** Re-pulls the current user (role/2FA status can change from Account/Admin actions). */

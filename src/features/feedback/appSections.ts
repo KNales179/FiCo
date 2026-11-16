@@ -50,10 +50,10 @@ export const APP_PAGES: AppPage[] = [
   { name: 'Updates', sections: ['Release notes', '“What’s new” pop-up'] },
   { name: 'How Fico works', sections: ['Guided tours', 'Tutorial page'] },
   { name: 'Report & feedback', sections: ['This form'] },
-  { name: 'Sign in & sign up', sections: ['Sign in', 'Create account', 'Forgot / reset password', 'Try the demo'] },
+  { name: 'Sign in & sign up', sections: ['Sign in', 'Create account', 'Invite code', 'Forgot / reset password', 'Try the demo'] },
   { name: 'Finance switcher', sections: ['Switching Finances', 'Adding a Finance'] },
   { name: 'Sync & offline', sections: ['Sync status line', 'Offline use', 'Changes that couldn’t sync'] },
   { name: 'Menu & navigation', sections: ['Top bar', 'Bottom bar (phone)', 'Menu'] },
-  { name: 'Admin', sections: ['User list', 'User profile', 'Appeals', 'Report & feedback list'], adminOnly: true },
+  { name: 'Admin', sections: ['Admin tabs', 'User list', 'User profile', 'Invite codes', 'Appeals', 'Report & feedback list'], adminOnly: true },
   { name: 'Something else', sections: [] },
 ]

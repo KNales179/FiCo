@@ -11,6 +11,8 @@ type Props = {
   onTwoFactor?: (pendingToken: string) => void
   onError: (message: string) => void
   onBusyChange?: (busy: boolean) => void
+  /** Sign-up page: the invite code typed above, needed to create a new account. */
+  inviteCode?: string
 }
 
 /**
@@ -19,7 +21,7 @@ type Props = {
  * A new Google user gets an account straight away — the line under the
  * button is their agreement to the Terms, same as the sign-up checkbox.
  */
-const GoogleButton = ({ mode, onTwoFactor, onError, onBusyChange }: Props) => {
+const GoogleButton = ({ mode, onTwoFactor, onError, onBusyChange, inviteCode }: Props) => {
   const { googleSignIn } = useAuth()
   const navigate = useNavigate()
   const slotRef = useRef<HTMLDivElement>(null)
@@ -28,9 +30,9 @@ const GoogleButton = ({ mode, onTwoFactor, onError, onBusyChange }: Props) => {
   const [busy, setBusy] = useState(false)
 
   // Kept in a ref so re-renders don't make Google re-draw its button.
-  const latest = useRef({ onTwoFactor, onError, onBusyChange })
+  const latest = useRef({ onTwoFactor, onError, onBusyChange, inviteCode })
   useEffect(() => {
-    latest.current = { onTwoFactor, onError, onBusyChange }
+    latest.current = { onTwoFactor, onError, onBusyChange, inviteCode }
   })
 
   const handleCredential = useCallback(
@@ -39,7 +41,7 @@ const GoogleButton = ({ mode, onTwoFactor, onError, onBusyChange }: Props) => {
       latest.current.onBusyChange?.(true)
       latest.current.onError('')
       try {
-        const result = await googleSignIn(credential, true)
+        const result = await googleSignIn(credential, true, latest.current.inviteCode)
         if (result?.requiresTwoFactor) latest.current.onTwoFactor?.(result.pendingToken)
         else navigate('/', { replace: true })
       } catch (error) {

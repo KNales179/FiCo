@@ -121,3 +121,29 @@ export const setUserBadge = (userId: string, badge: 'FICO_OWNER' | 'BETA_TESTER'
     method: 'POST',
     body: { badge, on },
   })
+
+export interface InviteCode {
+  id: string
+  code: string
+  note: string | null
+  createdAt: string
+  createdBy: { id: string; username: string } | null
+  usedBy: { id: string; username: string } | null
+  usedAt: string | null
+  revokedAt: string | null
+  /** Unused codes stop working 1 hour after they're made. */
+  expiresAt: string | null
+  status: 'UNUSED' | 'USED' | 'REVOKED' | 'EXPIRED'
+}
+
+export const listInviteCodes = () =>
+  api<{ success: boolean; codes: InviteCode[] }>('/admin/invite-codes')
+
+export const createInviteCodes = (count: number, note?: string) =>
+  api<{ success: boolean; message: string; codes: InviteCode[] }>('/admin/invite-codes', {
+    method: 'POST',
+    body: { count, note: note?.trim() || undefined },
+  })
+
+export const revokeInviteCode = (codeId: string) =>
+  api<{ success: boolean; message: string }>(`/admin/invite-codes/${codeId}`, { method: 'DELETE' })
