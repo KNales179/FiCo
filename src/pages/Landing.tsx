@@ -107,6 +107,34 @@ const FAQ: Array<{ q: string; a: ReactNode }> = [
     q: 'Which currencies does it support?',
     a: 'Many, including PHP, USD, EUR, GBP, AED and more. Each Finance has its own currency, and accounts can use others.',
   },
+  {
+    q: 'Who can see my records?',
+    a: 'Only you, in your personal Finance. In a shared Finance, its members see what’s shared there, and anything you mark Private stays visible to you alone. Fico’s admin tools don’t show the records inside your Finances.',
+  },
+  {
+    q: 'Can I use it with family, housemates or a small team?',
+    a: 'Yes. Make a shared Finance and invite people by email. Each person gets a role: the Owner manages members, Admins edit everything and see who changed what, Members add and edit, and Viewers can only look.',
+  },
+  {
+    q: 'Can I use Fico on my phone and my computer?',
+    a: 'Yes. It works in any modern browser, and you can install it like an app on Android, iPhone, Windows or Mac. Sign in on each device and everything stays in sync.',
+  },
+  {
+    q: 'What happens if I lose my phone?',
+    a: 'Your records are synced to your account whenever you’re online, so just sign in on another device and they’re all there. You can also sign out a lost device from your Account page.',
+  },
+  {
+    q: 'Do you sell my data or show ads?',
+    a: 'No. Fico has no ads and no tracking, and your records are never sold or shared with anyone.',
+  },
+  {
+    q: 'Can I change how Fico looks?',
+    a: 'Yes: light or dark, 15 colours or any colour you pick on a colour wheel, 15 fonts, three text sizes, and roomy or compact rows. See “Make it yours” above.',
+  },
+  {
+    q: 'Will there be paid plans?',
+    a: 'Everyday money tracking will always have a free version. Later, optional paid plans may add extras, like more shared Finances and more receipt storage.',
+  },
 ]
 
 /** "Download the app": the browser's own install dialog, or how to do it on an iPhone. */
@@ -147,7 +175,7 @@ const StorySection = ({
   children: ReactNode
 }) => (
   <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8 lg:py-20">
-    <div className={flip ? 'lg:order-2' : undefined}>
+    <div className={`story-glass ${flip ? 'lg:order-2' : ''}`}>
       <p className="text-sm font-semibold uppercase tracking-wider text-brand">{label}</p>
       <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">{title}</h2>
       <div className="mt-5 space-y-4 text-base leading-relaxed text-muted">{children}</div>
@@ -482,7 +510,7 @@ const Landing = () => {
       </main>
 
       {/* ── Footer ───────────────────────────────────────────────── */}
-      <footer className="relative border-t border-line/60">
+      <footer className="footer-glass relative border-t border-line/60">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-start md:justify-between lg:px-8">
           <div className="max-w-xs">
             <div className="flex items-center gap-2">

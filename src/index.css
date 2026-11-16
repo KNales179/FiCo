@@ -1154,3 +1154,60 @@ h3 {
 }
 .link-underline:hover::after,
 .link-underline:focus-visible::after { transform: scaleX(1); }
+
+/* ── Front page: "someone is typing" bubbles ──────────────────────── */
+.typing-dots > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--muted);
+  animation: typing-dot 1s ease-in-out infinite;
+}
+.typing-dots > span:nth-child(2) { animation-delay: 0.15s; }
+.typing-dots > span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes typing-dot {
+  0%, 60%, 100% { translate: 0 0; opacity: 0.4; }
+  30% { translate: 0 -3px; opacity: 1; }
+}
+.typing-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: -0.15em;
+  background: var(--brand);
+  animation: typing-caret 0.8s steps(1) infinite;
+}
+@keyframes typing-caret { 50% { opacity: 0; } }
+
+/* Front page — purpose / mission / vision text: a see-through glass card
+   (half the panel colour, a light blur of the grid behind), set apart from
+   the solid cards by a thin accent line along its top edge. */
+.story-glass {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  padding: 1.75rem;
+  background: color-mix(in srgb, var(--panel) 50%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+}
+.story-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--brand), transparent);
+  opacity: 0.8;
+}
+@media (min-width: 640px) {
+  .story-glass { padding: 2.25rem; }
+}
+
+/* Front page footer: the same half-see-through glass as the story cards. */
+.footer-glass {
+  background: color-mix(in srgb, var(--panel) 50%, transparent);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+}

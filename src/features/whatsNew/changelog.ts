@@ -33,6 +33,23 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.16.2',
+    date: '2026-11-17',
+    title: 'Someone’s typing…',
+    highlights: [
+      {
+        icon: 'heart',
+        title: 'Chat bubbles that type',
+        body: 'On the front page, hover over the money questions in “Our purpose” and they type themselves out, typing dots first.',
+      },
+      {
+        icon: 'chart',
+        title: 'A real calendar, and more answers',
+        body: 'The “Our vision” calendar now looks like Fico’s own: the current month with today marked, bills paid and due, and paydays, and each day lights up as you hover. The FAQ has seven new questions too, and the purpose, mission and vision text and the footer now sit on see-through glass so they’re easier to read.',
+      },
+    ],
+  },
+  {
     version: '2.16.1',
     date: '2026-11-17',
     title: 'A livelier front page',
