@@ -33,6 +33,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.17.1',
+    date: '2026-11-17',
+    title: 'Meet the maker',
+    highlights: [
+      {
+        icon: 'heart',
+        title: 'Portfolio in the footer',
+        body: 'The front page footer now links to the portfolio of the person who makes Fico, under Legal & contact.',
+      },
+    ],
+  },
+  {
     version: '2.17.0',
     date: '2026-11-17',
     title: '30 fonts, friendlier inputs',

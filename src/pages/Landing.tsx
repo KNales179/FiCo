@@ -22,6 +22,7 @@ import {
   IconCompass,
   IconDownload,
   IconLock,
+  IconArrowUpRight,
   IconMail,
   IconReceipt,
   IconShare,
@@ -31,6 +32,8 @@ import {
 
 /** Where questions and beta requests go (the same address as Credits and sign-up). */
 const CONTACT_EMAIL = 'ibelldev179@gmail.com'
+/** The maker's portfolio (Legal & contact, in the footer). */
+const PORTFOLIO_URL = 'https://knales179.github.io/portfolio-Nales/'
 
 const NAV = [
   { href: '#features', label: 'Features' },
@@ -578,6 +581,18 @@ const Landing = () => {
                   <a href={`mailto:${CONTACT_EMAIL}`} className="inline-flex items-center gap-1.5 hover:text-ink">
                     <IconMail size={14} />
                     Contact
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href={PORTFOLIO_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-tag="The maker of Fico (opens in a new tab)"
+                    className="inline-flex items-center gap-1.5 hover:text-ink"
+                  >
+                    <IconArrowUpRight size={14} />
+                    Portfolio
                   </a>
                 </li>
               </ul>
