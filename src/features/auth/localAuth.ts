@@ -66,6 +66,7 @@ export async function persistLocalAuth(
     birthday: user.birthday !== undefined ? user.birthday : existingUser?.birthday,
     paydays: user.paydays ?? existingUser?.paydays,
     badges: user.badges ?? existingUser?.badges,
+    role: user.role ?? existingUser?.role,
     status: 'ACTIVE',
     createdAt: existingUser?.createdAt ?? now,
     updatedAt: now,

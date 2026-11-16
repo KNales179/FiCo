@@ -129,6 +129,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           birthday: local.user.birthday ?? null,
           paydays: local.user.paydays ?? [],
           badges: local.user.badges ?? [],
+          role: local.user.role,
         })
         setOffline(true) // optimistic — applyServerAuth below clears it once confirmed
         setLoading(false)

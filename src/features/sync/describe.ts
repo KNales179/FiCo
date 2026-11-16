@@ -3,19 +3,19 @@ import type { SyncIssue } from './engine'
 
 /** Plain-language descriptions of synced changes, for notifications. */
 
-const KIND_LABEL: Record<string, string> = {
+export const KIND_LABEL: Record<string, string> = {
   transaction: 'Record',
   account: 'Account',
   bill: 'Bill',
   billPayment: 'Bill payment',
-  shoppingList: 'Shopping list',
-  shoppingItem: 'Shopping item',
+  shoppingList: 'To-buy list',
+  shoppingItem: 'To-buy item',
   category: 'Category',
   budgetPlan: 'Budget plan',
   reconciliation: 'Cash check',
   itemProfile: 'Saved item',
   priceHistory: 'Price record',
-  electricityRecord: 'Electricity reading',
+  electricityRecord: 'Usage reading',
 }
 
 const OPERATION_LABEL: Record<string, string> = {
@@ -29,7 +29,7 @@ const OPERATION_LABEL: Record<string, string> = {
 
 const TYPE_LABEL: Record<string, string> = { EXPENSE: 'Spent', INCOME: 'Received', TRANSFER: 'Transfer' }
 
-const FIELD_LABEL: Record<string, string> = {
+export const FIELD_LABEL: Record<string, string> = {
   title: 'Title',
   name: 'Name',
   displayName: 'Name',
@@ -51,6 +51,33 @@ const FIELD_LABEL: Record<string, string> = {
   visibility: 'Visible to',
   archived: 'Archived',
   expectedIncomeMinor: 'Expected income',
+  accountId: 'Account',
+  categoryId: 'Category',
+  destinationAccountId: 'To account',
+  destinationAmountMinor: 'Amount received',
+  purchased: 'Bought',
+  purchasedAt: 'Bought on',
+  consumptionKwh: 'Usage',
+  usageKind: 'Tracks',
+  recurrence: 'Repeats',
+  billType: 'Bill type',
+  tracksElectricity: 'Tracks kWh',
+  scheduledDates: 'Scheduled dates',
+  active: 'Active',
+  isDefault: 'Default',
+  currency: 'Currency',
+  exchangeRate: 'Exchange rate',
+  plannedBudgetMinor: 'Planned budget',
+  actualMinor: 'Actual',
+  expectedMinor: 'Expected',
+  differenceMinor: 'Difference',
+  resolvedNote: 'Resolution note',
+  billingPeriod: 'Billing period',
+  taxesMinor: 'Taxes',
+  energyChargeMinor: 'Energy charge',
+  transmissionMinor: 'Transmission',
+  distributionMinor: 'Distribution',
+  otherChargesMinor: 'Other charges',
 }
 
 const asDate = (v: unknown) => {
@@ -59,10 +86,10 @@ const asDate = (v: unknown) => {
   return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-const fieldValue = (field: string, v: unknown, currency?: string): string => {
+export const fieldValue = (field: string, v: unknown, currency?: string): string => {
   if (v === null || v === undefined || v === '') return '—'
   if (field.endsWith('Minor') && typeof v === 'number') return formatMoney(v, currency)
-  if (field === 'occurredAt' || field === 'paidAt' || field === 'nextDueDate') return asDate(v) ?? String(v)
+  if (field === 'occurredAt' || field === 'paidAt' || field === 'nextDueDate' || field === 'purchasedAt') return asDate(v) ?? String(v)
   if (field === 'type') return TYPE_LABEL[String(v)] ?? String(v)
   if (field === 'visibility') return v === 'PRIVATE' ? 'Only me' : 'Everyone in the Finance'
   if (typeof v === 'boolean') return v ? 'Yes' : 'No'

@@ -33,6 +33,28 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.10.0',
+    date: '2026-11-16',
+    title: 'Activity, in tabs',
+    highlights: [
+      {
+        icon: 'layout',
+        title: 'Records, Members & roles, Sync conflicts',
+        body: 'A shared Finance’s Activity page now has tabs, and Records can be narrowed to Money, Bills, To-buy lists, or Budget & categories. Everything is grouped by day.',
+      },
+      {
+        icon: 'wallet',
+        title: 'Your personal Finance has Activity too',
+        body: 'See your own history in your personal Finance — what you added, changed or removed, going back up to a year. Handy when a balance looks off.',
+      },
+      {
+        icon: 'receipt',
+        title: 'See exactly what changed',
+        body: 'Edits now show before and after — like “Amount: ₱120.00 → ₱150.00” — with account and category names. As before, only the owner and admins can see Activity, and private records never appear.',
+      },
+    ],
+  },
+  {
     version: '2.9.0',
     date: '2026-11-16',
     title: 'Invite-only beta',

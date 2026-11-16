@@ -53,6 +53,8 @@ export interface LocalUser extends BaseEntity {
   birthday?: { month: number; day: number; year?: number | null } | null
   paydays?: number[]
   badges?: string[]
+  /** Fico-wide role (USER or ADMIN), so the app knows it straight away on start-up. */
+  role?: 'USER' | 'ADMIN'
   status: UserStatus
 }
 

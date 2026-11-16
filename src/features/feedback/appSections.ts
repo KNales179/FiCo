@@ -37,7 +37,7 @@ export const APP_PAGES: AppPage[] = [
   { name: 'Analytics', sections: ['Spending by category', 'Biggest categories', 'Spending over time', 'Usage (electricity, water, LPG, fuel)'] },
   { name: 'Categories', sections: ['Category list', 'Adding a category', 'Renaming or deleting'] },
   { name: 'Members', sections: ['Member list', 'Roles (Owner, Admin, Member, Viewer)', 'Invite someone', 'Pending invitations', 'Leaving a Finance'] },
-  { name: 'Activity', sections: ['Activity list'] },
+  { name: 'Activity', sections: ['Records tab', 'Members & roles tab', 'Sync conflicts tab', 'What changed (before → after)'] },
   {
     name: 'Account',
     sections: ['Profile picture & header', 'Badges & role tags', 'Your details', 'About you', 'Change password', 'Two-step sign-in (2FA)', 'Your devices', 'Install Fico as an app'],

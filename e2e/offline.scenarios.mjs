@@ -210,6 +210,15 @@ export const runScenarios = async (base, mongoUri) => {
 
     await A.ctx.setOffline(false)
     check('changes sync once back online', await waitForSync(A.page, 30_000))
+    // A personal Finance has its own Activity: your history, no Members tab.
+    await A.page.goto(base + 'activity')
+    await A.page.waitForTimeout(2500)
+    await dismissPopups(A.page)
+    const personalActivity = (await A.page.locator('main').innerText()).replace(/\s+/g, ' ')
+    check('a personal Finance shows its own Activity', /You updated record "Lunch".*Amount: .*→ ₱175/.test(personalActivity), personalActivity.slice(0, 300))
+    check('…with no Members tab', (await A.page.getByRole('link', { name: 'Members & roles' }).count()) === 0)
+    await A.page.goto(base)
+    await A.page.waitForTimeout(1500)
 
     // ── 2. Several Finances ───────────────────────────────────────
     section('2. Several Finances')
@@ -306,6 +315,22 @@ export const runScenarios = async (base, mongoUri) => {
     await A.page.goto(base + 'notifications')
     await A.page.waitForTimeout(1500)
     check('the overwritten edit is announced', (await A.page.getByText(/was replaced/).count()) > 0)
+
+    // Activity (A owns Family): each edit says what changed, in its own tab.
+    await A.page.goto(base + 'activity')
+    await A.page.waitForTimeout(2500)
+    await dismissPopups(A.page)
+    const recordsTab = (await A.page.locator('main').innerText()).replace(/\s+/g, ' ')
+    check('Activity shows what an edit changed', /Title: Groceries → Weekly groceries/.test(recordsTab), recordsTab.slice(0, 400))
+    check('Activity uses everyday words', /record "Groceries"|record "Weekly groceries"/.test(recordsTab) && !/transaction "/.test(recordsTab))
+    await A.page.getByRole('link', { name: 'Sync conflicts' }).click()
+    await A.page.waitForTimeout(2000)
+    const conflictsTab = (await A.page.locator('main').innerText()).replace(/\s+/g, ' ')
+    check('the Sync conflicts tab lists the conflict', /newer change|conflicting edit/.test(conflictsTab), conflictsTab.slice(0, 300))
+    await A.page.getByRole('link', { name: 'Members & roles' }).click()
+    await A.page.waitForTimeout(2000)
+    // (Both devices here are the same person, so nobody joined — the tab is filtered, not mixed with records.)
+    check('the Members & roles tab shows only member changes', /No member changes yet/.test(await A.page.locator('main').innerText()))
 
     // ── 5. A refused change is announced with its details ─────────
     section('5. A change the server refuses')
