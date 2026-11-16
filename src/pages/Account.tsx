@@ -17,6 +17,7 @@ import PasswordInput from '../components/auth/PasswordInput'
 import ProfileHeader from '../components/account/ProfileHeader'
 import DetailsCard from '../components/account/DetailsCard'
 import AboutYouCard from '../components/account/AboutYouCard'
+import DeleteAccountCard from '../components/account/DeleteAccountCard'
 import {
   IconDownload,
   IconChevronDown,
@@ -644,6 +645,7 @@ const Account = () => {
       </div>
 
       <InstallAppSection />
+      <DeleteAccountCard />
     </div>
   )
 }

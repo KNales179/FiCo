@@ -408,6 +408,38 @@ export const runRoleScenarios = async (base, mongoUri) => {
     await A.page.getByRole('tab', { name: /^Used/ }).click()
     check('the admin sees who used the code', (await A.page.getByRole('link', { name: '@' + friend }).count()) === 1)
 
+    console.log('\n10. Deleting an account')
+    // Owning a shared Finance others still use: hand it over first.
+    const blocked = await A.page.evaluate(async (pw) => {
+      const r = await fetch('http://localhost:5099/api/auth/me', {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw }),
+      })
+      return { status: r.status, code: (await r.json()).code }
+    }, PASSWORD)
+    check('owning a shared Finance others use blocks deleting', blocked.status === 409 && blocked.code === 'OWNS_SHARED_FINANCES', JSON.stringify(blocked))
+
+    // The friend deletes their account from the Account page.
+    const users = mongo.db().collection('users')
+    const before = await users.findOne({ username: friend })
+    const personal = await mongo.db().collection('spaces').findOne({ ownerId: before._id, type: 'PERSONAL' })
+    await C.page.goto(base + 'account')
+    await C.page.waitForTimeout(2500)
+    await closePopups(C.page)
+    await C.page.getByRole('button', { name: 'Delete my account…' }).click()
+    await C.page.fill('#delete-password', PASSWORD)
+    await C.page.getByLabel('Type DELETE to confirm').fill('delete')
+    await C.page.getByRole('button', { name: 'Delete my account forever' }).click()
+    await C.page.waitForTimeout(4000)
+    const after = await users.findOne({ _id: before._id })
+    check('the account is disabled and signed out', after.status === 'DISABLED' && (await C.page.locator('#identifier').count()) > 0)
+    check('their name, email and personal details are erased', after.username !== friend && !after.email.includes(friend) && (after.paydays ?? []).length === 0)
+    check('their personal Finance’s records are erased', (await mongo.db().collection('syncrecords').countDocuments({ spaceId: personal._id })) === 0)
+    check('their email can sign up again', (await users.countDocuments({ email: before.email })) === 0)
+    check('other people’s shared Finance is untouched', Boolean(await mongo.db().collection('spaces').findOne({ name: 'My Store', deletedAt: null })))
+
     await C.ctx.close()
     await A.ctx.close()
     await B.ctx.close()

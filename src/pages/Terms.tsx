@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import BackLink from '../components/BackLink'
 
-const LAST_UPDATED = 'November 16, 2026'
+const LAST_UPDATED = 'November 17, 2026'
 
 const Terms = () => (
   <main className="mx-auto max-w-2xl px-4 py-10">
@@ -94,7 +94,9 @@ const Terms = () => (
           ownership to someone else. <strong>Admins</strong> can add and change
           everything, can invite people and remove members and viewers (but
           not change anyone's role), and can see the Finance's Activity — who
-          added, changed, or deleted what, and when. <strong>Members</strong> can add and change
+          added, changed, or deleted what, when, and what an edit changed
+          (before and after). In your personal Finance, that history is
+          yours alone. <strong>Members</strong> can add and change
           records. <strong>Viewers</strong> can see everything a member could but
           can't change anything. Giving someone Admin means they can see each
           member's Activity in that Finance, so choose admins you trust. Roles
@@ -229,7 +231,7 @@ const Terms = () => (
         <p className="mt-2">
           Questions about these terms, or about your data, can be raised
           through Fico's own "Report & feedback" page once you're signed
-          in.
+          in, or by email to ibelldev179@gmail.com.
         </p>
       </section>
     </div>

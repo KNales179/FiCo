@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import BackLink from '../components/BackLink'
 
-const LAST_UPDATED = 'November 16, 2026'
+const LAST_UPDATED = 'November 17, 2026'
 
 const Privacy = () => (
   <main className="mx-auto max-w-2xl px-4 py-10">
@@ -10,9 +10,7 @@ const Privacy = () => (
     <h1 className="page-title mt-4 text-2xl">Privacy Policy</h1>
     <p className="mt-1 text-sm text-muted">Last updated {LAST_UPDATED}</p>
     <p className="mt-4 text-sm leading-relaxed text-muted">
-      Fico is built and run by an individual developer for a small,
-      invited group of family and friends — it is not offered as a public
-      product or run by a registered company. This policy explains, as
+      Fico is built and run by an individual developer, not a registered company, and is in an invite-only beta: anyone can visit the website and try the demo, but creating an account needs an invite code. This policy explains, as
       plainly as possible, what Fico actually does with your data. It
       isn't a substitute for legal advice; if Fico's audience or purpose
       ever grows beyond private invited use, this should get a proper
@@ -76,6 +74,16 @@ const Privacy = () => (
             the admin audit log.
           </li>
           <li>
+            <strong>Change history (Activity)</strong>: when a record in a
+            Finance is added, changed or removed, Fico notes who did it and
+            when, and for a change, which fields changed and their values
+            before and after (for example an amount going from ₱120 to ₱150).
+            In a shared Finance its owner and admins can see this history; in
+            your personal Finance only you can. Records marked Private are
+            never included. It's kept for up to a year, then deleted
+            automatically.
+          </li>
+          <li>
             <strong>Invite code</strong>: which one-time invite code was
             used to create your account and when, so Fico admins can see
             which codes have been used and by which account.
@@ -114,7 +122,10 @@ const Privacy = () => (
           rules) exempt cookies that are essential to the service you
           asked for. Fico also keeps a small amount of data in your
           browser's local storage — your appearance preferences (theme,
-          colour, font, text size), your personal display currency and the
+          colour, including a custom colour you pick on the colour wheel here
+          or on the website, font, text size), the fonts you choose
+          (downloaded from Fico's own site the first time, then kept for
+          offline use), your personal display currency and the
           last exchange rates looked up, which sections you've folded away,
           and whether you've seen the welcome tour and the latest update
           notes — and, more substantially, in your browser's
@@ -195,13 +206,17 @@ const Privacy = () => (
         <h2 className="section-title">6. How long data is kept</h2>
         <p className="mt-2">
           Your account and financial records are kept for as long as your
-          account exists. You can delete your own account at any time from
-          the Account page, which removes your login credentials; if
-          you're the only member of a personal Finance, its records go
-          with it. A shared Finance's records persist for its other
-          members if you leave it, since it's genuinely shared data — the
-          same way a group chat doesn't erase for everyone when one person
-          leaves it.
+          account exists. You can delete your account at any time from
+          Account → Delete my account. That erases your login, your name,
+          email, photo, birthday and paydays, two-step sign-in, signed-in
+          devices and notifications, and your personal Finance with all its
+          records and receipts, and it frees your email to sign up again. If
+          you own a shared Finance that other people still use, you'll be
+          asked to hand it over to someone first, so nobody loses it.
+          Records you added to someone else's shared Finance stay there for
+          its other members (shown as from a deleted account), since it's
+          genuinely shared data — the same way a group chat doesn't erase
+          for everyone when one person leaves it.
         </p>
       </section>
 
@@ -238,9 +253,9 @@ const Privacy = () => (
           account at any time. If you're in the Philippines, the Data
           Privacy Act of 2012 (Republic Act No. 10173) gives you the right
           to access, correct, and request erasure of your personal data —
-          reach out through Fico's "Report & feedback" page for any
-          request this policy doesn't already let you do yourself in the
-          app.
+          reach out through Fico's "Report & feedback" page, or email
+          ibelldev179@gmail.com, for any request this policy doesn't
+          already let you do yourself in the app.
         </p>
       </section>
 

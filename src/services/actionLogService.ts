@@ -1,4 +1,6 @@
 import { api } from '../lib/api'
+import { isDemoMode } from '../features/demo/demoMode'
+import { demoActionLogs } from '../features/demo/activity'
 
 export interface ActionLogEntry {
   id: string
@@ -30,6 +32,10 @@ export const fetchActionLogs = (
     kind?: string
   } = {},
 ) => {
+  // The demo never talks to the server: it has its own sample history.
+  if (isDemoMode()) {
+    return Promise.resolve<ActionLogResponse>({ success: true, logs: demoActionLogs(options), nextBefore: null })
+  }
   const params = new URLSearchParams()
   if (options.limit) params.set('limit', String(options.limit))
   if (options.before) params.set('before', options.before)

@@ -33,6 +33,28 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.18.0',
+    date: '2026-11-17',
+    title: 'Your data, your call',
+    highlights: [
+      {
+        icon: 'key',
+        title: 'Delete my account',
+        body: 'Account → Delete my account now really erases your login, profile and personal Finance, and frees your email to sign up again. If you own a shared Finance others still use, you’ll be asked to hand it over first so nobody loses it.',
+      },
+      {
+        icon: 'compass',
+        title: 'Activity in the demo',
+        body: 'The demo now has its own sample history, so you can try the Records, Members & roles and Sync conflicts tabs.',
+      },
+      {
+        icon: 'text',
+        title: 'Updated Privacy and Terms',
+        body: 'They now explain the change history in Activity, custom colours and fonts kept on your device, exactly what deleting your account erases, and an email address to reach us.',
+      },
+    ],
+  },
+  {
     version: '2.17.4',
     date: '2026-11-17',
     title: 'Money in and out, day by day',
