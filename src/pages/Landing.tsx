@@ -5,6 +5,7 @@ import FicoLogo from '../components/FicoLogo'
 import ThemeToggle from '../components/ThemeToggle'
 import AuthShowcase from '../components/auth/AuthShowcase'
 import Devices from '../components/landing/Devices'
+import Appearance from '../components/landing/Appearance'
 import { MissionArt, PurposeArt, VisionArt } from '../components/landing/Story'
 import {
   installPlatform,
@@ -347,6 +348,9 @@ const Landing = () => {
             <Devices />
           </div>
         </section>
+
+        {/* ── Appearance ─────────────────────────────────────────── */}
+        <Appearance />
 
         {/* ── How it works ───────────────────────────────────────── */}
         <section id="how" className="scroll-mt-20 mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">

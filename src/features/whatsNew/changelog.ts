@@ -33,6 +33,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.14.0',
+    date: '2026-11-17',
+    title: 'Make it yours',
+    highlights: [
+      {
+        icon: 'palette',
+        title: 'See how Fico can look',
+        body: 'The front page has a new “Make it yours” section: recolour a little Fico card with a colour wheel or the suggested colours, and hover the big “Font” to roll through every font Fico has.',
+      },
+    ],
+  },
+  {
     version: '2.13.2',
     date: '2026-11-17',
     title: 'A grid that follows you',
