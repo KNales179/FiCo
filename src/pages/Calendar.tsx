@@ -113,6 +113,7 @@ const Calendar = () => {
                   key={d.key}
                   type="button"
                   role="gridcell"
+                  data-no-tag=""
                   aria-selected={isSelected}
                   aria-label={`${d.day}${d.payday ? ', payday' : ''}${d.billsPaid.length ? `, ${d.billsPaid.length} bill paid` : ''}${d.billsDue.length ? `, ${d.billsDue.length} bill due` : ''}${hasRecords ? `, ${d.records.length} records` : ''}`}
                   onClick={() => setSelected(d.key)}

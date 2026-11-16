@@ -234,6 +234,7 @@ export const RankedBars = ({
   const ref = useRef<HTMLUListElement>(null)
   const shown = rows.slice(0, maxRows)
   const top = Math.max(1, ...shown.map((r) => r.value))
+  const total = rows.reduce((n, r) => n + r.value, 0) || 1
   const signature = JSON.stringify(shown.map((r) => [r.label, r.value]))
 
   useEffect(() => {
@@ -254,7 +255,12 @@ export const RankedBars = ({
   return (
     <ul ref={ref} className="space-y-2.5">
       {shown.map((r) => (
-        <li key={r.label} className="text-sm">
+        <li
+          key={r.label}
+          className="cursor-default text-sm"
+          // Details on hover, instantly (the hover tag reads this).
+          data-tag={`${r.label}: ${formatMoney(r.value, currency)} · ${Math.round((r.value / total) * 100)}% of the total`}
+        >
           <div className="flex items-baseline justify-between gap-2">
             <span className="truncate text-ink">{r.label}</span>
             <span className="shrink-0 tabular-nums text-muted">

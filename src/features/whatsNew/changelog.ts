@@ -33,6 +33,23 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.17.2',
+    date: '2026-11-17',
+    title: 'Tags everywhere, smoother FAQ',
+    highlights: [
+      {
+        icon: 'compass',
+        title: 'Tags on every button in the app',
+        body: 'Every button and link in the app now shows its tag straight away when you hover it. Delete buttons get a red tag (a dark one if your colour is red), and hovering chart bars and stats shows their details instantly.',
+      },
+      {
+        icon: 'layout',
+        title: 'FAQ answers glide open',
+        body: 'On the front page, each question now opens smoothly instead of popping open, and tells you it will show or hide the answer.',
+      },
+    ],
+  },
+  {
     version: '2.17.1',
     date: '2026-11-17',
     title: 'Meet the maker',

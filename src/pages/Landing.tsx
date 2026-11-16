@@ -1,4 +1,5 @@
 import { useEffect, useState, type ComponentType, type ReactNode } from 'react'
+import FaqItem from '../components/landing/FaqItem'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import FicoLogo from '../components/FicoLogo'
@@ -17,7 +18,6 @@ import {
   IconCart,
   IconChart,
   IconCheck,
-  IconChevronDown,
   IconCloudOff,
   IconCompass,
   IconDownload,
@@ -485,13 +485,9 @@ const Landing = () => {
           </div>
           <div className="mt-8 space-y-3">
             {FAQ.map((f) => (
-              <details key={f.q} className="card hover-card group p-0 sm:p-0">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-semibold text-ink">
-                  {f.q}
-                  <IconChevronDown size={18} className="shrink-0 text-muted transition-transform group-open:rotate-180" />
-                </summary>
-                <div className="px-5 pb-4 text-sm text-muted">{f.a}</div>
-              </details>
+              <FaqItem key={f.q} q={f.q}>
+                {f.a}
+              </FaqItem>
             ))}
           </div>
         </section>

@@ -1288,3 +1288,18 @@ body { font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) {
   .shake, .celebrate-pulse, .delta-float { animation: none; }
 }
+
+/* Delete-type buttons: a red tag. If the accent itself is red or close to
+   it, a dark tag instead, so it never blends in with the normal ones. */
+.cursor-tag.is-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+  box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--danger) 60%, rgb(0 0 0 / 0.4));
+}
+.cursor-tag.is-danger .cursor-tag-mark { background: var(--danger); color: #fff; }
+.cursor-tag.is-danger-alt {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface-base);
+}
+.cursor-tag.is-danger-alt .cursor-tag-mark { background: var(--surface-base); color: var(--danger); }
