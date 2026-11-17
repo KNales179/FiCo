@@ -187,6 +187,12 @@ export const IconX = (props: IconProps) => (
   </Icon>
 )
 
+export const IconMenu = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M4 7h16M4 12h16M4 17h16" />
+  </Icon>
+)
+
 export const IconCheck = (props: IconProps) => (
   <Icon {...props}>
     <path d="m4.5 12.5 5 5 10-11" />

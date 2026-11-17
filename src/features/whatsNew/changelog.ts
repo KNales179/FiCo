@@ -33,6 +33,23 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.18.1',
+    date: '2026-11-17',
+    title: 'The front page on phones',
+    highlights: [
+      {
+        icon: 'layout',
+        title: 'A menu on phones',
+        body: 'The front page now has a menu button on small screens, so you can jump to Features, How it works, Why Fico and the FAQ, and Sign in is always in the top bar.',
+      },
+      {
+        icon: 'text',
+        title: 'Two more FAQ answers',
+        body: 'Whether you can delete your account (yes) and export your data (not yet).',
+      },
+    ],
+  },
+  {
     version: '2.18.0',
     date: '2026-11-17',
     title: 'Your data, your call',

@@ -24,7 +24,9 @@ import {
   IconLock,
   IconArrowUpRight,
   IconMail,
+  IconMenu,
   IconReceipt,
+  IconX,
   IconShare,
   IconUsers,
   type IconProps,
@@ -125,6 +127,14 @@ const FAQ: Array<{ q: string; a: ReactNode }> = [
   {
     q: 'What happens if I lose my phone?',
     a: 'Your records are synced to your account whenever you’re online, so just sign in on another device and they’re all there. You can also sign out a lost device from your Account page.',
+  },
+  {
+    q: 'Can I delete my account?',
+    a: 'Yes, any time, from Account → Delete my account. It erases your login, your profile and your personal Finance with all its records. If you own a shared Finance that others still use, you’ll be asked to hand it over first so nobody loses it.',
+  },
+  {
+    q: 'Can I export my data?',
+    a: 'Not yet. A download of your records is planned. Until then, everything you’ve recorded is visible in the app, and you can ask by email for a copy.',
   },
   {
     q: 'Do you sell my data or show ads?',
@@ -246,6 +256,15 @@ const Landing = () => {
   const platform = useInstall()
   const [helpOpen, setHelpOpen] = useState(false)
   const [demoBusy, setDemoBusy] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  // The phone menu closes on Escape, like any other pop-up.
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen])
 
   const download = async () => {
     if (platform === 'promptable') {
@@ -308,16 +327,50 @@ const Landing = () => {
               </Link>
             ) : (
               <>
-                <Link to="/login" className="hidden px-2 text-sm font-semibold text-ink hover:text-brand sm:inline">
+                <Link to="/login" className="px-2 text-sm font-semibold text-ink hover:text-brand">
                   Sign in
                 </Link>
-                <Link to="/register" className="btn btn-primary px-3.5 py-1.5 text-sm">
+                <Link to="/register" className="btn btn-primary hidden px-3.5 py-1.5 text-sm sm:inline-flex">
                   Sign up
                 </Link>
               </>
             )}
+            <button
+              type="button"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-expanded={menuOpen}
+              aria-controls="landing-menu"
+              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+              className="btn px-2 py-1.5 md:hidden"
+            >
+              {menuOpen ? <IconX size={18} /> : <IconMenu size={18} />}
+            </button>
           </div>
         </nav>
+        {menuOpen && (
+          <div id="landing-menu" className="border-t border-line/60 md:hidden">
+            <ul className="mx-auto flex max-w-7xl flex-col px-4 py-2 sm:px-6">
+              {NAV.map((n) => (
+                <li key={n.href}>
+                  <a
+                    href={n.href}
+                    onClick={() => setMenuOpen(false)}
+                    className="block rounded-lg px-2 py-3 text-base font-medium text-ink hover:bg-brand/10"
+                  >
+                    {n.label}
+                  </a>
+                </li>
+              ))}
+              {!isAuthenticated && (
+                <li className="sm:hidden">
+                  <Link to="/register" className="block rounded-lg px-2 py-3 text-base font-semibold text-brand hover:bg-brand/10">
+                    Sign up with an invite code
+                  </Link>
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
       </header>
 
       <main id="top" className="relative">
