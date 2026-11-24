@@ -33,6 +33,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.19.1',
+    date: '2026-11-25',
+    title: 'Fold away any chart',
+    highlights: [
+      {
+        icon: 'layout',
+        title: 'Analytics cards fold up',
+        body: 'Tap the name of any card in Analytics, like Earnings or Spending by category, to fold it away or open it again. Fico remembers how you left them on this device.',
+      },
+    ],
+  },
+  {
     version: '2.19.0',
     date: '2026-11-25',
     title: 'See your best days',

@@ -41,6 +41,7 @@ import {
 } from '../components/icons'
 import { gsap, prefersReducedMotion, useStaggerIn } from '../lib/motion'
 import Approx from '../components/Approx'
+import CollapsibleCard from '../components/CollapsibleCard'
 
 const PERIODS: { value: AnalyticsPeriod; label: string }[] = [
   { value: 'THIS_MONTH', label: 'This month' },
@@ -377,33 +378,29 @@ const Analytics = () => {
           </section>
 
           {data.incomeMinor > 0 && (
-            <section className="card">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="section-title">Spent {Math.round(data.expensePctOfIncome)}% of income</h2>
+            <CollapsibleCard
+              id="analytics.spentShare"
+              title={`Spent ${Math.round(data.expensePctOfIncome)}% of income`}
+              actions={
                 <span className="text-xs text-muted">
                   {data.netMinor >= 0
                     ? `${formatMoney(data.netMinor, data.currency)} left over`
                     : `${formatMoney(-data.netMinor, data.currency)} over`}
                 </span>
-              </div>
-              <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-panel-2">
+              }
+            >
+              <div className="h-3 w-full overflow-hidden rounded-full bg-panel-2">
                 <div
                   className={`h-3 rounded-full ${data.expensePctOfIncome > 100 ? 'bg-danger' : 'bg-brand'}`}
                   style={{ width: `${Math.min(Math.max(data.expensePctOfIncome, 0), 100)}%` }}
                 />
               </div>
-            </section>
+            </CollapsibleCard>
           )}
 
           {income && (
-            <section className="card min-w-0" data-tour="analytics-earnings">
-              <h2 className="section-title flex items-center gap-2">
-                <span className="card-icon">
-                  <IconArrowUpRight size={16} />
-                </span>
-                Earnings
-              </h2>
-              <p className="mt-1 text-xs text-muted">Just your income: which days brought in the most.</p>
+            <CollapsibleCard id="analytics.earnings" title="Earnings" icon={IconArrowUpRight} className="min-w-0" dataTour="analytics-earnings">
+              <p className="text-xs text-muted">Just your income: which days brought in the most.</p>
 
               <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
                 <MiniStat
@@ -515,18 +512,18 @@ const Analytics = () => {
                   </div>
                 </div>
               )}
-            </section>
+            </CollapsibleCard>
           )}
 
           <div className="grid items-start gap-4 lg:grid-cols-2">
-            <section className="card min-w-0 lg:col-span-2" data-tour="analytics-trend">
-              <h2 className="section-title flex items-center gap-2">
-                <span className="card-icon">
-                  <IconChart size={16} />
-                </span>
-                {overTime?.kind === 'monthly' ? 'Income vs expenses by month' : 'Spending day by day'}
-              </h2>
-              <div className="mt-4">
+            <CollapsibleCard
+              id="analytics.trend"
+              title={overTime?.kind === 'monthly' ? 'Income vs expenses by month' : 'Spending day by day'}
+              icon={IconChart}
+              className="min-w-0 lg:col-span-2"
+              dataTour="analytics-trend"
+            >
+              <div className="pt-1">
                 {overTime?.kind === 'daily' ? (
                   overTime.points.some((p) => p.value > 0) ? (
                     <div className="grid gap-6 xl:grid-cols-2">
@@ -568,11 +565,10 @@ const Analytics = () => {
                   <EmptyChart>Nothing recorded in this period.</EmptyChart>
                 )}
               </div>
-            </section>
+            </CollapsibleCard>
 
-            <section className="card min-w-0" data-tour="analytics-categories">
-              <h2 className="section-title">Spending by category</h2>
-              <div className="mt-4">
+            <CollapsibleCard id="analytics.categories" title="Spending by category" className="min-w-0" dataTour="analytics-categories">
+              <div className="pt-1">
                 {donutSlices.length === 0 ? (
                   <EmptyChart>No expenses in this period.</EmptyChart>
                 ) : (
@@ -584,11 +580,10 @@ const Analytics = () => {
                   />
                 )}
               </div>
-            </section>
+            </CollapsibleCard>
 
-            <section className="card min-w-0">
-              <h2 className="section-title">Biggest categories</h2>
-              <p className="mt-1 text-xs text-muted">Ranked by amount spent this period.</p>
+            <CollapsibleCard id="analytics.biggestCategories" title="Biggest categories" className="min-w-0">
+              <p className="text-xs text-muted">Ranked by amount spent this period.</p>
               <div className="mt-3">
                 {data.byCategory.length === 0 ? (
                   <EmptyChart>No expenses in this period.</EmptyChart>
@@ -599,35 +594,23 @@ const Analytics = () => {
                   />
                 )}
               </div>
-            </section>
+            </CollapsibleCard>
 
             {data.byMember.length > 1 && (
-              <section className="card min-w-0">
-                <h2 className="section-title flex items-center gap-2">
-                  <span className="card-icon">
-                    <IconUsers size={16} />
-                  </span>
-                  Spending by person
-                </h2>
-                <p className="mt-1 text-xs text-muted">Who recorded the expense, not who it was for.</p>
+              <CollapsibleCard id="analytics.byPerson" title="Spending by person" icon={IconUsers} className="min-w-0">
+                <p className="text-xs text-muted">Who recorded the expense, not who it was for.</p>
                 <div className="mt-3">
                   <RankedBars
                     rows={data.byMember.map((m) => ({ label: memberName(m.userId), value: m.amountMinor, note: `${Math.round(m.pct)}%` }))}
                     currency={data.currency}
                   />
                 </div>
-              </section>
+              </CollapsibleCard>
             )}
 
             {engagement.length > 1 && (
-              <section className="card min-w-0">
-                <h2 className="section-title flex items-center gap-2">
-                  <span className="card-icon">
-                    <IconAward size={16} />
-                  </span>
-                  Active points
-                </h2>
-                <p className="mt-1 text-xs text-muted">
+              <CollapsibleCard id="analytics.activePoints" title="Active points" icon={IconAward} className="min-w-0">
+                <p className="text-xs text-muted">
                   How much each of you actually used Fico this period: recording
                   transactions, starting to-buy lists, adding and paying bills.
                 </p>
@@ -663,17 +646,11 @@ const Analytics = () => {
                     )
                   })}
                 </ul>
-              </section>
+              </CollapsibleCard>
             )}
 
-            <section className="card min-w-0">
-              <h2 className="section-title flex items-center gap-2">
-                <span className="card-icon">
-                  <IconCart size={16} />
-                </span>
-                To-buy lists
-              </h2>
-              <p className="mt-1 text-xs text-muted">
+            <CollapsibleCard id="analytics.toBuy" title="To-buy lists" icon={IconCart} className="min-w-0">
+              <p className="text-xs text-muted">
                 {data.shopping.listCount} completed list{data.shopping.listCount === 1 ? '' : 's'} this period.
               </p>
               <div className="mt-3">
@@ -692,12 +669,11 @@ const Analytics = () => {
                   <EmptyChart>Finish a to-buy list to compare planned vs actual.</EmptyChart>
                 )}
               </div>
-            </section>
+            </CollapsibleCard>
 
             {usageTrends.map(({ kind, trend: electricityTrend }) => (
-              <section key={kind} className="card min-w-0 lg:col-span-2">
-                <h2 className="section-title">{USAGE[kind].label}</h2>
-                <p className="mt-1 text-xs text-muted">
+              <CollapsibleCard key={kind} id={`analytics.usage.${kind}`} title={USAGE[kind].label} className="min-w-0 lg:col-span-2">
+                <p className="text-xs text-muted">
                   Amount up but {USAGE[kind].unit} flat means the price went up, not your usage —
                   amount and {USAGE[kind].unit} both up means you're using more.
                 </p>
@@ -744,7 +720,7 @@ const Analytics = () => {
                     </table>
                   </div>
                 </div>
-              </section>
+              </CollapsibleCard>
             ))}
           </div>
 
