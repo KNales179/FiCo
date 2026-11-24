@@ -100,7 +100,8 @@ const monthKey = (iso: string) => iso.slice(0, 7)
 
 /**
  * Aggregate a set of transactions (already range-filtered). Transfers never
- * count as income or expense (Architecture Rule 4); category comes from the
+ * count as income or expense (Architecture Rule 4), nor do accounts' starting
+ * balances count as income; category comes from the
  * per-transaction `categoryName` snapshot.
  */
 export const summarize = (
@@ -118,6 +119,10 @@ export const summarize = (
 
   for (const txn of transactions) {
     if (txn.currency !== currency) continue
+    // A new account's starting balance is saved as income so the balance adds
+    // up, but nobody earned it that month — leave it out of income (the
+    // server does the same).
+    if (txn.type === 'INCOME' && txn.sourceType === 'OPENING_BALANCE') continue
 
     const mk = monthKey(txn.occurredAt)
     const month =

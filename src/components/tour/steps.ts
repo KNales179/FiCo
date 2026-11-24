@@ -52,7 +52,7 @@ export const TOURS: Tour[] = [
     demo: true,
     steps: [
       { target: null, title: 'Welcome to Fico', body: `A quick look around your dashboard. Tap Next to move along, or Skip any time. ${sampleNote}` },
-      { target: 'space', title: 'Your Finance', body: 'Everything you record lives in a Finance. Tap here to switch between your personal one and a shared one — or pick “Add another Finance” at the bottom of the list (up to 3 of your own) and invite people to it.' },
+      { target: 'space', title: 'Your Finance', body: 'Everything you record lives in a Finance. Tap here to switch between your personal one and a shared one, tap the pencil beside one you own to rename it, or pick “Add another Finance” at the bottom of the list (up to 3 of your own) and invite people to it.' },
       { target: 'summary', title: 'Your money at a glance', body: 'The total across all your active accounts, plus what went out and came in this month — worked out from what you record.' },
       { target: 'cash-check', title: 'Cash check', body: 'Count the cash in your wallet and type it in. Fico compares it with what it expected, so you can spot anything you forgot to record.' },
       { target: 'quick-add', title: 'Quick add', body: 'The fastest way to record money as it happens. Everything in Fico is typed by you — it never connects to a bank or e-wallet.' },
@@ -139,6 +139,7 @@ export const TOURS: Tour[] = [
       { target: null, title: 'Analytics', body: `Charts of your money over any period. ${sampleNote}` },
       { target: 'analytics-period', title: 'Pick a period', body: 'This month, last month, this year, last year, or all time.' },
       { target: 'analytics-totals', title: 'The totals', body: 'Income, expenses, what’s left (net), and how much went to bills.' },
+      { target: 'analytics-earnings', title: 'Earnings', body: 'Just the money coming in: your best day, your average earning day, every day side by side, your top 5 days, which day of the week earns the most, and how much went into each account. Handy if you run a booth or a small shop.' },
       { target: 'analytics-trend', title: 'Over time', body: 'Day by day for a month — with a running total — or income vs expenses month by month for longer periods. Hover or tap for exact amounts.' },
       { target: 'analytics-categories', title: 'By category', body: 'What share each category took. Each category keeps its own colour, so switching periods never repaints it.' },
       { target: null, title: 'That’s Analytics', body: 'The sample charts disappear when you close this. Yours fill in as you record.' },

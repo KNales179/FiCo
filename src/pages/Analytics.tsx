@@ -3,6 +3,7 @@ import { useSpace } from '../hooks/useSpace'
 import { useAuth } from '../hooks/useAuth'
 import { useBills } from '../hooks/useBills'
 import { useAllTransactions } from '../hooks/useAllTransactions'
+import { useMoney } from '../hooks/useMoney'
 import { listMembers } from '../services/spaceService'
 import {
   computeAnalytics,
@@ -13,6 +14,7 @@ import type { AnalyticsPeriod } from '../domain/analytics'
 import { compareElectricityPeriods } from '../domain/electricity'
 import { formatUsage, recordKindOf, sumByPeriod, USAGE, USAGE_KINDS } from '../features/bills/usage'
 import { formatMoney } from '../domain/money'
+import { summarizeIncome, WEEKDAY_NAMES } from '../domain/incomeStats'
 import { shortMonth, longMonth } from '../domain/insights'
 import type { SpaceMember } from '../types/space'
 import { PageHeader, Select } from '../components/ui'
@@ -31,7 +33,9 @@ import {
   IconAward,
   IconCart,
   IconChart,
+  IconCalendarDays,
   IconReceipt,
+  IconStar,
   IconUsers,
   IconWallet,
 } from '../components/icons'
@@ -92,6 +96,26 @@ const Intro = () => {
   )
 }
 
+/** "Sat, Nov 7" for a YYYY-MM-DD day key. */
+const dayTitle = (date: string) =>
+  new Date(`${date}T00:00:00.000Z`).toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
+
+/** A small figure inside the Earnings card. */
+const MiniStat = ({ label, value, note }: { label: string; value: string; note?: string }) => (
+  <div className="min-w-0 rounded-xl bg-panel-2 p-3">
+    <p className="text-xs font-medium text-muted">{label}</p>
+    <p className="mt-0.5 break-words text-lg font-bold tabular-nums text-ink">{value}</p>
+    {note && <p className="text-xs text-muted">{note}</p>}
+  </div>
+)
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+
 const StatTile = ({
   label,
   value,
@@ -129,6 +153,8 @@ const Analytics = () => {
   const { user } = useAuth()
   const { electricity } = useBills()
   const transactions = useAllTransactions()
+  const { accounts } = useMoney()
+  const accountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? 'Removed account'
   const currency = activeSpace?.currency ?? 'PHP'
   const [period, setPeriod] = useState<AnalyticsPeriod>('THIS_MONTH')
   const [data, setData] = useState<AnalyticsData | null>(null)
@@ -267,6 +293,36 @@ const Analytics = () => {
     }
   }, [data, transactions, currency, openedAt])
 
+  // Earnings: income only, for people who earn in many small amounts (a
+  // booth, a shop, side jobs) and want to see which days bring in the most.
+  const income = useMemo(() => {
+    if (!data) return null
+    const inRange = transactions.filter(
+      (t) => t.occurredAt >= data.range.fromIso && t.occurredAt <= data.range.toIso,
+    )
+    const stats = summarizeIncome(inRange, currency)
+    if (stats.totalMinor <= 0) return null
+    const from = new Date(data.range.fromIso)
+    const end = Math.min(openedAt, new Date(data.range.toIso).getTime())
+    const spanDays = Math.max(1, Math.floor((end - from.getTime()) / 86_400_000) + 1)
+    const daily = spanDays <= 62
+    const byDate = new Map(stats.days.map((d) => [d.date, d.amountMinor]))
+    // Day by day for a month-sized range; month by month beyond that.
+    const chart = daily
+      ? Array.from({ length: spanDays }, (_, i) => {
+          const d = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate() + i))
+          const key = d.toISOString().slice(0, 10)
+          return { key, label: String(d.getUTCDate()), title: dayTitle(key), values: [byDate.get(key) ?? 0] }
+        })
+      : data.byMonth
+          .filter((m) => m.incomeMinor > 0)
+          .map((m) => ({ key: m.month, label: shortMonth(m.month), title: longMonth(m.month), values: [m.incomeMinor] }))
+    // "All time" has no meaningful day count to compare against.
+    const daysInRange = period === 'ALL_TIME' ? null : spanDays
+    const bestWeekday = [...stats.byWeekday].sort((a, b) => b.avgMinor - a.avgMinor)[0]
+    return { stats, chart, daily, daysInRange, bestWeekday }
+  }, [data, transactions, currency, openedAt, period])
+
   // Electricity specifically — not "bills in general": a FIXED bill's
   // amount never moves, but electricity's amount *and* consumption both
   // move on their own, and telling them apart is the useful part.
@@ -336,6 +392,129 @@ const Analytics = () => {
                   style={{ width: `${Math.min(Math.max(data.expensePctOfIncome, 0), 100)}%` }}
                 />
               </div>
+            </section>
+          )}
+
+          {income && (
+            <section className="card min-w-0" data-tour="analytics-earnings">
+              <h2 className="section-title flex items-center gap-2">
+                <span className="card-icon">
+                  <IconArrowUpRight size={16} />
+                </span>
+                Earnings
+              </h2>
+              <p className="mt-1 text-xs text-muted">Just your income: which days brought in the most.</p>
+
+              <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                <MiniStat
+                  label="Best day"
+                  value={income.stats.bestDay ? formatMoney(income.stats.bestDay.amountMinor, data.currency) : '—'}
+                  note={income.stats.bestDay ? dayTitle(income.stats.bestDay.date) : undefined}
+                />
+                <MiniStat
+                  label="Average earning day"
+                  value={formatMoney(income.stats.avgPerEarningDayMinor, data.currency)}
+                  note="on days with income"
+                />
+                <MiniStat
+                  label="Days with income"
+                  value={String(income.stats.earningDays)}
+                  note={income.daysInRange ? `out of ${plural(income.daysInRange, 'day', 'days')}` : undefined}
+                />
+                <MiniStat
+                  label="Average per entry"
+                  value={formatMoney(income.stats.avgPerEntryMinor, data.currency)}
+                  note={plural(income.stats.entryCount, 'entry', 'entries')}
+                />
+              </div>
+
+              <div className="mt-5">
+                <p className="mb-1 text-xs font-medium text-muted">{income.daily ? 'Earned each day' : 'Earned each month'}</p>
+                <BarChart
+                  ariaLabel={income.daily ? 'Income per day' : 'Income per month'}
+                  data={income.chart}
+                  series={[{ name: 'Earned', color: 'var(--success)' }]}
+                  currency={data.currency}
+                  height={190}
+                />
+              </div>
+
+              <div className="mt-5 grid gap-6 lg:grid-cols-2">
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1.5 text-xs font-medium text-muted">
+                    <IconStar size={13} />
+                    Top earning days
+                  </p>
+                  <div className="mt-2">
+                    <RankedBars
+                      rows={income.stats.topDays.map((d) => ({
+                        label: dayTitle(d.date),
+                        value: d.amountMinor,
+                        note: plural(d.entries, 'entry', 'entries'),
+                      }))}
+                      currency={data.currency}
+                      color="var(--success)"
+                      max={5}
+                    />
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1.5 text-xs font-medium text-muted">
+                    <IconCalendarDays size={13} />
+                    Best days of the week
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted">
+                    {WEEKDAY_NAMES[income.bestWeekday.weekday]}s earn the most, about{' '}
+                    {formatMoney(income.bestWeekday.avgMinor, data.currency)} a day.
+                  </p>
+                  <div className="mt-2">
+                    <BarChart
+                      ariaLabel="Average income by day of the week"
+                      data={income.stats.byWeekday.map((w) => ({
+                        key: String(w.weekday),
+                        label: WEEKDAY_NAMES[w.weekday].slice(0, 3),
+                        title: `${WEEKDAY_NAMES[w.weekday]}, average of ${plural(w.earningDays, 'day', 'days')}`,
+                        values: [w.avgMinor],
+                      }))}
+                      series={[{ name: 'Average a day', color: 'var(--success)' }]}
+                      currency={data.currency}
+                      height={160}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {income.stats.byAccount.length > 1 && (
+                <div className="mt-5">
+                  <p className="text-xs font-medium text-muted">By account</p>
+                  <p className="mt-0.5 text-xs text-muted">Which account the money went into.</p>
+                  <div className="mt-2">
+                    <RankedBars
+                      rows={income.stats.byAccount.map((a) => ({
+                        label: accountName(a.accountId),
+                        value: a.amountMinor,
+                        note: `${Math.round(a.pct)}% · ${plural(a.entries, 'entry', 'entries')}`,
+                      }))}
+                      currency={data.currency}
+                      color="var(--success)"
+                      max={10}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {income.stats.bySource.length > 1 && (
+                <div className="mt-5">
+                  <p className="text-xs font-medium text-muted">Where it came from</p>
+                  <div className="mt-2">
+                    <RankedBars
+                      rows={income.stats.bySource.map((src) => ({ label: src.name, value: src.amountMinor, note: `${Math.round(src.pct)}%` }))}
+                      currency={data.currency}
+                      color="var(--success)"
+                    />
+                  </div>
+                </div>
+              )}
             </section>
           )}
 

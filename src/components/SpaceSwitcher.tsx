@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useSpace } from '../hooks/useSpace'
 import { gsap, prefersReducedMotion } from '../lib/motion'
-import { IconCheck, IconChevronDown, IconPlus, IconUsers, IconWallet, IconX } from './icons'
+import { renameSpace } from '../services/spaceService'
+import { isDemoSpace } from '../features/demo/space'
+import { IconCheck, IconChevronDown, IconEdit, IconPlus, IconUsers, IconWallet, IconX } from './icons'
 import { Skeleton } from './ui'
 
 /** How many Finances one person can own (shared ones they've joined don't count). */
@@ -12,13 +14,17 @@ const MAX_OWNED_FINANCES = 3
  * with "Add another Finance" at the bottom (up to three of your own).
  */
 const SpaceSwitcher = () => {
-  const { spaces, activeSpaceId, loading, fromCache, switchSpace, createSpace } = useSpace()
+  const { spaces, activeSpaceId, loading, fromCache, switchSpace, createSpace, refresh } = useSpace()
 
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // Renaming a Finance in place (owners only — the server checks too).
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [renameError, setRenameError] = useState('')
   const rootRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -31,6 +37,37 @@ const SpaceSwitcher = () => {
     setCreating(false)
     setName('')
     setError('')
+    setEditingId(null)
+    setRenameError('')
+  }
+
+  const startRename = (id: string, current: string) => {
+    setCreating(false)
+    setEditingId(id)
+    setEditName(current)
+    setRenameError('')
+  }
+
+  const handleRename = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const trimmed = editName.trim()
+    const current = spaces.find((s) => s.id === editingId)
+    if (!editingId || !trimmed) return
+    if (trimmed === current?.name) {
+      setEditingId(null)
+      return
+    }
+    setBusy(true)
+    setRenameError('')
+    try {
+      await renameSpace(editingId, trimmed)
+      await refresh()
+      setEditingId(null)
+    } catch (err) {
+      setRenameError(err instanceof Error ? err.message : 'Could not rename that Finance')
+    } finally {
+      setBusy(false)
+    }
   }
 
   // Click outside / Escape closes it.
@@ -109,8 +146,54 @@ const SpaceSwitcher = () => {
             {spaces.map((space) => {
               const selected = space.id === activeSpaceId
               const Icon = space.type === 'FAMILY' ? IconUsers : IconWallet
+              const canRename = space.role === 'OWNER' && !isDemoSpace(space.id)
+              if (editingId === space.id) {
+                return (
+                  <li key={space.id}>
+                    <form onSubmit={handleRename} className="space-y-2 rounded-xl bg-panel-2 p-2">
+                      <input
+                        autoFocus
+                        value={editName}
+                        onChange={(event) => setEditName(event.target.value)}
+                        onKeyDown={(event) => {
+                          // Escape cancels the rename, not the whole menu.
+                          if (event.key === 'Escape') {
+                            event.stopPropagation()
+                            event.nativeEvent.stopImmediatePropagation()
+                            setEditingId(null)
+                          }
+                        }}
+                        maxLength={60}
+                        aria-label={`New name for ${space.name}`}
+                        className="input py-1.5 text-sm"
+                      />
+                      <div className="flex gap-2">
+                        <button type="submit" disabled={busy || !editName.trim()} className="btn btn-primary btn-sm flex-1">
+                          {busy ? 'Saving…' : 'Save name'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingId(null)
+                            setRenameError('')
+                          }}
+                          className="btn btn-sm"
+                          aria-label="Cancel rename"
+                        >
+                          <IconX size={14} />
+                        </button>
+                      </div>
+                      {renameError && (
+                        <p role="alert" className="text-xs text-danger">
+                          {renameError}
+                        </p>
+                      )}
+                    </form>
+                  </li>
+                )
+              }
               return (
-                <li key={space.id}>
+                <li key={space.id} className="group flex items-center gap-1">
                   <button
                     type="button"
                     role="option"
@@ -119,7 +202,7 @@ const SpaceSwitcher = () => {
                       close()
                       if (!selected) void switchSpace(space.id)
                     }}
-                    className={`flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left text-sm transition-colors ${
+                    className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 py-2 text-left text-sm transition-colors ${
                       selected ? 'bg-brand/10 text-ink' : 'text-ink hover:bg-panel-2'
                     }`}
                   >
@@ -139,6 +222,17 @@ const SpaceSwitcher = () => {
                     </span>
                     {selected && <IconCheck size={16} className="shrink-0 text-brand" />}
                   </button>
+                  {canRename && (
+                    <button
+                      type="button"
+                      onClick={() => startRename(space.id, space.name)}
+                      aria-label={`Rename ${space.name}`}
+                      title="Rename"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-panel-2 hover:text-brand"
+                    >
+                      <IconEdit size={15} />
+                    </button>
+                  )}
                 </li>
               )
             })}
@@ -180,7 +274,10 @@ const SpaceSwitcher = () => {
             ) : (
               <button
                 type="button"
-                onClick={() => setCreating(true)}
+                onClick={() => {
+                  setEditingId(null)
+                  setCreating(true)
+                }}
                 className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left text-sm font-medium text-brand transition-colors hover:bg-brand/10"
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-dashed border-brand/50">

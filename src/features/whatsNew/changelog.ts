@@ -33,6 +33,28 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.19.0',
+    date: '2026-11-25',
+    title: 'See your best days',
+    highlights: [
+      {
+        icon: 'chart',
+        title: 'Earnings in Analytics',
+        body: 'Analytics now has an Earnings card just for money coming in: your best day, your average earning day, how many days brought in money, every day side by side, your top 5 days, and which day of the week earns the most, plus how much went into each account and category. Great if you run a booth or a small shop.',
+      },
+      {
+        icon: 'wallet',
+        title: 'Rename a Finance in one tap',
+        body: 'Open the Finance picker at the top and tap the pencil next to any Finance you own to give it a new name.',
+      },
+      {
+        icon: 'wrench',
+        title: 'Truer income totals',
+        body: 'The money an account started with no longer counts as income in Analytics, so opening a new account won’t make a month look like a big payday.',
+      },
+    ],
+  },
+  {
     version: '2.18.1',
     date: '2026-11-17',
     title: 'The front page on phones',

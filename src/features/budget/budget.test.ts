@@ -6,6 +6,10 @@ import { getBudgetPlan, recommendBudget, saveBudgetPlan } from './index'
 
 const c = ctx()
 
+// Planning October from late September. Pinned so the tests don't break once
+// the real clock passes October and its bills start counting as overdue.
+const PLANNING_FROM = new Date('2026-09-25T00:00:00.000Z')
+
 describe('budget planning (Roadmap Phase 26 feedback)', () => {
   beforeEach(withDB)
 
@@ -44,7 +48,7 @@ describe('budget planning (Roadmap Phase 26 feedback)', () => {
       paidAt: '2026-09-14T00:00:00.000Z',
     })
 
-    const rec = await recommendBudget(c.spaceId, '2026-10')
+    const rec = await recommendBudget(c.spaceId, '2026-10', PLANNING_FROM)
 
     expect(rec.incomeMinor).toBe(3000000)
     expect(rec.projectedBills).toHaveLength(1)
@@ -63,7 +67,7 @@ describe('budget planning (Roadmap Phase 26 feedback)', () => {
       nextDueDate: '2026-10-01T00:00:00.000Z',
     })
 
-    const rec = await recommendBudget(c.spaceId, '2026-10')
+    const rec = await recommendBudget(c.spaceId, '2026-10', PLANNING_FROM)
     expect(rec.projectedBills[0].amountMinor).toBe(0)
     expect(rec.billTrends[rec.projectedBills[0].billId]).toBeNull()
   })
@@ -169,7 +173,7 @@ describe('budget planning (Roadmap Phase 26 feedback)', () => {
       occurredAt: '2026-08-10T00:00:00.000Z',
     })
 
-    const rec = await recommendBudget(c.spaceId, '2026-10')
+    const rec = await recommendBudget(c.spaceId, '2026-10', PLANNING_FROM)
     expect(rec.weeklyCategories[0].categoryName).toBe('Groceries')
     expect(rec.weeklyCategories[0].weeklyMedianMinor).toBe(30000)
     expect(rec.weeklyCategories.find((w) => w.categoryName === 'Shopping')).toBeUndefined()

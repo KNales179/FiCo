@@ -321,6 +321,18 @@ describe('analytics summarize', () => {
     expect(Math.round(s.expensePctOfIncome)).toBe(50)
   })
 
+  it('leaves an account’s starting balance out of income', () => {
+    const s = summarize([
+      t({ type: 'INCOME', amountMinor: 2500000, sourceType: 'OPENING_BALANCE' }),
+      t({ type: 'INCOME', amountMinor: 100000 }),
+      t({ type: 'EXPENSE', amountMinor: 40000 }),
+    ])
+    expect(s.incomeMinor).toBe(100000)
+    expect(s.netMinor).toBe(60000)
+    expect(s.byMonth[0].incomeMinor).toBe(100000)
+    expect(Math.round(s.expensePctOfIncome)).toBe(40)
+  })
+
   it('ranks who spent more in a shared Finance, by whoever recorded the expense', () => {
     const s = summarize([
       t({ amountMinor: 30000, createdBy: 'u1' }),
