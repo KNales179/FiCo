@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { api, isNetworkError } from './api'
+import { api, ApiError, isNetworkError } from './api'
 
 describe('api()', () => {
   afterEach(() => {
@@ -30,5 +30,33 @@ describe('api()', () => {
     const error = await pending
 
     expect(isNetworkError(error)).toBe(true)
+  })
+
+  const respond = (status: number, body: string) =>
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(body, { status, headers: { 'Content-Type': body.startsWith('{') ? 'application/json' : 'text/html' } })),
+    )
+
+  it('treats a host error page (server waking up, Wi-Fi login page) as offline', async () => {
+    respond(502, '<html><body>Bad gateway</body></html>')
+    const error = await api('/spaces').catch((e: unknown) => e)
+    expect(isNetworkError(error)).toBe(true)
+  })
+
+  it('still reports the server’s own 5xx answer as an error with its message', async () => {
+    respond(503, JSON.stringify({ success: false, message: "Google sign-in isn't set up on this server yet" }))
+    const error = await api('/auth/google').catch((e: unknown) => e)
+    expect(isNetworkError(error)).toBe(false)
+    expect(error).toBeInstanceOf(ApiError)
+    expect((error as ApiError).status).toBe(503)
+    expect((error as ApiError).message).toBe("Google sign-in isn't set up on this server yet")
+  })
+
+  it('leaves a 4xx answer alone, even without a JSON body', async () => {
+    respond(404, 'Not found')
+    const error = await api('/nope').catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(ApiError)
+    expect((error as ApiError).status).toBe(404)
   })
 })

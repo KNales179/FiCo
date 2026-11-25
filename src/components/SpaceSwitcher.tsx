@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useSpace } from '../hooks/useSpace'
 import { gsap, prefersReducedMotion } from '../lib/motion'
 import { renameSpace } from '../services/spaceService'
+import { isNetworkError } from '../lib/api'
 import { isDemoSpace } from '../features/demo/space'
 import { IconCheck, IconChevronDown, IconEdit, IconPlus, IconUsers, IconWallet, IconX } from './icons'
 import { Skeleton } from './ui'
@@ -64,7 +65,13 @@ const SpaceSwitcher = () => {
       await refresh()
       setEditingId(null)
     } catch (err) {
-      setRenameError(err instanceof Error ? err.message : 'Could not rename that Finance')
+      setRenameError(
+        isNetworkError(err)
+          ? 'You’re offline. Renaming needs a connection, so try again once you’re back online.'
+          : err instanceof Error
+            ? err.message
+            : 'Could not rename that Finance',
+      )
     } finally {
       setBusy(false)
     }
@@ -110,7 +117,13 @@ const SpaceSwitcher = () => {
       await createSpace(trimmed)
       close()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create that Finance')
+      setError(
+        isNetworkError(err)
+          ? 'You’re offline. Creating a Finance needs a connection, so try again once you’re back online.'
+          : err instanceof Error
+            ? err.message
+            : 'Could not create that Finance',
+      )
     } finally {
       setBusy(false)
     }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { ApiError, COLD_START_TIMEOUT_MS } from '../lib/api'
+import { clearSnapshots } from '../features/offlineSnapshots'
 
 /**
  * Only a real "this session is no good" answer signs the device out. A
@@ -310,6 +311,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Offline or already gone — clear locally regardless.
     } finally {
       await dropAuth({ markSignedOut: true, keepUnsynced: false })
+      clearSnapshots()
     }
   }
 

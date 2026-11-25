@@ -16,6 +16,7 @@ import {
   type PendingInvitation,
 } from '../services/spaceService'
 import { isNetworkError } from '../lib/api'
+import { loadSnapshot, membersSnapshotKey, saveSnapshot } from '../features/offlineSnapshots'
 import { isDemoMode } from '../features/demo/demoMode'
 import { loadDemoMembers, setDemoMemberRole } from '../features/demo/members'
 import type { SpaceMember } from '../types/space'
@@ -44,23 +45,11 @@ const MemberAvatar = ({ member }: { member: SpaceMember }) => {
   )
 }
 
-const MEMBERS_CACHE = 'fico.membersCache.'
-
 /** The member list as of the last time it loaded online — shown (read-only) offline. */
-const cacheMembers = (spaceId: string, members: SpaceMember[]) => {
-  try {
-    localStorage.setItem(MEMBERS_CACHE + spaceId, JSON.stringify(members))
-  } catch {
-    // ignore
-  }
-}
-const cachedMembers = (spaceId: string): SpaceMember[] => {
-  try {
-    return JSON.parse(localStorage.getItem(MEMBERS_CACHE + spaceId) || '[]') as SpaceMember[]
-  } catch {
-    return []
-  }
-}
+const cacheMembers = (spaceId: string, members: SpaceMember[]) =>
+  saveSnapshot(membersSnapshotKey(spaceId), members)
+const cachedMembers = (spaceId: string): SpaceMember[] =>
+  loadSnapshot<SpaceMember[]>(membersSnapshotKey(spaceId))?.value ?? []
 
 const Members = () => {
   const { activeSpace, refresh } = useSpace()

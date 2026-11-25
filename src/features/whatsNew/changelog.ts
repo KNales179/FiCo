@@ -33,6 +33,33 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.20.0',
+    date: '2026-11-25',
+    title: 'Better offline',
+    highlights: [
+      {
+        icon: 'wrench',
+        title: 'Analytics works offline',
+        body: 'Analytics now opens offline, on weak Wi-Fi, and while the server is waking up, using what’s on your device. If something still goes wrong you get a Try again button instead of a spinner that never stops.',
+      },
+      {
+        icon: 'wrench',
+        title: 'Waking server ≠ broken',
+        body: 'When the server is still waking up, or you’re on a Wi-Fi login page, Fico now treats it like being offline: your changes wait safely on your phone and send themselves later, with no “Sync failed” scare.',
+      },
+      {
+        icon: 'users',
+        title: 'Activity and names offline',
+        body: 'Offline, Activity shows the list from the last time you were online (with the time it’s from), and Analytics shows people’s real names instead of “Someone”.',
+      },
+      {
+        icon: 'layout',
+        title: 'Tighter Analytics layout',
+        body: 'Cards now stack neatly in two columns, with no big gaps under the shorter ones.',
+      },
+    ],
+  },
+  {
     version: '2.19.1',
     date: '2026-11-25',
     title: 'Fold away any chart',

@@ -167,6 +167,15 @@ export const api = async <T>(
     // Response has no JSON body.
   }
 
+  // A 5xx that isn't one of our own JSON answers came from something in
+  // front of the server — the host waking up from sleep (Render answers
+  // 502/503 with an HTML page), a captive Wi-Fi portal, a proxy. The server
+  // never saw the request, so treat it exactly like being offline: work
+  // from local data and try again later, instead of showing an error.
+  if (response.status >= 500 && data === null) {
+    throw new NetworkError(new Error(`HTTP ${response.status} without a Fico answer`))
+  }
+
   if (!response.ok) {
     const notice = data?.notice ? { ...data.notice, message: data.message || '' } : undefined
     // Signed out / restricted / deleted by an admin: remember why, so the

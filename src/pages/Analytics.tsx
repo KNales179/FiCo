@@ -42,6 +42,7 @@ import {
 import { gsap, prefersReducedMotion, useStaggerIn } from '../lib/motion'
 import Approx from '../components/Approx'
 import CollapsibleCard from '../components/CollapsibleCard'
+import { loadSnapshot, membersSnapshotKey, saveSnapshot } from '../features/offlineSnapshots'
 
 const PERIODS: { value: AnalyticsPeriod; label: string }[] = [
   { value: 'THIS_MONTH', label: 'This month' },
@@ -160,6 +161,8 @@ const Analytics = () => {
   const [period, setPeriod] = useState<AnalyticsPeriod>('THIS_MONTH')
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [retry, setRetry] = useState(0)
   const [members, setMembers] = useState<Map<string, SpaceMember>>(new Map())
   const [engagement, setEngagement] = useState<MemberEngagement[]>([])
   const [introOver, setIntroOver] = useState(() => prefersReducedMotion())
@@ -179,13 +182,22 @@ const Analytics = () => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
 
+    setLoadError('')
+
     const run = async () => {
-      const result = activeSpaceId
-        ? await computeAnalytics(activeSpaceId, period, undefined, currency)
-        : null
-      if (!cancelled) {
-        setData(result)
-        setLoading(false)
+      try {
+        const result = activeSpaceId
+          ? await computeAnalytics(activeSpaceId, period, undefined, currency)
+          : null
+        if (!cancelled) setData(result)
+      } catch (err) {
+        // Without this the intro animation would spin forever.
+        if (!cancelled) {
+          setData(null)
+          setLoadError(err instanceof Error && err.message ? err.message : 'Could not load your analytics.')
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
       }
     }
     void run()
@@ -193,16 +205,21 @@ const Analytics = () => {
     return () => {
       cancelled = true
     }
-  }, [activeSpaceId, period, currency])
+  }, [activeSpaceId, period, currency, retry])
 
   useEffect(() => {
     if (!activeSpaceId) return
+    const show = (list: SpaceMember[]) => setMembers(new Map(list.map((m) => [m.userId, m])))
+    // Offline, names come from the last member list this device saw.
+    const saved = loadSnapshot<SpaceMember[]>(membersSnapshotKey(activeSpaceId))
+    if (saved) show(saved.value)
     listMembers(activeSpaceId)
       .then((res) => {
-        setMembers(new Map(res.members.map((m) => [m.userId, m])))
+        show(res.members)
+        saveSnapshot(membersSnapshotKey(activeSpaceId), res.members)
       })
-      // Names are a nice-to-have here — offline or a hiccup just falls
-      // back to a generic label rather than breaking the page.
+      // Names are a nice-to-have here — offline or a hiccup just keeps the
+      // saved names (or a generic label) rather than breaking the page.
       .catch(() => {})
   }, [activeSpaceId])
 
@@ -366,7 +383,17 @@ const Analytics = () => {
         }
       />
 
-      {!ready && <Intro />}
+      {!ready && !loadError && <Intro />}
+
+      {loadError && !loading && (
+        <section className="card flex flex-col items-center gap-3 py-10 text-center">
+          <p className="text-sm text-ink">Analytics couldn’t load just now.</p>
+          <p className="text-xs text-muted">{loadError}</p>
+          <button type="button" className="btn btn-sm" onClick={() => setRetry((n) => n + 1)}>
+            Try again
+          </button>
+        </section>
+      )}
 
       {ready && data && (
         <div ref={contentRef} className="space-y-4">
@@ -515,12 +542,12 @@ const Analytics = () => {
             </CollapsibleCard>
           )}
 
-          <div className="grid items-start gap-4 lg:grid-cols-2">
+          <div className="space-y-4">
             <CollapsibleCard
               id="analytics.trend"
               title={overTime?.kind === 'monthly' ? 'Income vs expenses by month' : 'Spending day by day'}
               icon={IconChart}
-              className="min-w-0 lg:col-span-2"
+              className="min-w-0"
               dataTour="analytics-trend"
             >
               <div className="pt-1">
@@ -567,112 +594,116 @@ const Analytics = () => {
               </div>
             </CollapsibleCard>
 
-            <CollapsibleCard id="analytics.categories" title="Spending by category" className="min-w-0" dataTour="analytics-categories">
-              <div className="pt-1">
-                {donutSlices.length === 0 ? (
-                  <EmptyChart>No expenses in this period.</EmptyChart>
-                ) : (
-                  <DonutChart
-                    slices={donutSlices}
-                    currency={data.currency}
-                    centerLabel="Spent"
-                    centerValue={formatMoney(data.expenseMinor, data.currency)}
-                  />
-                )}
-              </div>
-            </CollapsibleCard>
-
-            <CollapsibleCard id="analytics.biggestCategories" title="Biggest categories" className="min-w-0">
-              <p className="text-xs text-muted">Ranked by amount spent this period.</p>
-              <div className="mt-3">
-                {data.byCategory.length === 0 ? (
-                  <EmptyChart>No expenses in this period.</EmptyChart>
-                ) : (
-                  <RankedBars
-                    rows={data.byCategory.map((c) => ({ label: c.name, value: c.amountMinor, note: `${Math.round(c.pct)}%` }))}
-                    currency={data.currency}
-                  />
-                )}
-              </div>
-            </CollapsibleCard>
-
-            {data.byMember.length > 1 && (
-              <CollapsibleCard id="analytics.byPerson" title="Spending by person" icon={IconUsers} className="min-w-0">
-                <p className="text-xs text-muted">Who recorded the expense, not who it was for.</p>
-                <div className="mt-3">
-                  <RankedBars
-                    rows={data.byMember.map((m) => ({ label: memberName(m.userId), value: m.amountMinor, note: `${Math.round(m.pct)}%` }))}
-                    currency={data.currency}
-                  />
+            {/* Two columns that each stack on their own, so a short card never
+                leaves a gap under it the height of its taller neighbour. */}
+            <div className="gap-4 lg:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid -mb-4">
+              <CollapsibleCard id="analytics.categories" title="Spending by category" className="min-w-0" dataTour="analytics-categories">
+                <div className="pt-1">
+                  {donutSlices.length === 0 ? (
+                    <EmptyChart>No expenses in this period.</EmptyChart>
+                  ) : (
+                    <DonutChart
+                      slices={donutSlices}
+                      currency={data.currency}
+                      centerLabel="Spent"
+                      centerValue={formatMoney(data.expenseMinor, data.currency)}
+                    />
+                  )}
                 </div>
               </CollapsibleCard>
-            )}
 
-            {engagement.length > 1 && (
-              <CollapsibleCard id="analytics.activePoints" title="Active points" icon={IconAward} className="min-w-0">
-                <p className="text-xs text-muted">
-                  How much each of you actually used Fico this period: recording
-                  transactions, starting to-buy lists, adding and paying bills.
-                </p>
-                <ul className="mt-3 space-y-3">
-                  {engagement.map((e) => {
-                    const member = members.get(e.userId)
-                    const initial = (member?.displayName || member?.username || '?').charAt(0).toUpperCase()
-                    const max = Math.max(1, engagement[0].points)
-                    return (
-                      <li key={e.userId} className="flex items-center gap-3">
-                        {member?.avatarUrl ? (
-                          <img src={member.avatarUrl} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
-                        ) : (
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-ink">
-                            {initial}
-                          </span>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex justify-between text-sm">
-                            <span>{memberName(e.userId)}</span>
-                            <span className="font-semibold text-ink">{e.points} pts</span>
-                          </div>
-                          <div className="mt-1 h-2 w-full rounded-full bg-panel-2">
-                            <div className="h-2 rounded-full bg-brand" style={{ width: `${(e.points / max) * 100}%` }} />
-                          </div>
-                          <p className="mt-1 text-xs text-muted">
-                            {e.transactionsRecorded} transaction{e.transactionsRecorded === 1 ? '' : 's'} ·{' '}
-                            {e.shoppingListsStarted} shopping trip{e.shoppingListsStarted === 1 ? '' : 's'} ·{' '}
-                            {e.billsAdded + e.billsPaid} bill action{e.billsAdded + e.billsPaid === 1 ? '' : 's'}
-                          </p>
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ul>
+              <CollapsibleCard id="analytics.biggestCategories" title="Biggest categories" className="min-w-0">
+                <p className="text-xs text-muted">Ranked by amount spent this period.</p>
+                <div className="mt-3">
+                  {data.byCategory.length === 0 ? (
+                    <EmptyChart>No expenses in this period.</EmptyChart>
+                  ) : (
+                    <RankedBars
+                      rows={data.byCategory.map((c) => ({ label: c.name, value: c.amountMinor, note: `${Math.round(c.pct)}%` }))}
+                      currency={data.currency}
+                    />
+                  )}
+                </div>
               </CollapsibleCard>
-            )}
 
-            <CollapsibleCard id="analytics.toBuy" title="To-buy lists" icon={IconCart} className="min-w-0">
-              <p className="text-xs text-muted">
-                {data.shopping.listCount} completed list{data.shopping.listCount === 1 ? '' : 's'} this period.
-              </p>
-              <div className="mt-3">
-                {data.shopping.listCount > 0 ? (
-                  <BarChart
-                    ariaLabel="To-buy lists: planned versus actually spent"
-                    data={[{ key: 'shop', label: 'This period', values: [data.shopping.plannedMinor, data.shopping.actualMinor] }]}
-                    series={[
-                      { name: 'Planned', color: 'var(--chart-1)' },
-                      { name: 'Actually spent', color: 'var(--chart-2)' },
-                    ]}
-                    currency={data.currency}
-                    height={150}
-                  />
-                ) : (
-                  <EmptyChart>Finish a to-buy list to compare planned vs actual.</EmptyChart>
-                )}
-              </div>
-            </CollapsibleCard>
+              {data.byMember.length > 1 && (
+                <CollapsibleCard id="analytics.byPerson" title="Spending by person" icon={IconUsers} className="min-w-0">
+                  <p className="text-xs text-muted">Who recorded the expense, not who it was for.</p>
+                  <div className="mt-3">
+                    <RankedBars
+                      rows={data.byMember.map((m) => ({ label: memberName(m.userId), value: m.amountMinor, note: `${Math.round(m.pct)}%` }))}
+                      currency={data.currency}
+                    />
+                  </div>
+                </CollapsibleCard>
+              )}
+
+              {engagement.length > 1 && (
+                <CollapsibleCard id="analytics.activePoints" title="Active points" icon={IconAward} className="min-w-0">
+                  <p className="text-xs text-muted">
+                    How much each of you actually used Fico this period: recording
+                    transactions, starting to-buy lists, adding and paying bills.
+                  </p>
+                  <ul className="mt-3 space-y-3">
+                    {engagement.map((e) => {
+                      const member = members.get(e.userId)
+                      const initial = (member?.displayName || member?.username || '?').charAt(0).toUpperCase()
+                      const max = Math.max(1, engagement[0].points)
+                      return (
+                        <li key={e.userId} className="flex items-center gap-3">
+                          {member?.avatarUrl ? (
+                            <img src={member.avatarUrl} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
+                          ) : (
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-ink">
+                              {initial}
+                            </span>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex justify-between text-sm">
+                              <span>{memberName(e.userId)}</span>
+                              <span className="font-semibold text-ink">{e.points} pts</span>
+                            </div>
+                            <div className="mt-1 h-2 w-full rounded-full bg-panel-2">
+                              <div className="h-2 rounded-full bg-brand" style={{ width: `${(e.points / max) * 100}%` }} />
+                            </div>
+                            <p className="mt-1 text-xs text-muted">
+                              {e.transactionsRecorded} transaction{e.transactionsRecorded === 1 ? '' : 's'} ·{' '}
+                              {e.shoppingListsStarted} shopping trip{e.shoppingListsStarted === 1 ? '' : 's'} ·{' '}
+                              {e.billsAdded + e.billsPaid} bill action{e.billsAdded + e.billsPaid === 1 ? '' : 's'}
+                            </p>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </CollapsibleCard>
+              )}
+
+              <CollapsibleCard id="analytics.toBuy" title="To-buy lists" icon={IconCart} className="min-w-0">
+                <p className="text-xs text-muted">
+                  {data.shopping.listCount} completed list{data.shopping.listCount === 1 ? '' : 's'} this period.
+                </p>
+                <div className="mt-3">
+                  {data.shopping.listCount > 0 ? (
+                    <BarChart
+                      ariaLabel="To-buy lists: planned versus actually spent"
+                      data={[{ key: 'shop', label: 'This period', values: [data.shopping.plannedMinor, data.shopping.actualMinor] }]}
+                      series={[
+                        { name: 'Planned', color: 'var(--chart-1)' },
+                        { name: 'Actually spent', color: 'var(--chart-2)' },
+                      ]}
+                      currency={data.currency}
+                      height={150}
+                    />
+                  ) : (
+                    <EmptyChart>Finish a to-buy list to compare planned vs actual.</EmptyChart>
+                  )}
+                </div>
+              </CollapsibleCard>
+            </div>
 
             {usageTrends.map(({ kind, trend: electricityTrend }) => (
-              <CollapsibleCard key={kind} id={`analytics.usage.${kind}`} title={USAGE[kind].label} className="min-w-0 lg:col-span-2">
+              <CollapsibleCard key={kind} id={`analytics.usage.${kind}`} title={USAGE[kind].label} className="min-w-0">
                 <p className="text-xs text-muted">
                   Amount up but {USAGE[kind].unit} flat means the price went up, not your usage —
                   amount and {USAGE[kind].unit} both up means you're using more.

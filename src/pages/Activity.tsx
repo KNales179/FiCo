@@ -5,6 +5,7 @@ import { useMoney } from '../hooks/useMoney'
 import { useAuth } from '../hooks/useAuth'
 import { canSeeActivity } from '../features/spaces/roles'
 import { isNetworkError } from '../lib/api'
+import { loadSnapshot, saveSnapshot } from '../features/offlineSnapshots'
 import { fetchActionLogs, type ActionLogEntry } from '../services/actionLogService'
 import {
   RECORD_KINDS,
@@ -71,8 +72,12 @@ const Activity = () => {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState('')
+  /** Offline: when the saved copy on screen is from (ISO), or null when live. */
+  const [offlineAsOf, setOfflineAsOf] = useState<string | null>(null)
 
   const allowed = Boolean(activeSpace && (personal || canSeeActivity(activeSpace.role)))
+
+  const snapshotKey = `activity.${activeSpaceId}.${tab}.${kind || 'all'}`
 
   const load = useCallback(
     async (before?: string) => {
@@ -89,20 +94,30 @@ const Activity = () => {
         })
         setLogs((prev) => (before ? [...prev, ...res.logs] : res.logs))
         setNextBefore(res.nextBefore)
+        setOfflineAsOf(null)
+        // Keep the newest page, so this screen isn't blank next time offline.
+        if (!before) saveSnapshot(snapshotKey, res.logs)
       } catch (err) {
-        setError(
-          isNetworkError(err)
-            ? 'You’re offline — activity loads once you’re back online.'
-            : err instanceof Error
-              ? err.message
-              : 'Could not load activity',
-        )
+        const saved = !before && isNetworkError(err) ? loadSnapshot<ActionLogEntry[]>(snapshotKey) : null
+        if (saved) {
+          setLogs(saved.value)
+          setNextBefore(null)
+          setOfflineAsOf(saved.savedAt)
+        } else {
+          setError(
+            isNetworkError(err)
+              ? 'You’re offline — activity loads once you’re back online.'
+              : err instanceof Error
+                ? err.message
+                : 'Could not load activity',
+          )
+        }
       } finally {
         setLoading(false)
         setLoadingMore(false)
       }
     },
-    [activeSpaceId, allowed, tab, kind],
+    [activeSpaceId, allowed, tab, kind, snapshotKey],
   )
 
   useEffect(() => {
@@ -195,6 +210,14 @@ const Activity = () => {
               </Link>
             ))}
           </div>
+        )}
+
+        {offlineAsOf && !loading && (
+          <p role="status" className="rounded-xl border border-line bg-panel-2 px-3 py-2 text-xs text-muted">
+            You’re offline, so this is the activity as of{' '}
+            {new Date(offlineAsOf).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}. Newer
+            changes show up once you’re back online.
+          </p>
         )}
 
         {error && (
