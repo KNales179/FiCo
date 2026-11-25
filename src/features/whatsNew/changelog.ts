@@ -33,6 +33,23 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.20.2',
+    date: '2026-11-25',
+    title: 'Clearer earnings',
+    highlights: [
+      {
+        icon: 'chart',
+        title: 'Every earnings chart has its own colour',
+        body: 'Daily earnings are green, your top days are gold, the days of the week are blue, and each account gets its own colour, so you can tell them apart at a glance.',
+      },
+      {
+        icon: 'chart',
+        title: 'See the difference, not just the amount',
+        body: 'A dashed line marks your average day, and bars below it are lighter. Tap a bar to see how far above or below average it was. Your top days show how much less each one made than your best.',
+      },
+    ],
+  },
+  {
     version: '2.20.1',
     date: '2026-11-25',
     title: 'Tidier Analytics',

@@ -116,7 +116,15 @@ export interface BarDatum {
   /** Longer label for the tooltip (defaults to `label`). */
   title?: string
   values: number[]
+  /** Per-value colour, overriding the series colour (e.g. above vs below average). */
+  colors?: string[]
 }
+
+/** Signed money difference in words: "₱300 above average" / "₱300 below average". */
+const versus = (diff: number, currency: string, label: string) =>
+  diff === 0
+    ? `Right on ${label}`
+    : `${formatMoney(Math.abs(diff), currency)} ${diff > 0 ? 'above' : 'below'} ${label}`
 
 export const BarChart = ({
   data,
@@ -124,12 +132,18 @@ export const BarChart = ({
   currency = 'PHP',
   height = 180,
   ariaLabel,
+  average,
+  legend,
 }: {
   data: BarDatum[]
   series: { name: string; color: string }[]
   currency?: string
   height?: number
   ariaLabel: string
+  /** A dashed reference line; the tooltip then says how far each bar is from it. */
+  average?: { value: number; label: string }
+  /** Legend entries to show instead of the series names. */
+  legend?: { label: string; color: string }[]
 }) => {
   const [wrapRef, width] = useWidth<HTMLDivElement>()
   const svgRef = useRef<SVGSVGElement>(null)
@@ -144,7 +158,7 @@ export const BarChart = ({
   const padT = 8
   const plotW = Math.max(0, width - padL - 4)
   const plotH = height - padB - padT
-  const max = Math.max(0, ...data.flatMap((d) => d.values))
+  const max = Math.max(0, average?.value ?? 0, ...data.flatMap((d) => d.values))
   const { top, ticks } = niceTicks(max)
   const band = data.length ? plotW / data.length : 0
   const groupW = Math.min(band * 0.72, series.length > 1 ? 34 : 26)
@@ -177,6 +191,8 @@ export const BarChart = ({
     return `M${x},${yb} V${yTop + r} Q${x},${yTop} ${x + r},${yTop} H${x + w - r} Q${x + w},${yTop} ${x + w},${yTop + r} V${yb} Z`
   }
 
+  const tipRow = tip.index !== null ? data[tip.index] : undefined
+
   return (
     <div ref={wrapRef} className="relative w-full" onMouseLeave={() => setHover(null)}>
       {width > 0 && (
@@ -200,7 +216,7 @@ export const BarChart = ({
                       key={s}
                       data-bar=""
                       d={roundedTop(gx + s * (barW + 2), padT + plotH - h, barW, h)}
-                      fill={series[s].color}
+                      fill={d.colors?.[s] ?? series[s].color}
                     />
                   )
                 })}
@@ -222,6 +238,23 @@ export const BarChart = ({
               </g>
             )
           })}
+          {average && average.value > 0 && (
+            <g pointerEvents="none">
+              <line
+                x1={padL}
+                x2={width - 4}
+                y1={y(average.value)}
+                y2={y(average.value)}
+                stroke="var(--ink)"
+                strokeOpacity={0.55}
+                strokeWidth={1.25}
+                strokeDasharray="5 4"
+              />
+              <text x={width - 6} y={y(average.value) < padT + 12 ? y(average.value) + 12 : y(average.value) - 5} textAnchor="end" fontSize="10" fontWeight="600" fill="var(--ink)">
+                {average.label} {compactMoney(average.value, currency)}
+              </text>
+            </g>
+          )}
         </svg>
       )}
       {tip.index !== null && data[tip.index] && (
@@ -235,17 +268,22 @@ export const BarChart = ({
           {data[tip.index].values.map((v, s) => (
             <div key={s} className="mt-0.5 flex items-center justify-between gap-3">
               <span className="flex items-center gap-1.5 text-muted">
-                <span className="h-2 w-2 rounded-sm" style={{ background: series[s].color }} />
+                <span className="h-2 w-2 rounded-sm" style={{ background: tipRow?.colors?.[s] ?? series[s].color }} />
                 {series[s].name}
               </span>
               <span className="font-medium tabular-nums">{formatMoney(v, currency)}</span>
             </div>
           ))}
+          {average && average.value > 0 && data[tip.index].values.length === 1 && (
+            <div className="mt-0.5 text-muted">
+              {versus(data[tip.index].values[0] - average.value, currency, average.label.toLowerCase())}
+            </div>
+          )}
         </Tooltip>
       )}
-      {series.length > 1 && (
+      {(legend ?? (series.length > 1 ? series.map((s) => ({ label: s.name, color: s.color })) : null)) && (
         <div className="mt-2">
-          <Legend items={series.map((s) => ({ label: s.name, color: s.color }))} />
+          <Legend items={legend ?? series.map((s) => ({ label: s.name, color: s.color }))} />
         </div>
       )}
     </div>
@@ -262,7 +300,8 @@ export const RankedBars = ({
   color = 'var(--brand)',
   max: maxRows = 6,
 }: {
-  rows: { label: string; value: number; note?: string }[]
+  /** `color` overrides the shared colour for one row; `sub` is a small line under the bar. */
+  rows: { label: string; value: number; note?: string; color?: string; sub?: string }[]
   currency?: string
   color?: string
   max?: number
@@ -308,9 +347,10 @@ export const RankedBars = ({
             <div
               data-fill=""
               className="h-2 rounded-full"
-              style={{ width: `${(r.value / top) * 100}%`, background: color }}
+              style={{ width: `${(r.value / top) * 100}%`, background: r.color ?? color }}
             />
           </div>
+          {r.sub && <p className="mt-0.5 text-xs text-muted">{r.sub}</p>}
         </li>
       ))}
     </ul>

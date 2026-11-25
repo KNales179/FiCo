@@ -118,6 +118,43 @@ const MiniStat = ({ label, value, note }: { label: string; value: string; note?:
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
+/**
+ * Each Earnings chart gets its own colour so they're easy to tell apart at a
+ * glance; the faded shade marks bars below the average line.
+ */
+const faded = (color: string) => `color-mix(in srgb, ${color} 35%, transparent)`
+const EARN_COLOR = 'var(--success)'
+const TOP_COLOR = 'var(--chart-4)'
+const WEEKDAY_COLOR = 'var(--chart-1)'
+/** One colour per account / source; past six they share the neutral "other" grey. */
+const sliceColor = (i: number) => CATEGORY_COLORS[i] ?? OTHER_COLOR
+
+/** A small heading with a swatch of its chart's colour. */
+const ChartLabel = ({ color, icon, children }: { color: string; icon?: ReactNode; children: ReactNode }) => (
+  <p className="flex items-center gap-1.5 text-xs font-medium text-ink">
+    <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: color }} aria-hidden="true" />
+    {icon}
+    {children}
+  </p>
+)
+
+/** One bar split into each part's share of the total, in the parts' colours. */
+const ShareBar = ({ parts }: { parts: { label: string; value: number; color: string }[] }) => {
+  const total = parts.reduce((n, p) => n + p.value, 0) || 1
+  return (
+    <div className="flex h-3 w-full overflow-hidden rounded-full bg-panel-2" role="img" aria-label="Share of the total">
+      {parts.map((p) => (
+        <div
+          key={p.label}
+          className="h-3 border-r-2 border-surface last:border-r-0"
+          style={{ width: `${(p.value / total) * 100}%`, background: p.color }}
+          data-tag={`${p.label}: ${Math.round((p.value / total) * 100)}%`}
+        />
+      ))}
+    </div>
+  )
+}
+
 const StatTile = ({
   label,
   value,
@@ -338,7 +375,20 @@ const Analytics = () => {
     // "All time" has no meaningful day count to compare against.
     const daysInRange = period === 'ALL_TIME' ? null : spanDays
     const bestWeekday = [...stats.byWeekday].sort((a, b) => b.avgMinor - a.avgMinor)[0]
-    return { stats, chart, daily, daysInRange, bestWeekday }
+    // The line every bar is compared with: the average earning day (or month).
+    const chartAvg = daily
+      ? stats.avgPerEarningDayMinor
+      : Math.round(chart.reduce((n, c) => n + c.values[0], 0) / Math.max(1, chart.length))
+    const shade = (v: number, avg: number, color: string) => [v >= avg ? color : faded(color)]
+    const chartShaded = chart.map((c) => ({ ...c, colors: shade(c.values[0], chartAvg, EARN_COLOR) }))
+    const weekdays = stats.byWeekday.map((w) => ({
+      key: String(w.weekday),
+      label: WEEKDAY_NAMES[w.weekday].slice(0, 3),
+      title: `${WEEKDAY_NAMES[w.weekday]}, average of ${plural(w.earningDays, 'day', 'days')}`,
+      values: [w.avgMinor],
+      colors: shade(w.avgMinor, stats.avgPerEarningDayMinor, WEEKDAY_COLOR),
+    }))
+    return { stats, chart: chartShaded, chartAvg, weekdays, daily, daysInRange, bestWeekday }
   }, [data, transactions, currency, openedAt, period])
 
   // Electricity specifically — not "bills in general": a FIXED bill's
@@ -453,56 +503,74 @@ const Analytics = () => {
               </div>
 
               <div className="mt-5">
-                <p className="mb-1 text-xs font-medium text-muted">{income.daily ? 'Earned each day' : 'Earned each month'}</p>
+                <ChartLabel color={EARN_COLOR}>{income.daily ? 'Earned each day' : 'Earned each month'}</ChartLabel>
+                <p className="mb-1 mt-0.5 text-xs text-muted">
+                  The dashed line is your average {income.daily ? 'earning day' : 'month'}. Tap a bar to see how far above or below it that {income.daily ? 'day' : 'month'} was.
+                </p>
                 <BarChart
                   ariaLabel={income.daily ? 'Income per day' : 'Income per month'}
                   data={income.chart}
-                  series={[{ name: 'Earned', color: 'var(--success)' }]}
+                  series={[{ name: 'Earned', color: EARN_COLOR }]}
                   currency={data.currency}
                   height={190}
+                  average={{ value: income.chartAvg, label: 'Average' }}
+                  legend={[
+                    { label: 'Above average', color: EARN_COLOR },
+                    { label: 'Below average', color: faded(EARN_COLOR) },
+                  ]}
                 />
               </div>
 
               <div className="mt-5 grid gap-6 lg:grid-cols-2">
                 <div className="min-w-0">
-                  <p className="flex items-center gap-1.5 text-xs font-medium text-muted">
-                    <IconStar size={13} />
+                  <ChartLabel color={TOP_COLOR} icon={<IconStar size={13} />}>
                     Top earning days
-                  </p>
+                  </ChartLabel>
                   <div className="mt-2">
                     <RankedBars
-                      rows={income.stats.topDays.map((d) => ({
-                        label: dayTitle(d.date),
-                        value: d.amountMinor,
-                        note: plural(d.entries, 'entry', 'entries'),
-                      }))}
+                      rows={income.stats.topDays.map((d, i, all) => {
+                        const gap = all[0].amountMinor - d.amountMinor
+                        return {
+                          label: `${i + 1}. ${dayTitle(d.date)}`,
+                          value: d.amountMinor,
+                          note: plural(d.entries, 'entry', 'entries'),
+                          sub:
+                            i === 0
+                              ? 'Your best day'
+                              : gap === 0
+                                ? 'Tied with your best day'
+                                : `${formatMoney(gap, data.currency)} less than your best (${Math.round((gap / all[0].amountMinor) * 100)}% lower)`,
+                        }
+                      })}
                       currency={data.currency}
-                      color="var(--success)"
+                      color={TOP_COLOR}
                       max={5}
                     />
                   </div>
                 </div>
                 <div className="min-w-0">
-                  <p className="flex items-center gap-1.5 text-xs font-medium text-muted">
-                    <IconCalendarDays size={13} />
+                  <ChartLabel color={WEEKDAY_COLOR} icon={<IconCalendarDays size={13} />}>
                     Best days of the week
-                  </p>
+                  </ChartLabel>
                   <p className="mt-0.5 text-xs text-muted">
                     {WEEKDAY_NAMES[income.bestWeekday.weekday]}s earn the most, about{' '}
-                    {formatMoney(income.bestWeekday.avgMinor, data.currency)} a day.
+                    {formatMoney(income.bestWeekday.avgMinor, data.currency)} a day
+                    {income.bestWeekday.avgMinor > income.stats.avgPerEarningDayMinor &&
+                      `, ${formatMoney(income.bestWeekday.avgMinor - income.stats.avgPerEarningDayMinor, data.currency)} more than your average day`}
+                    .
                   </p>
                   <div className="mt-2">
                     <BarChart
                       ariaLabel="Average income by day of the week"
-                      data={income.stats.byWeekday.map((w) => ({
-                        key: String(w.weekday),
-                        label: WEEKDAY_NAMES[w.weekday].slice(0, 3),
-                        title: `${WEEKDAY_NAMES[w.weekday]}, average of ${plural(w.earningDays, 'day', 'days')}`,
-                        values: [w.avgMinor],
-                      }))}
-                      series={[{ name: 'Average a day', color: 'var(--success)' }]}
+                      data={income.weekdays}
+                      series={[{ name: 'Average a day', color: WEEKDAY_COLOR }]}
                       currency={data.currency}
                       height={160}
+                      average={{ value: income.stats.avgPerEarningDayMinor, label: 'Average' }}
+                      legend={[
+                        { label: 'Above average', color: WEEKDAY_COLOR },
+                        { label: 'Below average', color: faded(WEEKDAY_COLOR) },
+                      ]}
                     />
                   </div>
                 </div>
@@ -510,17 +578,26 @@ const Analytics = () => {
 
               {income.stats.byAccount.length > 1 && (
                 <div className="mt-5">
-                  <p className="text-xs font-medium text-muted">By account</p>
-                  <p className="mt-0.5 text-xs text-muted">Which account the money went into.</p>
+                  <ChartLabel color={sliceColor(0)}>By account</ChartLabel>
+                  <p className="mt-0.5 text-xs text-muted">Which account the money went into. Each account has its own colour.</p>
                   <div className="mt-2">
+                    <ShareBar
+                      parts={income.stats.byAccount.map((a, i) => ({ label: accountName(a.accountId), value: a.amountMinor, color: sliceColor(i) }))}
+                    />
+                  </div>
+                  <div className="mt-3">
                     <RankedBars
-                      rows={income.stats.byAccount.map((a) => ({
+                      rows={income.stats.byAccount.map((a, i, all) => ({
                         label: accountName(a.accountId),
                         value: a.amountMinor,
                         note: `${Math.round(a.pct)}% · ${plural(a.entries, 'entry', 'entries')}`,
+                        color: sliceColor(i),
+                        sub:
+                          i === 0
+                            ? 'Earned the most'
+                            : `${formatMoney(all[0].amountMinor - a.amountMinor, data.currency)} less than ${accountName(all[0].accountId)}`,
                       }))}
                       currency={data.currency}
-                      color="var(--success)"
                       max={10}
                     />
                   </div>
@@ -529,12 +606,20 @@ const Analytics = () => {
 
               {income.stats.bySource.length > 1 && (
                 <div className="mt-5">
-                  <p className="text-xs font-medium text-muted">Where it came from</p>
+                  <ChartLabel color={sliceColor(0)}>Where it came from</ChartLabel>
+                  <p className="mt-0.5 text-xs text-muted">By income category.</p>
                   <div className="mt-2">
+                    <ShareBar parts={income.stats.bySource.map((src, i) => ({ label: src.name, value: src.amountMinor, color: sliceColor(i) }))} />
+                  </div>
+                  <div className="mt-3">
                     <RankedBars
-                      rows={income.stats.bySource.map((src) => ({ label: src.name, value: src.amountMinor, note: `${Math.round(src.pct)}%` }))}
+                      rows={income.stats.bySource.map((src, i) => ({
+                        label: src.name,
+                        value: src.amountMinor,
+                        note: `${Math.round(src.pct)}%`,
+                        color: sliceColor(i),
+                      }))}
                       currency={data.currency}
-                      color="var(--success)"
                     />
                   </div>
                 </div>
