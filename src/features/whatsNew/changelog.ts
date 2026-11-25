@@ -33,6 +33,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '2.20.1',
+    date: '2026-11-25',
+    title: 'Tidier Analytics',
+    highlights: [
+      {
+        icon: 'layout',
+        title: 'No more overlapping cards',
+        body: 'The Electricity card (and water, LPG and fuel) no longer slides up over the cards above it. Folding a card also keeps everything in its own column.',
+      },
+    ],
+  },
+  {
     version: '2.20.0',
     date: '2026-11-25',
     title: 'Better offline',

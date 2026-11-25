@@ -594,112 +594,118 @@ const Analytics = () => {
               </div>
             </CollapsibleCard>
 
-            {/* Two columns that each stack on their own, so a short card never
-                leaves a gap under it the height of its taller neighbour. */}
-            <div className="gap-4 lg:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid -mb-4">
-              <CollapsibleCard id="analytics.categories" title="Spending by category" className="min-w-0" dataTour="analytics-categories">
-                <div className="pt-1">
-                  {donutSlices.length === 0 ? (
-                    <EmptyChart>No expenses in this period.</EmptyChart>
-                  ) : (
-                    <DonutChart
-                      slices={donutSlices}
-                      currency={data.currency}
-                      centerLabel="Spent"
-                      centerValue={formatMoney(data.expenseMinor, data.currency)}
-                    />
-                  )}
-                </div>
-              </CollapsibleCard>
-
-              <CollapsibleCard id="analytics.biggestCategories" title="Biggest categories" className="min-w-0">
-                <p className="text-xs text-muted">Ranked by amount spent this period.</p>
-                <div className="mt-3">
-                  {data.byCategory.length === 0 ? (
-                    <EmptyChart>No expenses in this period.</EmptyChart>
-                  ) : (
-                    <RankedBars
-                      rows={data.byCategory.map((c) => ({ label: c.name, value: c.amountMinor, note: `${Math.round(c.pct)}%` }))}
-                      currency={data.currency}
-                    />
-                  )}
-                </div>
-              </CollapsibleCard>
-
-              {data.byMember.length > 1 && (
-                <CollapsibleCard id="analytics.byPerson" title="Spending by person" icon={IconUsers} className="min-w-0">
-                  <p className="text-xs text-muted">Who recorded the expense, not who it was for.</p>
-                  <div className="mt-3">
-                    <RankedBars
-                      rows={data.byMember.map((m) => ({ label: memberName(m.userId), value: m.amountMinor, note: `${Math.round(m.pct)}%` }))}
-                      currency={data.currency}
-                    />
+            {/* Two fixed columns that each stack on their own, so a short card
+                never leaves a gap under it the height of its taller neighbour.
+                Left: where the money went. Right: who, and to-buy lists. On a
+                phone they simply follow one another, in the same order. */}
+            <div className="grid items-start gap-4 lg:grid-cols-2">
+              <div className="flex min-w-0 flex-col gap-4">
+                <CollapsibleCard id="analytics.categories" title="Spending by category" className="min-w-0" dataTour="analytics-categories">
+                  <div className="pt-1">
+                    {donutSlices.length === 0 ? (
+                      <EmptyChart>No expenses in this period.</EmptyChart>
+                    ) : (
+                      <DonutChart
+                        slices={donutSlices}
+                        currency={data.currency}
+                        centerLabel="Spent"
+                        centerValue={formatMoney(data.expenseMinor, data.currency)}
+                      />
+                    )}
                   </div>
                 </CollapsibleCard>
-              )}
 
-              {engagement.length > 1 && (
-                <CollapsibleCard id="analytics.activePoints" title="Active points" icon={IconAward} className="min-w-0">
-                  <p className="text-xs text-muted">
-                    How much each of you actually used Fico this period: recording
-                    transactions, starting to-buy lists, adding and paying bills.
-                  </p>
-                  <ul className="mt-3 space-y-3">
-                    {engagement.map((e) => {
-                      const member = members.get(e.userId)
-                      const initial = (member?.displayName || member?.username || '?').charAt(0).toUpperCase()
-                      const max = Math.max(1, engagement[0].points)
-                      return (
-                        <li key={e.userId} className="flex items-center gap-3">
-                          {member?.avatarUrl ? (
-                            <img src={member.avatarUrl} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
-                          ) : (
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-ink">
-                              {initial}
-                            </span>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <div className="flex justify-between text-sm">
-                              <span>{memberName(e.userId)}</span>
-                              <span className="font-semibold text-ink">{e.points} pts</span>
-                            </div>
-                            <div className="mt-1 h-2 w-full rounded-full bg-panel-2">
-                              <div className="h-2 rounded-full bg-brand" style={{ width: `${(e.points / max) * 100}%` }} />
-                            </div>
-                            <p className="mt-1 text-xs text-muted">
-                              {e.transactionsRecorded} transaction{e.transactionsRecorded === 1 ? '' : 's'} ·{' '}
-                              {e.shoppingListsStarted} shopping trip{e.shoppingListsStarted === 1 ? '' : 's'} ·{' '}
-                              {e.billsAdded + e.billsPaid} bill action{e.billsAdded + e.billsPaid === 1 ? '' : 's'}
-                            </p>
-                          </div>
-                        </li>
-                      )
-                    })}
-                  </ul>
+                <CollapsibleCard id="analytics.biggestCategories" title="Biggest categories" className="min-w-0">
+                  <p className="text-xs text-muted">Ranked by amount spent this period.</p>
+                  <div className="mt-3">
+                    {data.byCategory.length === 0 ? (
+                      <EmptyChart>No expenses in this period.</EmptyChart>
+                    ) : (
+                      <RankedBars
+                        rows={data.byCategory.map((c) => ({ label: c.name, value: c.amountMinor, note: `${Math.round(c.pct)}%` }))}
+                        currency={data.currency}
+                      />
+                    )}
+                  </div>
                 </CollapsibleCard>
-              )}
+              </div>
 
-              <CollapsibleCard id="analytics.toBuy" title="To-buy lists" icon={IconCart} className="min-w-0">
-                <p className="text-xs text-muted">
-                  {data.shopping.listCount} completed list{data.shopping.listCount === 1 ? '' : 's'} this period.
-                </p>
-                <div className="mt-3">
-                  {data.shopping.listCount > 0 ? (
-                    <BarChart
-                      ariaLabel="To-buy lists: planned versus actually spent"
-                      data={[{ key: 'shop', label: 'This period', values: [data.shopping.plannedMinor, data.shopping.actualMinor] }]}
-                      series={[
-                        { name: 'Planned', color: 'var(--chart-1)' },
-                        { name: 'Actually spent', color: 'var(--chart-2)' },
-                      ]}
-                      currency={data.currency}
-                      height={150}
-                    />
-                  ) : (
-                    <EmptyChart>Finish a to-buy list to compare planned vs actual.</EmptyChart>
-                  )}
-                </div>
-              </CollapsibleCard>
+              <div className="flex min-w-0 flex-col gap-4">
+                {data.byMember.length > 1 && (
+                  <CollapsibleCard id="analytics.byPerson" title="Spending by person" icon={IconUsers} className="min-w-0">
+                    <p className="text-xs text-muted">Who recorded the expense, not who it was for.</p>
+                    <div className="mt-3">
+                      <RankedBars
+                        rows={data.byMember.map((m) => ({ label: memberName(m.userId), value: m.amountMinor, note: `${Math.round(m.pct)}%` }))}
+                        currency={data.currency}
+                      />
+                    </div>
+                  </CollapsibleCard>
+                )}
+
+                {engagement.length > 1 && (
+                  <CollapsibleCard id="analytics.activePoints" title="Active points" icon={IconAward} className="min-w-0">
+                    <p className="text-xs text-muted">
+                      How much each of you actually used Fico this period: recording
+                      transactions, starting to-buy lists, adding and paying bills.
+                    </p>
+                    <ul className="mt-3 space-y-3">
+                      {engagement.map((e) => {
+                        const member = members.get(e.userId)
+                        const initial = (member?.displayName || member?.username || '?').charAt(0).toUpperCase()
+                        const max = Math.max(1, engagement[0].points)
+                        return (
+                          <li key={e.userId} className="flex items-center gap-3">
+                            {member?.avatarUrl ? (
+                              <img src={member.avatarUrl} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
+                            ) : (
+                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-ink">
+                                {initial}
+                              </span>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex justify-between text-sm">
+                                <span>{memberName(e.userId)}</span>
+                                <span className="font-semibold text-ink">{e.points} pts</span>
+                              </div>
+                              <div className="mt-1 h-2 w-full rounded-full bg-panel-2">
+                                <div className="h-2 rounded-full bg-brand" style={{ width: `${(e.points / max) * 100}%` }} />
+                              </div>
+                              <p className="mt-1 text-xs text-muted">
+                                {e.transactionsRecorded} transaction{e.transactionsRecorded === 1 ? '' : 's'} ·{' '}
+                                {e.shoppingListsStarted} shopping trip{e.shoppingListsStarted === 1 ? '' : 's'} ·{' '}
+                                {e.billsAdded + e.billsPaid} bill action{e.billsAdded + e.billsPaid === 1 ? '' : 's'}
+                              </p>
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </CollapsibleCard>
+                )}
+
+                <CollapsibleCard id="analytics.toBuy" title="To-buy lists" icon={IconCart} className="min-w-0">
+                  <p className="text-xs text-muted">
+                    {data.shopping.listCount} completed list{data.shopping.listCount === 1 ? '' : 's'} this period.
+                  </p>
+                  <div className="mt-3">
+                    {data.shopping.listCount > 0 ? (
+                      <BarChart
+                        ariaLabel="To-buy lists: planned versus actually spent"
+                        data={[{ key: 'shop', label: 'This period', values: [data.shopping.plannedMinor, data.shopping.actualMinor] }]}
+                        series={[
+                          { name: 'Planned', color: 'var(--chart-1)' },
+                          { name: 'Actually spent', color: 'var(--chart-2)' },
+                        ]}
+                        currency={data.currency}
+                        height={150}
+                      />
+                    ) : (
+                      <EmptyChart>Finish a to-buy list to compare planned vs actual.</EmptyChart>
+                    )}
+                  </div>
+                </CollapsibleCard>
+              </div>
             </div>
 
             {usageTrends.map(({ kind, trend: electricityTrend }) => (
